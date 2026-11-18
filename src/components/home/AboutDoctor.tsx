@@ -27,7 +27,7 @@ export const AboutDoctor: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           
           {/* Doctor Portrait on Neutral Background */}
-          <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center">
+          <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center pb-8 sm:pb-10">
             <div className="relative w-full max-w-[360px]">
               
               {/* Backplate decoration */}
@@ -42,14 +42,14 @@ export const AboutDoctor: React.FC = () => {
                 />
                 
                 {/* Official seal banner */}
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/50 to-transparent p-5 text-white text-right">
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/50 to-transparent p-5 text-white text-right z-10">
                   <p className="font-bold text-base">{doctor.nameAr}</p>
                   <p className="text-xs text-brand-cyan-light">{doctor.nameEn}</p>
                 </div>
               </div>
 
-              {/* Education floating badge */}
-              <div className="absolute -bottom-5 -right-3 sm:-right-5 bg-white p-3.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-3">
+              {/* Education floating badge (Moved down ~0.7cm so text behind it is completely visible) */}
+              <div className="absolute -bottom-9 -right-2 sm:-bottom-10 sm:-right-4 z-20 bg-white p-3.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-brand-royal shrink-0">
                   <GraduationCap className="w-5 h-5" />
                 </div>
