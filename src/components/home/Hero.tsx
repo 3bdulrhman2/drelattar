@@ -7,13 +7,13 @@ export const Hero: React.FC = () => {
   const { doctor, clinic } = data;
 
   return (
-    <section id="hero" className="relative overflow-hidden pt-8 pb-16 lg:py-20 bg-gradient-to-b from-white via-brand-bg to-brand-bg">
+    <section id="hero" className="relative overflow-hidden w-full max-w-full pt-8 pb-16 lg:py-20 bg-gradient-to-b from-white via-brand-bg to-brand-bg">
       {/* Subtle medical background pattern */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#123E91_1px,transparent_1px)] [background-size:24px_24px]" />
       
       {/* Decorative gradient glow spots */}
-      <div className="absolute top-1/4 -right-24 w-96 h-96 bg-brand-cyan/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 -left-20 w-80 h-80 bg-brand-royal/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 right-0 w-80 h-80 bg-brand-cyan/10 rounded-full blur-3xl pointer-events-none translate-x-1/4" />
+      <div className="absolute bottom-10 left-0 w-72 h-72 bg-brand-royal/5 rounded-full blur-3xl pointer-events-none -translate-x-1/4" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
@@ -81,11 +81,11 @@ export const Hero: React.FC = () => {
           </div>
 
           {/* Doctor Portrait Visual Column */}
-          <div className="lg:col-span-5 flex justify-center relative pb-6 sm:pb-8">
-            <div className="relative w-full max-w-[380px] sm:max-w-[420px]">
+          <div className="lg:col-span-5 flex justify-center relative pb-6 sm:pb-8 w-full max-w-full">
+            <div className="relative w-full max-w-[340px] sm:max-w-[420px] mx-auto">
               
               {/* Decorative Frame Glow */}
-              <div className="absolute -inset-3 bg-gradient-to-tr from-brand-royal/20 via-brand-cyan/20 to-brand-lime/20 rounded-[2.5rem] blur-xl opacity-70 transform -rotate-1" />
+              <div className="absolute -inset-1 sm:-inset-3 bg-gradient-to-tr from-brand-royal/20 via-brand-cyan/20 to-brand-lime/20 rounded-[2.5rem] blur-xl opacity-70 transform -rotate-1 pointer-events-none" />
 
               {/* Doctor Real Image Card */}
               <div className="relative rounded-[2rem] overflow-hidden bg-white shadow-2xl border-4 border-white">
@@ -113,24 +113,24 @@ export const Hero: React.FC = () => {
               </div>
 
               {/* Floating Experience Badge (خبرة 8 سنوات) */}
-              <div className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 z-20 bg-white px-4 py-3 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-3 animate-bounce [animation-duration:4s]">
-                <div className="w-10 h-10 rounded-xl bg-brand-lime-light flex items-center justify-center text-brand-royal shrink-0">
-                  <Award className="w-5 h-5 text-brand-royal" />
+              <div className="absolute -top-3 right-0 sm:-right-4 z-20 bg-white px-3 sm:px-4 py-2 sm:py-3 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-2.5 sm:gap-3 animate-bounce [animation-duration:4s]">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-lime-light flex items-center justify-center text-brand-royal shrink-0">
+                  <Award className="w-4 h-4 sm:w-5 sm:h-5 text-brand-royal" />
                 </div>
                 <div className="text-right">
-                  <span className="block text-xs font-medium text-brand-muted">المسيرة المهنية</span>
-                  <span className="block text-sm font-bold text-brand-dark">خبرة 8 سنوات</span>
+                  <span className="block text-[11px] sm:text-xs font-medium text-brand-muted">المسيرة المهنية</span>
+                  <span className="block text-xs sm:text-sm font-bold text-brand-dark">خبرة 8 سنوات</span>
                 </div>
               </div>
 
               {/* Floating Specialty Badge (Moved down ~0.5cm so text underneath is fully visible) */}
-              <div className="absolute -bottom-8 -left-2 sm:-bottom-9 sm:-left-3 z-20 bg-white px-4 py-2.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-brand-cyan-light flex items-center justify-center text-brand-medical shrink-0">
-                  <HeartPulse className="w-5 h-5" />
+              <div className="absolute -bottom-8 left-0 sm:-left-3 z-20 bg-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-2 sm:gap-2.5">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand-cyan-light flex items-center justify-center text-brand-medical shrink-0">
+                  <HeartPulse className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="text-right">
-                  <span className="block text-[11px] font-medium text-brand-muted">التخصص الدقيق</span>
-                  <span className="block text-xs font-bold text-brand-royal">باطنة & عناية مركزة</span>
+                  <span className="block text-[10px] sm:text-[11px] font-medium text-brand-muted">التخصص الدقيق</span>
+                  <span className="block text-[11px] sm:text-xs font-bold text-brand-royal">باطنة & عناية مركزة</span>
                 </div>
               </div>
 

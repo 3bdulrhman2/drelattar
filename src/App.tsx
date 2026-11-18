@@ -83,7 +83,7 @@ export const AppContent: React.FC = () => {
 
   // Public Clinic Website (Default)
   return (
-    <div className="min-h-screen flex flex-col bg-brand-bg text-brand-dark selection:bg-brand-cyan/20 selection:text-brand-royal">
+    <div className="min-h-screen flex flex-col bg-brand-bg text-brand-dark selection:bg-brand-cyan/20 selection:text-brand-royal overflow-x-hidden w-full max-w-full relative">
       
       {/* Emergency Notice Banner if activated by admin */}
       {visibility.emergencyNoticeActive && visibility.emergencyNoticeText && (

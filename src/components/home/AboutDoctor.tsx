@@ -7,7 +7,7 @@ export const AboutDoctor: React.FC = () => {
   const { doctor } = data;
 
   return (
-    <section id="about" className="py-16 lg:py-24 bg-white relative">
+    <section id="about" className="py-16 lg:py-24 bg-white relative overflow-hidden w-full max-w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Heading */}
@@ -27,11 +27,11 @@ export const AboutDoctor: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           
           {/* Doctor Portrait on Neutral Background */}
-          <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center pb-8 sm:pb-10">
-            <div className="relative w-full max-w-[360px]">
+          <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center pb-8 sm:pb-10 w-full max-w-full">
+            <div className="relative w-full max-w-[340px] sm:max-w-[360px] mx-auto">
               
               {/* Backplate decoration */}
-              <div className="absolute -inset-4 bg-gradient-to-br from-brand-royal/10 via-brand-cyan/10 to-brand-lime/10 rounded-3xl -rotate-2" />
+              <div className="absolute -inset-1.5 sm:-inset-4 bg-gradient-to-br from-brand-royal/10 via-brand-cyan/10 to-brand-lime/10 rounded-3xl -rotate-1 sm:-rotate-2 pointer-events-none" />
               
               <div className="relative rounded-2xl overflow-hidden bg-white shadow-xl border-2 border-slate-100">
                 <img
@@ -42,20 +42,20 @@ export const AboutDoctor: React.FC = () => {
                 />
                 
                 {/* Official seal banner */}
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/50 to-transparent p-5 text-white text-right z-10">
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/50 to-transparent p-4 sm:p-5 text-white text-right z-10">
                   <p className="font-bold text-base">{doctor.nameAr}</p>
                   <p className="text-xs text-brand-cyan-light">{doctor.nameEn}</p>
                 </div>
               </div>
 
               {/* Education floating badge (Moved down ~0.7cm so text behind it is completely visible) */}
-              <div className="absolute -bottom-9 -right-2 sm:-bottom-10 sm:-right-4 z-20 bg-white p-3.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-brand-royal shrink-0">
-                  <GraduationCap className="w-5 h-5" />
+              <div className="absolute -bottom-9 right-0 sm:-right-4 z-20 bg-white p-3 sm:p-3.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-2.5 sm:gap-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 flex items-center justify-center text-brand-royal shrink-0">
+                  <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="text-right">
-                  <span className="block text-[11px] text-brand-muted">المؤهل الأكاديمي</span>
-                  <span className="block text-xs font-bold text-brand-dark">طب الأزهر بالقاهرة</span>
+                  <span className="block text-[10px] sm:text-[11px] text-brand-muted">المؤهل الأكاديمي</span>
+                  <span className="block text-xs sm:text-xs font-bold text-brand-dark">طب الأزهر بالقاهرة</span>
                 </div>
               </div>
 
