@@ -81,7 +81,7 @@ export const Hero: React.FC = () => {
           </div>
 
           {/* Doctor Portrait Visual Column */}
-          <div className="lg:col-span-5 flex justify-center relative">
+          <div className="lg:col-span-5 flex justify-center relative pb-6 sm:pb-8">
             <div className="relative w-full max-w-[380px] sm:max-w-[420px]">
               
               {/* Decorative Frame Glow */}
@@ -100,8 +100,8 @@ export const Hero: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-brand-darker/70 via-transparent to-transparent pointer-events-none" />
 
                 {/* Overlaid Doctor Title Pill inside portrait */}
-                <div className="absolute bottom-4 right-4 left-4 text-white text-right pointer-events-none">
-                  <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-xl border border-white/40 shadow-lg text-brand-dark">
+                <div className="absolute bottom-4 right-4 left-4 text-white text-right pointer-events-none z-10">
+                  <div className="bg-white/95 backdrop-blur-md p-3 sm:p-3.5 rounded-xl border border-white/40 shadow-lg text-brand-dark">
                     <p className="font-bold text-sm sm:text-base text-brand-royal leading-tight">
                       {doctor.nameAr}
                     </p>
@@ -113,7 +113,7 @@ export const Hero: React.FC = () => {
               </div>
 
               {/* Floating Experience Badge (خبرة 8 سنوات) */}
-              <div className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 bg-white px-4 py-3 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-3 animate-bounce [animation-duration:4s]">
+              <div className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 z-20 bg-white px-4 py-3 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-3 animate-bounce [animation-duration:4s]">
                 <div className="w-10 h-10 rounded-xl bg-brand-lime-light flex items-center justify-center text-brand-royal shrink-0">
                   <Award className="w-5 h-5 text-brand-royal" />
                 </div>
@@ -123,8 +123,8 @@ export const Hero: React.FC = () => {
                 </div>
               </div>
 
-              {/* Floating Specialty Badge */}
-              <div className="absolute -bottom-3 -left-3 sm:-bottom-4 sm:-left-4 bg-white px-4 py-2.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-2.5">
+              {/* Floating Specialty Badge (Moved down ~0.5cm so text underneath is fully visible) */}
+              <div className="absolute -bottom-8 -left-2 sm:-bottom-9 sm:-left-3 z-20 bg-white px-4 py-2.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-brand-cyan-light flex items-center justify-center text-brand-medical shrink-0">
                   <HeartPulse className="w-5 h-5" />
                 </div>
