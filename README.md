@@ -183,3 +183,5 @@ npm run preview
 | `VITE_SUPABASE_ANON_KEY` | مفتاح Anon لـ Supabase (اختياري) | فارغ |
 | `VITE_GOOGLE_PLACES_API_KEY` | مفتاح Google Places API (اختياري) | فارغ |
 | `VITE_GOOGLE_PLACE_ID` | معرّف العيادة بخرائط Google | فارغ |
+#   d r e l a t t a r - c l i n i c  
+ 
