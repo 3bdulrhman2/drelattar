@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Alexandria', 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    direction: rtl;
+    text-align: right;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #F5F8FC;
+    color: #172B43;
+    overflow-x: hidden;
+  }
+
+  /* Custom high-end scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #F1F5F9;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #087DBA;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .medical-gradient-bg {
+    background: linear-gradient(135deg, #0B2963 0%, #123E91 50%, #087DBA 100%);
+  }
+
+  .cyan-glow {
+    box-shadow: 0 0 25px -5px rgba(22, 183, 216, 0.35);
+  }
+
+  .lime-glow {
+    box-shadow: 0 0 20px -3px rgba(181, 203, 0, 0.35);
+  }
+}

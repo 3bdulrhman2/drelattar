@@ -1,0 +1,124 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
+import { useContent } from './context/ContentContext';
+import { Header } from './components/layout/Header';
+import { Hero } from './components/home/Hero';
+import { TrustIndicators } from './components/home/TrustIndicators';
+import { AboutDoctor } from './components/home/AboutDoctor';
+import { Services } from './components/home/Services';
+import { Equipment } from './components/home/Equipment';
+import { Reviews } from './components/home/Reviews';
+import { FAQ } from './components/home/FAQ';
+import { ClinicLocation } from './components/home/ClinicLocation';
+import { ContactSection } from './components/home/ContactSection';
+import { QuickCallFloating } from './components/home/QuickCallFloating';
+import { PublicBookingModule } from './components/home/PublicBookingModule';
+import { Footer } from './components/layout/Footer';
+import { AdminLogin } from './components/admin/AdminLogin';
+import { AdminDashboard } from './components/admin/AdminDashboard';
+import { Bell } from 'lucide-react';
+
+export const AppContent: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const { data } = useContent();
+  const { visibility } = data;
+
+  const [route, setRoute] = useState<'public' | 'admin'>(() => {
+    if (window.location.pathname.startsWith('/admin') || window.location.hash.includes('admin')) {
+      return 'admin';
+    }
+    return 'public';
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.pathname.startsWith('/admin') || window.location.hash.includes('admin')) {
+        setRoute('admin');
+      } else {
+        setRoute('public');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateToAdmin = () => {
+    window.history.pushState(null, '', '/admin');
+    setRoute('admin');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToPublic = () => {
+    window.history.pushState(null, '', '/');
+    setRoute('public');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // If Admin route is active
+  if (route === 'admin') {
+    if (isAuthenticated) {
+      return <AdminDashboard onBackToSite={navigateToPublic} />;
+    }
+    return <AdminLogin onBackToSite={navigateToPublic} />;
+  }
+
+  // Public Clinic Website
+  return (
+    <div className="min-h-screen flex flex-col bg-brand-bg text-brand-dark selection:bg-brand-cyan/20 selection:text-brand-royal">
+      
+      {/* Emergency Notice Banner if activated by admin */}
+      {visibility.emergencyNoticeActive && visibility.emergencyNoticeText && (
+        <div className="bg-amber-500 text-slate-900 px-4 py-2 text-xs sm:text-sm font-bold text-center flex items-center justify-center gap-2 shadow-sm">
+          <Bell className="w-4 h-4 animate-bounce" />
+          <span>{visibility.emergencyNoticeText}</span>
+        </div>
+      )}
+
+      {/* Header Navigation */}
+      <Header onNavigateAdmin={navigateToAdmin} />
+
+      {/* Main Sections */}
+      <main className="flex-1">
+        {/* Hero Screen */}
+        <Hero />
+
+        {/* Verified Trust Indicators */}
+        <TrustIndicators />
+
+        {/* Future Booking Module (disabled by default, active only if enabled by admin) */}
+        <PublicBookingModule />
+
+        {/* About the Doctor */}
+        <AboutDoctor />
+
+        {/* 13 Exact Medical Services */}
+        <Services />
+
+        {/* 4 Diagnostic Medical Equipment (NO vacuum device) */}
+        <Equipment />
+
+        {/* Patient Reviews & Google Attribution */}
+        <Reviews />
+
+        {/* 8 Authoritative FAQ Questions */}
+        <FAQ />
+
+        {/* Clinic Location & Google Maps */}
+        <ClinicLocation />
+
+        {/* Functional Contact Actions */}
+        <ContactSection />
+      </main>
+
+      {/* Footer */}
+      <Footer onNavigateAdmin={navigateToAdmin} />
+
+      {/* Floating Quick Action Bar for Mobile */}
+      <QuickCallFloating />
+
+    </div>
+  );
+};
+
+export default AppContent;

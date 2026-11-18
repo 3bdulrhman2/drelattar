@@ -1,0 +1,127 @@
+import React from 'react';
+import { GraduationCap, Award, Building2, Stethoscope, CheckCircle, Shield, Sparkles, BookOpen } from 'lucide-react';
+import { useContent } from '../../context/ContentContext';
+
+export const AboutDoctor: React.FC = () => {
+  const { data } = useContent();
+  const { doctor } = data;
+
+  return (
+    <section id="about" className="py-16 lg:py-24 bg-white relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Section Heading */}
+        <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-cyan-light text-brand-royal text-xs font-semibold">
+            <Stethoscope className="w-3.5 h-3.5 text-brand-medical" />
+            <span>السيرة المهنية والخبرات الأكاديمية</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark">
+            عن الدكتور محمد السيد العطار
+          </h2>
+          <p className="text-base text-brand-muted">
+            التزام راسخ بالمعايير الطبية المعتمدة وخبرة إكلينيكية متخصصة في الحالات الحرجة وأمراض الباطنة
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+          
+          {/* Doctor Portrait on Neutral Background */}
+          <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center">
+            <div className="relative w-full max-w-[360px]">
+              
+              {/* Backplate decoration */}
+              <div className="absolute -inset-4 bg-gradient-to-br from-brand-royal/10 via-brand-cyan/10 to-brand-lime/10 rounded-3xl -rotate-2" />
+              
+              <div className="relative rounded-2xl overflow-hidden bg-white shadow-xl border-2 border-slate-100">
+                <img
+                  src={doctor.avatarNeutral}
+                  alt={doctor.nameAr}
+                  className="w-full h-auto object-cover aspect-[3/4]"
+                  loading="lazy"
+                />
+                
+                {/* Official seal banner */}
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/50 to-transparent p-5 text-white text-right">
+                  <p className="font-bold text-base">{doctor.nameAr}</p>
+                  <p className="text-xs text-brand-cyan-light">{doctor.nameEn}</p>
+                </div>
+              </div>
+
+              {/* Education floating badge */}
+              <div className="absolute -bottom-5 -right-3 sm:-right-5 bg-white p-3.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-brand-royal shrink-0">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div className="text-right">
+                  <span className="block text-[11px] text-brand-muted">المؤهل الأكاديمي</span>
+                  <span className="block text-xs font-bold text-brand-dark">طب الأزهر بالقاهرة</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Detailed Biography and Credentials */}
+          <div className="lg:col-span-7 order-1 lg:order-2 space-y-6 text-right">
+            
+            <div className="space-y-3">
+              <h3 className="text-xl sm:text-2xl font-bold text-brand-royal">
+                {doctor.title}
+              </h3>
+              <p className="text-base text-brand-muted leading-relaxed">
+                {doctor.bio}
+              </p>
+            </div>
+
+            {/* Academic Qualifications & Affiliations List */}
+            <div className="space-y-3 pt-2">
+              <h4 className="text-sm font-bold text-brand-dark flex items-center gap-2">
+                <Award className="w-4 h-4 text-brand-lime-dark" />
+                <span>المؤهلات والمناصب الطبية الرسمية:</span>
+              </h4>
+
+              <div className="space-y-2.5">
+                {doctor.credentials.map((cred, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3 p-3.5 rounded-xl bg-brand-bg/80 border border-brand-border/60 hover:border-brand-royal/30 transition-colors"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-brand-royal/10 text-brand-royal flex items-center justify-center shrink-0 mt-0.5">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-sm font-semibold text-brand-dark leading-snug">
+                      {cred}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Clinical Specialties Tags */}
+            <div className="pt-2">
+              <h4 className="text-sm font-bold text-brand-dark mb-3 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-brand-medical" />
+                <span>مجالات الاختصاص والاهتمام الإكلينيكي:</span>
+              </h4>
+              
+              <div className="flex flex-wrap gap-2">
+                {doctor.specialties.map((spec, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-brand-cyan-light/70 text-brand-royal text-xs font-semibold border border-brand-cyan/25"
+                  >
+                    {spec}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+  );
+};
