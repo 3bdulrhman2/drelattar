@@ -58,13 +58,13 @@ export const DoctorCard: React.FC = () => {
   const downloadVCard = () => {
     const vCardData = `BEGIN:VCARD
 VERSION:3.0
-FN;CHARSET=UTF-8:${doctor.nameAr}
-N;CHARSET=UTF-8:العطار;محمد;السيد;;د.
+FN;CHARSET=UTF-8:دكتور محمد السيد العطار
+N;CHARSET=UTF-8:العطار;محمد;السيد;دكتور;
 TITLE;CHARSET=UTF-8:${doctor.title}
 ORG;CHARSET=UTF-8:${clinic.name}
 TEL;TYPE=WORK,VOICE:+201060918977
 TEL;TYPE=CELL,VOICE:+201007347945
-ADR;TYPE=WORK;CHARSET=UTF-8:;;${clinic.address};الحسينية;الشرقية;;مصر
+ADR;TYPE=WORK;CHARSET=UTF-8:;;كوبري واحد بحر البقر;مركز الحسينية;محافظة الشرقية;;مصر
 URL:${window.location.origin}
 NOTE;CHARSET=UTF-8:فودافون كاش: 01007347945 | إنستاباي: elattar94@instapay
 END:VCARD`;
@@ -175,19 +175,18 @@ END:VCARD`;
             </p>
             <div className="flex items-center justify-center gap-1.5 text-slate-400 text-[11px] mt-1.5">
               <MapPin className="w-3 h-3 text-brand-lime" />
-              <span>كوبري واحد الصالحية – مركز الحسينية</span>
+              <span>كوبري واحد بحر البقر</span>
             </div>
           </div>
         </div>
 
         {/* SECTION 1: Quick Payment Methods (Official InstaPay & Vodafone Cash Logos) */}
         <div className="space-y-3 pt-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-300 px-1">
+          <div className="flex items-center text-xs font-bold text-slate-300 px-1">
             <span className="flex items-center gap-1.5">
               <CreditCard className="w-3.5 h-3.5 text-brand-cyan" />
               <span>طرق الدفع والتحويل السريع (كشف / استشارة)</span>
             </span>
-            <span className="text-[10px] text-brand-lime font-mono">INSTANT PAY</span>
           </div>
 
           {/* 1. InstaPay Button with Official Logo */}
