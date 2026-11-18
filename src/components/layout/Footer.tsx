@@ -165,7 +165,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateAdmin }) => {
 
         </div>
 
-        {/* Bottom Bar: Copyright & Admin Entry */}
+        {/* Bottom Bar: Copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 text-center sm:text-right">
           <div>
             <p>
@@ -177,15 +177,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateAdmin }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            {onNavigateAdmin && (
-              <button
-                onClick={onNavigateAdmin}
-                className="hover:text-white transition-colors underline text-[11px]"
-              >
-                بوابة الإدارة
-              </button>
-            )}
-
             <button
               onClick={scrollToTop}
               className="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-colors flex items-center gap-1 text-[11px]"

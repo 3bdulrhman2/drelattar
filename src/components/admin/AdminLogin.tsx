@@ -9,7 +9,7 @@ interface AdminLoginProps {
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToSite }) => {
   const { login } = useAuth();
-  const [email, setEmail] = useState('admin@drelattar.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,12 +65,12 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToSite }) => {
             <div className={`w-3 h-3 rounded-full shrink-0 ${isSupabaseConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
             <div className="text-right">
               <span className="font-semibold block text-slate-200">
-                {isSupabaseConfigured ? 'قاعدة بيانات Supabase: متصلة ونشطة' : 'وضع الإدارة المحلي (Local Preview Mode)'}
+                {isSupabaseConfigured ? 'قاعدة بيانات Supabase: متصلة ونشطة' : 'نظام المصادقة المحمي'}
               </span>
               <span className="text-[11px] text-slate-400 block">
                 {isSupabaseConfigured
                   ? 'المصادقة والتغييرات متزامنة مع السحابة'
-                  : 'يمكن الدخول بكلمة مرور الإدارة المحلية (DrElattar2026!)'}
+                  : 'يرجى إدخال بيانات الاعتماد المعتمدة لإدارة العيادة'}
               </span>
             </div>
           </div>

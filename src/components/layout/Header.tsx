@@ -112,16 +112,6 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateAdmin }) => {
                 <Phone className="w-4 h-4 text-brand-lime" />
                 <span>اتصل بالعيادة</span>
               </a>
-
-              {onNavigateAdmin && (
-                <button
-                  onClick={onNavigateAdmin}
-                  title="لوحة الإدارة"
-                  className="p-2 text-brand-muted hover:text-brand-royal hover:bg-slate-100 rounded-lg transition-colors text-xs"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                </button>
-              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -178,18 +168,6 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateAdmin }) => {
                 <Stethoscope className="w-4 h-4 text-brand-medical" />
                 <span>هاتف الدكتور ({clinic.phoneDoctor})</span>
               </a>
-
-              {onNavigateAdmin && (
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onNavigateAdmin();
-                  }}
-                  className="w-full text-center text-xs text-brand-muted hover:text-brand-royal py-2 font-medium"
-                >
-                  الدخول للوحة الإدارة
-                </button>
-              )}
             </div>
           </div>
         )}
