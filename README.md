@@ -1,32 +1,185 @@
-# React + TypeScript + Vite
+# عيادة الدكتور محمد السيد العطار | الموقع الطبي الرسمي
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+الموقع الإلكتروني الرسمي عالي الجودة للدكتور **محمد السيد العطار** — أخصائي الباطنة العامة والعناية المركزة والحالات الحرجة.
 
-Currently, two official plugins are available:
+تم تصميم وتطوير هذا الموقع وفق أعلى معايير الوكالات الرقمية العالمية، مع الالتزام التام بالهوية البصرية الرسمية للعيادة، وتحسين الأداء، وتجربة المستخدم العربي (RTL)، ومحركات البحث الطبية المحلية (Medical SEO).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 👨‍⚕️ بيانات الطبيب والعيادة المعتمدة
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+* **الاسم العربي:** الدكتور محمد السيد العطار
+* **الاسم الإنجليزي:** Dr. Mohammed Elsayed Elattar
+* **اللقب المهني والتخصص:** أخصائي الباطنة العامة والعناية المركزة والحالات الحرجة
+* **سنوات الخبرة:** 8 سنوات
+* **المؤهل الأكاديمي:** كلية الطب – جامعة الأزهر بالقاهرة
+* **المؤهلات والمناصب الرسمية:**
+  * زمالة الباطنة العامة والعناية المركزة والحالات الحرجة.
+  * نائب رئيس قسم الباطنة بمجمع الإسماعيلية الطبي – هيئة الرعاية الصحية.
+  * نائب مدير وحدة العناية المركزة بمستشفى حميات الإسماعيلية.
+* **عنوان العيادة:** كوبري واحد الصالحية – أمام موقف السيارات – بحر البقر – مركز الحسينية – محافظة الشرقية – مصر (فرع واحد مجهز).
+* **أرقام التواصل المباشرة:**
+  * هاتف العيادة: `01060918977`
+  * هاتف الطبيب: `01007347945`
+* **مواعيد العمل الرسمية الموثقة:**
+  * **السبت إلى الخميس:** من 1:00 ظهراً حتى 9:00 مساءً.
+  * **الجمعة:** من 4:00 عصراً حتى 10:00 مساءً.
 
-## Expanding the Oxlint configuration
+---
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 🎨 الهوية البصرية ونظام التصميم (Design System)
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+تم استلهام لوحة الألوان بدقة من الشعار الرسمي للعيادة دون أي تغيير في الخطوط أو الحروف العربية:
+
+| اللون | كود HEX | الاستخدام |
+| :--- | :--- | :--- |
+| **Royal Blue** | `#123E91` | اللون الأساسي، العناوين، الأزرار الرئيسية والهيدر |
+| **Medical Blue** | `#087DBA` | التدرجات الطبية، الأيقونات، وحالات التفاعل (Hover) |
+| **Cyan** | `#16B7D8` | لمسات الحيوية، شارات الاعتماد، والتوهج الناعم |
+| **Lime Green** | `#B5CB00` | شارات الخبرة، أيقونات الاتصال والتمييز الإيجابي |
+| **Dark Navy** | `#172B43` | النصوص وقراءة المقاطع بدقة تباين WCAG AAA |
+| **Muted Slate** | `#627D98` | النصوص الثانوية والملاحظات التوضيحية |
+| **Medical Background** | `#F5F8FC` | خلفية المنصة المريحة للعين |
+
+* **الخطوط الطباعية:** Alexandria و IBM Plex Sans Arabic المحسنة للغة العربية مع تحميل مسبق عالي السرعة (Google Fonts Preconnect).
+
+---
+
+## 🚀 التقنيات المستخدمة (Tech Stack)
+
+* **React 19 + TypeScript**: بنية برمجية قوية ونوعية عالية الأمان.
+* **Vite**: سرعة بناء فائقة وحجم حزم محلي وخفيف.
+* **Tailwind CSS**: تصميم مخصص وتدرجات متناسقة مع دعم RTL كامل.
+* **Lucide Icons**: أيقونات طبية متناسقة وسريعة الاستجابة.
+* **Supabase** (اختياري/جاهز): دعم المصادقة السحابية وتخزين البيانات وحجوزات المستقبل.
+* **Vercel**: جاهزية كاملة للنشر بنقرة واحدة مع توجيه `vercel.json` وروابط SPA وتخزين مؤقت للعلامة التجارية.
+* **Google Places API (New)**: تكامل لجلب تقييمات Google الرسمية مع وضع احتياطي ذكي.
+
+---
+
+## 📂 بنية المشروع (Project Architecture)
+
+```
+drelattar/
+├── public/
+│   ├── brand/
+│   │   ├── clinic-logo.png             # الشعار الرسمي الأصلي للعيادة
+│   │   ├── dr-elattar-medical.jpg      # صورة الطبيب بخلفية المستشفى
+│   │   └── dr-elattar-neutral.jpg      # صورة الطبيب بخلفية محايدة
+│   ├── robots.txt                      # ملف محركات البحث
+│   └── sitemap.xml                     # خريطة الموقع لمحركات البحث
+├── src/
+│   ├── components/
+│   │   ├── home/                       # أقسام الموقع الرئيسية
+│   │   │   ├── Hero.tsx                # الشاشة الأولى الرئيسية
+│   │   │   ├── TrustIndicators.tsx     # مؤشرات الثقة المعتمدة
+│   │   │   ├── AboutDoctor.tsx         # عن الطبيب والمؤهلات
+│   │   │   ├── Services.tsx            # 13 خدمة طبية متخصصة
+│   │   │   ├── Equipment.tsx           # 4 أجهزة تشخيصية معتمدة (دون جهاز الشفط)
+│   │   │   ├── Reviews.tsx             # آراء مرضى Google والتوثيق
+│   │   │   ├── FAQ.tsx                 # 8 أسئلة شائعة تفاعلية
+│   │   │   ├── ClinicLocation.tsx      # موقع العيادة والخريطة والاتجاهات
+│   │   │   ├── ContactSection.tsx      # الاتصال والواتساب والشبكات الاجتماعية
+│   │   │   ├── QuickCallFloating.tsx   # شريط اتصال عائم مخصص للهواتف
+│   │   │   └── PublicBookingModule.tsx # وحدة الحجز المستقبلي (معطلة افتراضياً)
+│   │   ├── layout/
+│   │   │   ├── Header.tsx              # شريط التنقل المتجاوب
+│   │   │   └── Footer.tsx              # تذييل الموقع الاحترافي
+│   │   └── admin/                      # لوحة التحكم والإدارة
+│   │       ├── AdminLogin.tsx          # تسجيل دخول الإدارة الآمن
+│   │       ├── AdminDashboard.tsx      # لوحة التحكم بالأقسام الـ 10
+│   │       └── tabs/                   # تبويبات الإدارة الـ 10
+│   ├── context/
+│   │   ├── AuthContext.tsx             # مصادقة المشرف (محلي أو Supabase)
+│   │   └── ContentContext.tsx          # إدارة البيانات والتخزين الحي
+│   ├── data/
+│   │   └── clinicData.ts               # البيانات المعتمدة الأصلية
+│   ├── lib/
+│   │   ├── googlePlaces.ts             # تكامل Google Places API
+│   │   └── supabase.ts                 # عميل Supabase المرن
+│   ├── types/
+│   │   └── index.ts                    # تعريفات TypeScript
+│   ├── App.tsx                         # التوجيه العام والتحكم بالمسارات
+│   ├── main.tsx                        # مدخل التطبيق
+│   └── index.css                       # قواعد التصميم والتمرير وTailwind
+├── supabase_schema.sql                 # كود إنشاء جداول وقواعد Supabase
+├── vercel.json                         # إعدادات نشر Vercel وإعادة التوجيه
+├── tailwind.config.js
+└── package.json
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## 🛡️ لوحة التحكم والإدارة (Admin Dashboard)
+
+* **المسار:** `/admin`
+* **بيانات الدخول الافتراضية:**
+  * البريد الإلكتروني: `admin@drelattar.com`
+  * كلمة المرور: `DrElattar2026!` *(يمكن تخصيصها عبر `VITE_ADMIN_PASSWORD` في `.env`)*
+* **الأقسام الـ 10 المدعومة:**
+  1. **نظرة عامة (Overview):** إحصائيات سريعة، حالة التزامن السحابي/المحلي، وتنبيهات النظام.
+  2. **بيانات الطبيب:** تعديل الاسم، اللقب، التخصصات، والمؤهلات الأكاديمية.
+  3. **معلومات العيادة:** تعديل العنوان التفصيلي، العلامة المميزة، وأرقام الهواتف.
+  4. **الخدمات الطبية:** مراجعة وتحديث الـ 13 خدمة وأوصافها الإكلينيكية.
+  5. **التجهيزات الطبية:** إدارة الأجهزة التشخيصية المعتمدة (دون إدراج أجهزة غير متوفرة).
+  6. **مواعيد العمل:** ضبط أوقات السبت-الخميس ويوم الجمعة.
+  7. **التواصل الاجتماعي:** تحديث روابط فيسبوك، إنستغرام، تيك توك، وأرقام الواتساب.
+  8. **تكامل Google Reviews:** إدخال مفتاح Places API و Place ID لفحص وتحديث التقييمات.
+  9. **وحدة الحجز المستقبلي:** تفعيل/تعطيل الحجز العام، تحديد الأيام والساعات، وإدارة المواعيد بالاعتماد أو الرفض.
+  10. **الرؤية والإعدادات:** إخفاء أو إظهار أقسام معينة، تفعيل شريط الطوارئ/الإجازات، وإعادة ضبط المصنع للبيانات المعتمدة.
+
+---
+
+## 🔒 وحدة الحجز المستقبلي (Future Booking Module)
+
+* **الحالة الافتراضية:** **معطلة تماماً (DISABLED)** عن الزوار والجمهور، ولا يظهر أي نموذج أو زر حجز في النسخة الأولية.
+* **الجاهزية المعمارية:** عند رغبة الطبيب أو إدارة العيادة مستقبلاً بتفعيل الحجز الإلكتروني، يتم ببساطة الدخول إلى لوحة الإدارة (`/admin`) ثم تبويب **"نظام الحجز المستقبلي"** وتفعيل المفتاح البرمجي. يظهر حينها زر ونموذج طلب الموعد للجمهور بسلاسة مع تسجيل الطلبات في لوحة الإدارة لاعتمادها أو رفضها.
+
+---
+
+## 🛠️ التشغيل المحلي (Local Development)
+
+```bash
+# تثبيت الحزم
+npm install
+
+# تشغيل بيئة التطوير
+npm run dev
+
+# فحص الأخطاء والبناء للإنتاج
+npm run build
+
+# معاينة حزمة الإنتاج
+npm run preview
+```
+
+---
+
+## ☁️ خطوات النشر على Vercel و GitHub
+
+1. **الرفع على GitHub:**
+   ```bash
+   git remote add origin https://github.com/USERNAME/drelattar.git
+   git branch -M main
+   git push -u origin main
+   ```
+2. **النشر على Vercel:**
+   * افتح [vercel.com](https://vercel.com) واختر **Add New Project**.
+   * استورد مستودع GitHub `drelattar`.
+   * سيقوم Vercel باكتشاف إعدادات Vite تلقائياً مع ملف `vercel.json`.
+   * أضف متغيرات البيئة من ملف `.env.example` في لوحة تحكم Vercel عند الحاجة.
+   * اضغط **Deploy**.
+
+---
+
+## 📋 المتغيرات البيئية (Environment Variables)
+
+راجع ملف `.env.example`:
+
+| المتغير | الوظيفة | القيمة الافتراضية |
+| :--- | :--- | :--- |
+| `VITE_ADMIN_PASSWORD` | كلمة مرور الإدارة المحلية | `DrElattar2026!` |
+| `VITE_SUPABASE_URL` | رابط مشروع Supabase (اختياري) | فارغ |
+| `VITE_SUPABASE_ANON_KEY` | مفتاح Anon لـ Supabase (اختياري) | فارغ |
+| `VITE_GOOGLE_PLACES_API_KEY` | مفتاح Google Places API (اختياري) | فارغ |
+| `VITE_GOOGLE_PLACE_ID` | معرّف العيادة بخرائط Google | فارغ |
