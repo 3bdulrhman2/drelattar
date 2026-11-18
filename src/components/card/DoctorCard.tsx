@@ -238,37 +238,8 @@ END:VCARD`;
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  copyVodafoneCash();
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm ${
-                  copiedVoda
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white/15 hover:bg-white/25 text-white border border-white/20'
-                }`}
-                title="نسخ رقم فودافون كاش"
-              >
-                {copiedVoda ? (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    <span>تم النسخ</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>نسخ</span>
-                  </>
-                )}
-              </button>
-
-              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-red-200 group-hover:text-white transition-colors">
-                <ExternalLink className="w-4 h-4" />
-              </div>
+            <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-red-200 group-hover:text-white transition-colors">
+              <ExternalLink className="w-4 h-4" />
             </div>
           </a>
         </div>
