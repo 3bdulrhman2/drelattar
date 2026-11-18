@@ -16,27 +16,40 @@ import { PublicBookingModule } from './components/home/PublicBookingModule';
 import { Footer } from './components/layout/Footer';
 import { AdminLogin } from './components/admin/AdminLogin';
 import { AdminDashboard } from './components/admin/AdminDashboard';
+import { DoctorCard } from './components/card/DoctorCard';
 import { Bell } from 'lucide-react';
+
+type AppRoute = 'public' | 'admin' | 'card';
+
+const detectRoute = (): AppRoute => {
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+
+  if (path.startsWith('/admin') || hash.includes('admin')) {
+    return 'admin';
+  }
+  if (
+    path.startsWith('/card') ||
+    path.startsWith('/vcard') ||
+    path.startsWith('/pay') ||
+    hash.includes('card') ||
+    hash.includes('pay')
+  ) {
+    return 'card';
+  }
+  return 'public';
+};
 
 export const AppContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { data } = useContent();
   const { visibility } = data;
 
-  const [route, setRoute] = useState<'public' | 'admin'>(() => {
-    if (window.location.pathname.startsWith('/admin') || window.location.hash.includes('admin')) {
-      return 'admin';
-    }
-    return 'public';
-  });
+  const [route, setRoute] = useState<AppRoute>(detectRoute);
 
   useEffect(() => {
     const handlePopState = () => {
-      if (window.location.pathname.startsWith('/admin') || window.location.hash.includes('admin')) {
-        setRoute('admin');
-      } else {
-        setRoute('public');
-      }
+      setRoute(detectRoute());
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -55,7 +68,12 @@ export const AppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // If Admin route is active
+  // Route: Digital Smart Card (Direct link: /card or /pay)
+  if (route === 'card') {
+    return <DoctorCard />;
+  }
+
+  // Route: Admin Console (Direct link: /admin)
   if (route === 'admin') {
     if (isAuthenticated) {
       return <AdminDashboard onBackToSite={navigateToPublic} />;
@@ -63,7 +81,7 @@ export const AppContent: React.FC = () => {
     return <AdminLogin onBackToSite={navigateToPublic} />;
   }
 
-  // Public Clinic Website
+  // Public Clinic Website (Default)
   return (
     <div className="min-h-screen flex flex-col bg-brand-bg text-brand-dark selection:bg-brand-cyan/20 selection:text-brand-royal">
       
