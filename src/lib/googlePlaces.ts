@@ -1,6 +1,6 @@
 import type { GooglePlacesRatingData } from '../types';
 
-export const OFFICIAL_MAPS_LINK = 'https://share.google/GqOFLuuQgPQlCmpSX';
+export const OFFICIAL_MAPS_LINK = 'https://maps.app.goo.gl/ST9qs3kYt1nFxiGn8';
 
 export async function fetchGooglePlacesReviews(
   customApiKey?: string,

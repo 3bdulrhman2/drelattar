@@ -36,9 +36,8 @@ export const initialClinicData: AppContentState = {
     phoneClinic: '01060918977',
     hoursRegular: 'السبت إلى الخميس: من 1:00 ظهراً حتى 9:00 مساءً',
     hoursFriday: 'الجمعة: من 4:00 عصراً حتى 10:00 مساءً',
-    googleMapsUrl: 'https://share.google/GqOFLuuQgPQlCmpSX',
-    // Embed URL coordinates corresponding to Salheya 1 Bridge / Bahr El Baqar / El Husseiniya, Sharqia
-    googleMapsEmbedUrl: 'https://maps.google.com/maps?q=30.8542,31.9547&hl=ar&z=15&output=embed',
+    googleMapsUrl: 'https://maps.app.goo.gl/ST9qs3kYt1nFxiGn8',
+    googleMapsEmbedUrl: 'https://maps.google.com/maps?cid=11819951956526893739&hl=ar&z=16&output=embed',
   },
   services: [
     {

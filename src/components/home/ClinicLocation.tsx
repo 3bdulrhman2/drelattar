@@ -128,7 +128,7 @@ export const ClinicLocation: React.FC = () => {
             <div className="relative w-full h-full min-h-[380px] bg-slate-100">
               <iframe
                 title="موقع عيادة الدكتور محمد السيد العطار"
-                src={clinic.googleMapsEmbedUrl || "https://maps.google.com/maps?q=30.8542,31.9547&hl=ar&z=14&output=embed"}
+                src={clinic.googleMapsEmbedUrl || "https://maps.google.com/maps?cid=11819951956526893739&hl=ar&z=16&output=embed"}
                 className="w-full h-full border-0 absolute inset-0"
                 allowFullScreen={true}
                 loading="lazy"

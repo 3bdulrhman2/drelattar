@@ -31,7 +31,7 @@ interface ContentContextType {
   resetToDefault: () => void;
 }
 
-const LOCAL_STORAGE_KEY = 'drelattar_clinic_content_v1';
+const LOCAL_STORAGE_KEY = 'drelattar_clinic_content_v2';
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
