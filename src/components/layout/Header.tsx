@@ -71,8 +71,8 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateAdmin }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             {/* Clinic Logo & Doctor Identity */}
-            <a href="#hero" className="flex items-center gap-3.5 group">
-              <div className="relative w-12 h-12 sm:w-14 sm:h-14 shrink-0 transition-transform duration-300 group-hover:scale-105">
+            <a href="#hero" className="flex items-center gap-2.5 sm:gap-3.5 group shrink-0">
+              <div className="relative w-11 h-11 sm:w-14 sm:h-14 shrink-0 transition-transform duration-300 group-hover:scale-105">
                 <img
                   src="/brand/clinic-logo.png"
                   alt={clinic.name}
@@ -81,10 +81,10 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateAdmin }) => {
                 />
               </div>
               <div className="flex flex-col text-right">
-                <span className="text-base sm:text-lg font-bold text-brand-royal tracking-tight group-hover:text-brand-medical transition-colors">
+                <span className="text-sm sm:text-lg font-bold text-brand-royal tracking-tight group-hover:text-brand-medical transition-colors whitespace-nowrap">
                   {doctor.nameAr}
                 </span>
-                <span className="text-[11px] sm:text-xs font-medium text-brand-muted line-clamp-1 max-w-[240px] sm:max-w-none">
+                <span className="text-[10px] sm:text-xs font-medium text-brand-muted whitespace-nowrap">
                   {doctor.title}
                 </span>
               </div>
@@ -103,31 +103,13 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateAdmin }) => {
               ))}
             </nav>
 
-            {/* CTA Direct Calling Action Button */}
-            <div className="hidden sm:flex items-center gap-3">
-              <a
-                href={`tel:${clinic.phoneClinic}`}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-brand-royal to-brand-medical text-white text-sm font-semibold px-4 sm:px-5 py-2.5 rounded-xl shadow-soft hover:shadow-hover hover:brightness-105 active:scale-95 transition-all"
-              >
-                <Phone className="w-4 h-4 text-brand-lime" />
-                <span>اتصل بالعيادة</span>
-              </a>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <div className="flex items-center gap-2 lg:hidden">
-              <a
-                href={`tel:${clinic.phoneClinic}`}
-                aria-label="اتصال بالعيادة"
-                className="p-2.5 bg-brand-cyan-light text-brand-royal rounded-xl border border-brand-cyan/30"
-              >
-                <Phone className="w-5 h-5 text-brand-medical" />
-              </a>
+            {/* Mobile Menu Button Only (Call button removed to prevent name wrapping) */}
+            <div className="flex items-center lg:hidden">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label="القائمة الرئيسية"
-                className="p-2.5 text-brand-dark hover:bg-slate-100 rounded-xl transition-colors"
+                className="p-2 text-brand-dark hover:bg-slate-100 rounded-xl transition-colors"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
