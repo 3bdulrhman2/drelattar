@@ -17,6 +17,8 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 interface ContentContextType {
   data: AppContentState;
   isBackendSynced: boolean;
+  isSaving: boolean;
+  saveToSupabase: (content?: AppContentState) => Promise<{ success: boolean; error?: string }>;
   updateDoctor: (doctor: Partial<DoctorInfo>) => void;
   updateClinic: (clinic: Partial<ClinicInfo>) => void;
   updateServices: (services: MedicalService[]) => void;
@@ -58,6 +60,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
 
   const [isBackendSynced, setIsBackendSynced] = useState<boolean>(isSupabaseConfigured);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [initialRemoteFetchDone, setInitialRemoteFetchDone] = useState<boolean>(false);
 
   // Sync to localStorage
   useEffect(() => {
@@ -73,6 +77,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const client = supabase;
     if (!isSupabaseConfigured || !client) {
       setIsBackendSynced(false);
+      setInitialRemoteFetchDone(true);
       return;
     }
 
@@ -84,8 +89,18 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .single();
 
         if (error) {
-          console.warn('Supabase fetch notice (table may need schema):', error.message);
-          setIsBackendSynced(false);
+          // If table is empty (PGRST116), seed it with initial clinic content
+          if (error.code === 'PGRST116') {
+            await client.from('clinic_settings').insert({
+              key: 'main_settings',
+              content: data,
+              updated_at: new Date().toISOString()
+            });
+            setIsBackendSynced(true);
+          } else {
+            console.warn('Supabase fetch notice (table may need schema):', error.message);
+            setIsBackendSynced(false);
+          }
         } else if (remoteData && remoteData.content) {
           setData(remoteData.content);
           setIsBackendSynced(true);
@@ -93,11 +108,55 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } catch (err) {
         console.warn('Could not connect to remote Supabase database:', err);
         setIsBackendSynced(false);
+      } finally {
+        setInitialRemoteFetchDone(true);
       }
     };
 
     loadRemote();
   }, []);
+
+  const saveToSupabase = async (contentToSave?: AppContentState): Promise<{ success: boolean; error?: string }> => {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: 'Supabase غير مهيأ' };
+    }
+    try {
+      setIsSaving(true);
+      const payload = contentToSave || data;
+      const { error } = await supabase
+        .from('clinic_settings')
+        .upsert(
+          { key: 'main_settings', content: payload, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
+
+      if (error) {
+        console.error('Supabase save error:', error);
+        setIsBackendSynced(false);
+        setIsSaving(false);
+        return { success: false, error: error.message };
+      }
+      setIsBackendSynced(true);
+      setIsSaving(false);
+      return { success: true };
+    } catch (err: any) {
+      console.error('Supabase save exception:', err);
+      setIsBackendSynced(false);
+      setIsSaving(false);
+      return { success: false, error: err.message || 'حدث خطأ أثناء الحفظ' };
+    }
+  };
+
+  // Debounced auto-save to Supabase when data changes after initial load
+  useEffect(() => {
+    if (!initialRemoteFetchDone || !isSupabaseConfigured || !supabase) return;
+
+    const timeout = setTimeout(() => {
+      saveToSupabase(data);
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [data, initialRemoteFetchDone]);
 
   const updateDoctor = (doctorUpdate: Partial<DoctorInfo>) => {
     setData((prev) => ({
@@ -189,6 +248,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       value={{
         data,
         isBackendSynced,
+        isSaving,
+        saveToSupabase,
         updateDoctor,
         updateClinic,
         updateServices,

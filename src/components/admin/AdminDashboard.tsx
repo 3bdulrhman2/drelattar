@@ -18,6 +18,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useContent } from '../../context/ContentContext';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { OverviewTab } from './tabs/OverviewTab';
 import { DoctorInfoTab } from './tabs/DoctorInfoTab';
@@ -36,6 +37,7 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) => {
   const { user, logout } = useAuth();
+  const { isBackendSynced, isSaving, saveToSupabase } = useContent();
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -108,11 +110,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
         <div className="flex items-center gap-3">
           {/* Backend sync indicator */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-slate-800 border border-slate-700">
-            <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-slate-800 border border-slate-700">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                !isSupabaseConfigured
+                  ? 'bg-amber-400'
+                  : isSaving
+                  ? 'bg-amber-400 animate-ping'
+                  : isBackendSynced
+                  ? 'bg-emerald-400 animate-pulse'
+                  : 'bg-rose-400'
+              }`}
+            />
             <span className="text-slate-300">
-              {isSupabaseConfigured ? 'Supabase متصل' : 'تخزين محلي'}
+              {!isSupabaseConfigured
+                ? 'تخزين محلي'
+                : isSaving
+                ? 'جاري المزامنة...'
+                : isBackendSynced
+                ? 'Supabase متصل ومتزامن'
+                : 'Supabase بحاجة للمزامنة'}
             </span>
+            {isSupabaseConfigured && (
+              <button
+                onClick={() => saveToSupabase()}
+                disabled={isSaving}
+                className="mr-1 text-[11px] text-brand-cyan hover:underline disabled:opacity-50 font-bold"
+                title="مزامنة التعديلات السحابية فوراً"
+              >
+                {isSaving ? '...' : 'مزامنة الآن'}
+              </button>
+            )}
           </div>
 
           <button
