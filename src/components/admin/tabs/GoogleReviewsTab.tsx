@@ -18,6 +18,8 @@ import {
   Key,
   ShieldCheck,
   Image as ImageIcon,
+  Pencil,
+  X,
 } from 'lucide-react';
 import { useContent } from '../../../context/ContentContext';
 import { OFFICIAL_MAPS_LINK } from '../../../lib/googlePlaces';
@@ -45,6 +47,18 @@ export const GoogleReviewsTab: React.FC = () => {
   const [addNotice, setAddNotice] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Edit Modal State
+  const [editingItem, setEditingItem] = useState<SocialReviewImage | null>(null);
+  const [editActiveMode, setEditActiveMode] = useState<'upload' | 'url'>('upload');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editPatientName, setEditPatientName] = useState('');
+  const [editPlatform, setEditPlatform] = useState<SocialReviewImage['platform']>('whatsapp');
+  const [editDate, setEditDate] = useState('');
+  const [editCaption, setEditCaption] = useState('');
+  const [editNotice, setEditNotice] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
   // Google API Settings Form State
   const [apiKey, setApiKey] = useState(googlePlacesApiKey || '');
   const [placeId, setPlaceId] = useState(googlePlaceId || '');
@@ -53,11 +67,8 @@ export const GoogleReviewsTab: React.FC = () => {
   // Preview Modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  // Handle local file upload (converts to optimized base64 with auto-compression)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  // Compression helper: Scales to max 1200px width and outputs high quality JPEG
+  const compressImageFile = (file: File, callback: (base64: string) => void) => {
     if (file.size > 10 * 1024 * 1024) {
       alert('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 10 ميجابايت.');
       return;
@@ -85,16 +96,30 @@ export const GoogleReviewsTab: React.FC = () => {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           const compressed = canvas.toDataURL('image/jpeg', 0.85);
-          setImageUrl(compressed);
+          callback(compressed);
         } else {
-          setImageUrl(rawDataUrl);
+          callback(rawDataUrl);
         }
       };
       img.onerror = () => {
-        setImageUrl(rawDataUrl);
+        callback(rawDataUrl);
       };
     };
     reader.readAsDataURL(file);
+  };
+
+  // Handle local file upload for Add form
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    compressImageFile(file, (compressed) => setImageUrl(compressed));
+  };
+
+  // Handle local file upload for Edit form
+  const handleEditFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    compressImageFile(file, (compressed) => setEditImageUrl(compressed));
   };
 
   const handleAddReview = (e: React.FormEvent) => {
@@ -123,6 +148,59 @@ export const GoogleReviewsTab: React.FC = () => {
 
     setAddNotice(true);
     setTimeout(() => setAddNotice(false), 3000);
+  };
+
+  // Open Edit Modal with current review details
+  const openEditModal = (item: SocialReviewImage) => {
+    setEditingItem(item);
+    setEditImageUrl(item.imageUrl || '');
+    setEditTitle(item.title || '');
+    setEditPatientName(item.patientName || '');
+    setEditPlatform(item.platform || 'whatsapp');
+    setEditDate(item.date || '');
+    setEditCaption(item.caption || '');
+    setEditActiveMode(item.imageUrl?.startsWith('data:') ? 'upload' : 'url');
+  };
+
+  // Close Edit Modal
+  const closeEditModal = () => {
+    setEditingItem(null);
+    setEditImageUrl('');
+    setEditTitle('');
+    setEditPatientName('');
+    setEditPlatform('whatsapp');
+    setEditDate('');
+    setEditCaption('');
+    if (editFileInputRef.current) editFileInputRef.current.value = '';
+  };
+
+  // Save Edit Changes
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    if (!editImageUrl.trim()) {
+      alert('يرجى اختيار صورة أو إدخال رابط الصورة أولاً');
+      return;
+    }
+
+    const updatedList = (socialReviewImages || []).map((img) =>
+      img.id === editingItem.id
+        ? {
+            ...img,
+            imageUrl: editImageUrl.trim(),
+            title: editTitle.trim() || undefined,
+            patientName: editPatientName.trim() || undefined,
+            platform: editPlatform,
+            date: editDate.trim() || undefined,
+            caption: editCaption.trim() || undefined,
+          }
+        : img
+    );
+
+    updateSocialReviewImages(updatedList);
+    closeEditModal();
+    setEditNotice(true);
+    setTimeout(() => setEditNotice(false), 3000);
   };
 
   // Move review up / down in order
@@ -204,6 +282,13 @@ export const GoogleReviewsTab: React.FC = () => {
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
           <Check className="w-4 h-4" />
           <span>تمت إضافة الصورة بنجاح إلى شريط آراء وسائل التواصل وحفظها سحابياً.</span>
+        </div>
+      )}
+
+      {editNotice && (
+        <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <Check className="w-4 h-4" />
+          <span>تم حفظ وتحديث بيانات الرأي بنجاح وتطبيق التعديلات في الموقع فورياً.</span>
         </div>
       )}
 
@@ -469,7 +554,7 @@ export const GoogleReviewsTab: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Actions (Move & Delete) */}
+                  {/* Actions (Move, Edit & Delete) */}
                   <div className="flex flex-col gap-1 items-center shrink-0">
                     <button
                       type="button"
@@ -491,12 +576,20 @@ export const GoogleReviewsTab: React.FC = () => {
                     </button>
                     <button
                       type="button"
+                      onClick={() => openEditModal(item)}
+                      className="p-1 rounded-lg bg-brand-royal/30 hover:bg-brand-royal text-brand-cyan hover:text-white transition-colors"
+                      title="تعديل بيانات الرأي والصورة"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => {
-                        if (confirm(`هل أنت متأكد من حذف صورة "${item.title}"؟`)) {
+                        if (confirm(`هل أنت متأكد من حذف صورة "${item.title || 'هذا الرأي'}"؟`)) {
                           deleteSocialReviewImage(item.id);
                         }
                       }}
-                      className="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors mt-1"
+                      className="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors mt-0.5"
                       title="حذف الصورة"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -582,6 +675,239 @@ export const GoogleReviewsTab: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* SECTION 4: Edit Review Modal */}
+      {editingItem && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeEditModal();
+          }}
+        >
+          <div className="relative max-w-2xl w-full bg-slate-900 border border-slate-700 rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5 my-8 text-right max-h-[90vh] overflow-y-auto">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-brand-royal/40 flex items-center justify-center text-brand-cyan">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm sm:text-base font-bold text-white">
+                    تعديل بيانات الرأي والمحادثة
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    يمكنك تعديل الصورة، المنصة، اسم المريض، التاريخ والملاحظات
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditModal}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                title="إغلاق"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Edit Form */}
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              
+              {/* Image Mode Switcher */}
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300">
+                  صورة الرأي / السكرين شوت
+                </label>
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setEditActiveMode('upload')}
+                    className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+                      editActiveMode === 'upload'
+                        ? 'bg-brand-royal text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>رفع صورة جديدة</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditActiveMode('url')}
+                    className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+                      editActiveMode === 'url'
+                        ? 'bg-brand-royal text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1">
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      <span>رابط مباشر</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Image Input */}
+              {editActiveMode === 'upload' ? (
+                <div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={editFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleEditFileUpload}
+                      className="hidden"
+                      id="edit-review-image-upload"
+                    />
+                    <label
+                      htmlFor="edit-review-image-upload"
+                      className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all border border-slate-700"
+                    >
+                      <Upload className="w-4 h-4 text-brand-cyan" />
+                      <span>اختيار صورة بديلة من جهازك...</span>
+                    </label>
+
+                    {editImageUrl && (
+                      <span className="text-xs text-emerald-400 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>الصورة جاهزة</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="url"
+                    value={editImageUrl}
+                    onChange={(e) => setEditImageUrl(e.target.value)}
+                    placeholder="https://example.com/screenshot.jpg"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-brand-cyan"
+                  />
+                </div>
+              )}
+
+              {/* Current / New Image Thumbnail Preview */}
+              {editImageUrl && (
+                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center gap-4">
+                  <img
+                    src={editImageUrl}
+                    alt="Current"
+                    className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-lg border border-slate-700"
+                  />
+                  <div className="text-xs space-y-1">
+                    <p className="font-bold text-white">معاينة الصورة</p>
+                    <p className="text-slate-400">ستعرض هذه الصورة في شريط الآراء بموقع العيادة</p>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(editImageUrl)}
+                      className="text-brand-cyan hover:underline inline-flex items-center gap-1 pt-1"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>تكبير الصورة</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Fields Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    عنوان أو وصف مختصر للرأي (اختياري)
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="اختياري (يمكنك تركه فارغاً)"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-brand-cyan"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    المنصة (Platform)
+                  </label>
+                  <select
+                    value={editPlatform}
+                    onChange={(e) => setEditPlatform(e.target.value as SocialReviewImage['platform'])}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-hidden focus:border-brand-cyan"
+                  >
+                    <option value="whatsapp">محادثة واتساب (WhatsApp)</option>
+                    <option value="facebook">توصية فيسبوك (Facebook)</option>
+                    <option value="instagram">رسائل إنستغرام (Instagram)</option>
+                    <option value="google">خرائط Google</option>
+                    <option value="other">منصة أخرى</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    اسم المريض أو المرافق (اختياري)
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientName}
+                    onChange={(e) => setEditPatientName(e.target.value)}
+                    placeholder="مثال: أ / أحمد عبد الله (مرافق مريض)"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-brand-cyan"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    تاريخ أو توقيت التقييم (اختياري)
+                  </label>
+                  <input
+                    type="text"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    placeholder="مثال: منذ يومين / الأسبوع الماضي"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-brand-cyan"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  مقتطف أو ملاحظة من الرسالة (اختياري)
+                </label>
+                <input
+                  type="text"
+                  value={editCaption}
+                  onChange={(e) => setEditCaption(e.target.value)}
+                  placeholder="مثال: الحمد لله حالته مستقرة جداً وبقى يتنفس طبيعي"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-brand-cyan"
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 bg-brand-royal hover:bg-brand-medical text-white font-bold px-5 py-2 rounded-xl text-xs shadow-md transition-all"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>حفظ التعديلات الآن</span>
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox / Preview Modal */}
       {previewImage && (
