@@ -60,10 +60,14 @@ flutter pub get
 # فحص الكود والتأكد من خلوه من الأخطاء
 flutter analyze
 
-# بناء ملف APK للتشغيل
-flutter build apk --debug
-# أو بناء ملف Release النهائي
+# بناء ملف APK Release الرسمي المخصص لمعالجات الهواتف الحديثة (حجم خفيف جداً ~19.5 ميجابايت)
+flutter build apk --release --split-per-abi
+
+# أو بناء ملف Release الشامل لكافة الأجهزة
 flutter build apk --release
 ```
-ملف الـ APK الناتج يتواجد في:
-`mobile_app/build/app/outputs/flutter-apk/app-debug.apk` أو `app-release.apk`.
+
+### 📦 أحجام ملفات التطبيق الرسمية
+- **النسخة المجهزة للهواتف الذكية الحديثة (`app-arm64-v8a-release.apk`):** **19.5 ميجابايت فقط** (Samsung, Xiaomi, Oppo, Realme, Pixel...).
+- **النسخة الشاملة لكافة الأجهزة القديمة والجديدة (`app-release.apk`):** **54.4 ميجابايت**.
+- **نسخة التطوير والتصحيح (`app-debug.apk`):** ~160 ميجابايت (تحتوي على محركات JIT وأدوات التصحيح لجميع المعالجات معاً).
