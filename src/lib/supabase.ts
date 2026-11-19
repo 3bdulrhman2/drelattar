@@ -14,8 +14,16 @@ const getEnvOrStorage = (envKey: string, storageKey: string): string => {
   return '';
 };
 
-const supabaseUrl = getEnvOrStorage('VITE_SUPABASE_URL', 'drelattar_supabase_url');
-const supabaseAnonKey = getEnvOrStorage('VITE_SUPABASE_ANON_KEY', 'drelattar_supabase_anon_key');
+// Built-in Supabase Project Configuration for Dr. Elattar Clinic
+// The anon key is intentionally public by design in client-side web apps
+const DEFAULT_SUPABASE_URL = 'https://jpamutyomblwobwntoky.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwYW11dHlvbWJsd29id250b2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNDgxNzIsImV4cCI6MjExMDYyNDE3Mn0.SKV19QKCDGZSbOK5HQExWqULwfakEXvzkzI8YJPOayw';
+
+const supabaseUrl =
+  getEnvOrStorage('VITE_SUPABASE_URL', 'drelattar_supabase_url') || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey =
+  getEnvOrStorage('VITE_SUPABASE_ANON_KEY', 'drelattar_supabase_anon_key') || DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && 

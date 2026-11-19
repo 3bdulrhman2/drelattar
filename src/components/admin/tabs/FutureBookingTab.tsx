@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Save,
   Check,
@@ -36,6 +36,11 @@ export const FutureBookingTab: React.FC = () => {
   const [settings, setSettings] = useState<FutureBookingSettings>({ ...bookingSettings });
   const [savedNotice, setSavedNotice] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Keep local tab settings in sync if remote Supabase loads or updates
+  useEffect(() => {
+    setSettings({ ...bookingSettings });
+  }, [bookingSettings]);
 
   // Test appointment form state
   const [showAddModal, setShowAddModal] = useState(false);

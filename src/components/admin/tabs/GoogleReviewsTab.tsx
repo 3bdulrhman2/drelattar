@@ -53,19 +53,46 @@ export const GoogleReviewsTab: React.FC = () => {
   // Preview Modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  // Handle local file upload (converts to base64)
+  // Handle local file upload (converts to optimized base64 with auto-compression)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 4 * 1024 * 1024) {
-      alert('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 4 ميجابايت.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 10 ميجابايت.');
       return;
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setImageUrl(reader.result as string);
+    reader.onload = (event) => {
+      const rawDataUrl = event.target?.result as string;
+      const img = new Image();
+      img.src = rawDataUrl;
+      img.onload = () => {
+        const maxWidth = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+          setImageUrl(compressed);
+        } else {
+          setImageUrl(rawDataUrl);
+        }
+      };
+      img.onerror = () => {
+        setImageUrl(rawDataUrl);
+      };
     };
     reader.readAsDataURL(file);
   };

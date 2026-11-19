@@ -110,7 +110,22 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setIsBackendSynced(false);
           }
         } else if (remoteData && remoteData.content) {
-          setData(remoteData.content);
+          const remote = remoteData.content;
+          setData((prev) => ({
+            ...initialClinicData,
+            ...remote,
+            doctor: { ...initialClinicData.doctor, ...(remote.doctor || {}) },
+            clinic: { ...initialClinicData.clinic, ...(remote.clinic || {}) },
+            social: { ...initialClinicData.social, ...(remote.social || {}) },
+            bookingSettings: { ...initialClinicData.bookingSettings, ...(remote.bookingSettings || {}) },
+            visibility: { ...initialClinicData.visibility, ...(remote.visibility || {}) },
+            socialReviewImages: Array.isArray(remote.socialReviewImages)
+              ? remote.socialReviewImages
+              : initialClinicData.socialReviewImages,
+            bookings: Array.isArray(remote.bookings) && remote.bookings.length > 0
+              ? remote.bookings
+              : prev.bookings,
+          }));
           setIsBackendSynced(true);
         }
 
@@ -150,6 +165,33 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     loadRemote();
+
+    // Setup Supabase Realtime channel so all open devices sync instantly
+    const channel = client
+      .channel('realtime_clinic_settings')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clinic_settings' },
+        (payload) => {
+          if (payload.new && (payload.new as any).content) {
+            const newContent = (payload.new as any).content;
+            setData((prev) => ({
+              ...prev,
+              ...newContent,
+              bookingSettings: { ...prev.bookingSettings, ...(newContent.bookingSettings || {}) },
+              socialReviewImages: Array.isArray(newContent.socialReviewImages)
+                ? newContent.socialReviewImages
+                : prev.socialReviewImages,
+            }));
+            setIsBackendSynced(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
   }, []);
 
   const saveToSupabase = async (contentToSave?: AppContentState): Promise<{ success: boolean; error?: string }> => {
@@ -228,32 +270,48 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateBookingSettings = (bookingUpdate: Partial<FutureBookingSettings>) => {
-    setData((prev) => ({
-      ...prev,
-      bookingSettings: { ...prev.bookingSettings, ...bookingUpdate },
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        bookingSettings: { ...prev.bookingSettings, ...bookingUpdate },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
   };
 
   const updateVisibility = (visibilityUpdate: Partial<WebsiteVisibilitySettings>) => {
-    setData((prev) => ({
-      ...prev,
-      visibility: { ...prev.visibility, ...visibilityUpdate },
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        visibility: { ...prev.visibility, ...visibilityUpdate },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
   };
 
   const updateGoogleApiSettings = (apiKey: string, placeId: string) => {
-    setData((prev) => ({
-      ...prev,
-      googlePlacesApiKey: apiKey,
-      googlePlaceId: placeId,
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        googlePlacesApiKey: apiKey,
+        googlePlaceId: placeId,
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
   };
 
   const updateSocialReviewImages = (images: SocialReviewImage[]) => {
-    setData((prev) => ({
-      ...prev,
-      socialReviewImages: images,
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        socialReviewImages: images,
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
   };
 
   const addSocialReviewImage = (image: Omit<SocialReviewImage, 'id'>) => {
@@ -261,17 +319,25 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...image,
       id: `rev-img-${Date.now()}`,
     };
-    setData((prev) => ({
-      ...prev,
-      socialReviewImages: [newImage, ...(prev.socialReviewImages || [])],
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        socialReviewImages: [newImage, ...(prev.socialReviewImages || [])],
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
   };
 
   const deleteSocialReviewImage = (id: string) => {
-    setData((prev) => ({
-      ...prev,
-      socialReviewImages: (prev.socialReviewImages || []).filter((img) => img.id !== id),
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        socialReviewImages: (prev.socialReviewImages || []).filter((img) => img.id !== id),
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
   };
 
   const addBookingAppointment = (
