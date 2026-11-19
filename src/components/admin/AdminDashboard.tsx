@@ -128,8 +128,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 : isSaving
                 ? 'جاري المزامنة...'
                 : isBackendSynced
-                ? 'Supabase متصل ومتزامن'
-                : 'Supabase بحاجة للمزامنة'}
+                ? 'سحابي متصل ومتزامن'
+                : 'بحاجة للمزامنة السحابية'}
             </span>
             {isSupabaseConfigured && (
               <button
