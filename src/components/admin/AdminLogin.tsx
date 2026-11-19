@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, KeyRound, ArrowRight, ShieldCheck, AlertCircle, Eye, EyeOff, Server, Database } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { isSupabaseConfigured } from '../../lib/supabase';
 
 interface AdminLoginProps {
   onBackToSite: () => void;
@@ -58,21 +57,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToSite }) => {
             <p className="text-xs text-slate-400">
               تسجيل دخول مخصص للإدارة الطبية المعتمدة فقط
             </p>
-          </div>
-
-          {/* Backend Status Notice */}
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-xs flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full shrink-0 ${isSupabaseConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <div className="text-right">
-              <span className="font-semibold block text-slate-200">
-                {isSupabaseConfigured ? 'قاعدة بيانات Supabase: متصلة ونشطة' : 'نظام المصادقة المحمي'}
-              </span>
-              <span className="text-[11px] text-slate-400 block">
-                {isSupabaseConfigured
-                  ? 'المصادقة والتغييرات متزامنة مع السحابة'
-                  : 'يرجى إدخال بيانات الاعتماد المعتمدة لإدارة العيادة'}
-              </span>
-            </div>
           </div>
 
           {error && (
