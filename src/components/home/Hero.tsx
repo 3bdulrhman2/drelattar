@@ -2,7 +2,11 @@ import React from 'react';
 import { Phone, ArrowDown, Award, ShieldCheck, HeartPulse, Sparkles, Stethoscope, ChevronLeft, Calendar } from 'lucide-react';
 import { useContent } from '../../context/ContentContext';
 
-export const Hero: React.FC = () => {
+interface HeroProps {
+  onNavigateBooking?: () => void;
+}
+
+export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
   const { data } = useContent();
   const { doctor, clinic, bookingSettings } = data;
 
@@ -61,23 +65,25 @@ export const Hero: React.FC = () => {
                 <span>اتصل الآن</span>
               </a>
 
-              {/* احجز موعدك الآن (Right after اتصل الآن and before تعرف على الخدمات - controlled by bookingSettings.isEnabled) */}
+              {/* احجز موعدك (Navigates to dedicated /booking page - controlled by bookingSettings.isEnabled) */}
               {bookingSettings.isEnabled && (
                 <a
-                  href="#booking"
+                  href="/booking"
                   onClick={(e) => {
-                    const el = document.querySelector('#booking');
-                    if (el) {
-                      e.preventDefault();
-                      el.scrollIntoView({ behavior: 'smooth' });
+                    e.preventDefault();
+                    if (onNavigateBooking) {
+                      onNavigateBooking();
+                    } else {
+                      window.history.pushState(null, '', '/booking');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
                     }
                   }}
-                  className="inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-royal text-white text-base font-bold px-7 py-3.5 rounded-xl shadow-elevated hover:shadow-hover hover:scale-[1.02] active:scale-[0.98] transition-all group animate-fadeIn"
+                  className="inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-royal text-white text-base font-bold px-7 py-3.5 rounded-xl shadow-elevated hover:shadow-hover hover:scale-[1.02] active:scale-[0.98] transition-all group animate-fadeIn cursor-pointer"
                 >
                   <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center group-hover:rotate-12 transition-transform">
                     <Calendar className="w-4 h-4 text-brand-lime" />
                   </div>
-                  <span>احجز موعدك الآن</span>
+                  <span>احجز موعدك</span>
                 </a>
               )}
 

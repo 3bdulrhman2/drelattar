@@ -12,14 +12,14 @@ import { FAQ } from './components/home/FAQ';
 import { ClinicLocation } from './components/home/ClinicLocation';
 import { ContactSection } from './components/home/ContactSection';
 import { QuickCallFloating } from './components/home/QuickCallFloating';
-import { PublicBookingModule } from './components/home/PublicBookingModule';
+import { BookingPage } from './components/booking/BookingPage';
 import { Footer } from './components/layout/Footer';
 import { AdminLogin } from './components/admin/AdminLogin';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { DoctorCard } from './components/card/DoctorCard';
 import { Bell } from 'lucide-react';
 
-type AppRoute = 'public' | 'admin' | 'card';
+type AppRoute = 'public' | 'admin' | 'card' | 'booking';
 
 const detectRoute = (): AppRoute => {
   const path = window.location.pathname.toLowerCase();
@@ -36,6 +36,14 @@ const detectRoute = (): AppRoute => {
     hash.includes('pay')
   ) {
     return 'card';
+  }
+  if (
+    path.startsWith('/booking') ||
+    path.startsWith('/book') ||
+    hash === '#booking' ||
+    hash.includes('booking')
+  ) {
+    return 'booking';
   }
   return 'public';
 };
@@ -68,9 +76,25 @@ export const AppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const navigateToBooking = () => {
+    window.history.pushState(null, '', '/booking');
+    setRoute('booking');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Route: Digital Smart Card (Direct link: /card or /pay)
   if (route === 'card') {
     return <DoctorCard />;
+  }
+
+  // Route: Dedicated Booking Page (Direct link: /booking)
+  if (route === 'booking') {
+    return (
+      <BookingPage
+        onBackToSite={navigateToPublic}
+        onNavigateAdmin={navigateToAdmin}
+      />
+    );
   }
 
   // Route: Admin Console (Direct link: /admin)
@@ -99,13 +123,10 @@ export const AppContent: React.FC = () => {
       {/* Main Sections */}
       <main className="flex-1">
         {/* Hero Screen */}
-        <Hero />
+        <Hero onNavigateBooking={navigateToBooking} />
 
         {/* Verified Trust Indicators */}
         <TrustIndicators />
-
-        {/* Future Booking Module (disabled by default, active only if enabled by admin) */}
-        <PublicBookingModule />
 
         {/* About the Doctor */}
         <AboutDoctor />
