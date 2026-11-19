@@ -20,6 +20,8 @@ import {
   generateDaySlots,
   getUpcomingCairoDays,
   formatTimeArabic,
+  formatTimeArabicFull,
+  formatAppointmentDateArabic,
 } from '../../lib/cairoTime';
 
 export const PublicBookingModule: React.FC = () => {
@@ -44,12 +46,21 @@ export const PublicBookingModule: React.FC = () => {
   const [submittedBooking, setSubmittedBooking] = useState<{
     id: string;
     patientName: string;
+    patientPhone: string;
     date: string;
     time: string;
     service: string;
   } | null>(null);
 
-  // Filter booked times for selected date ("لو حد حجز معاد يختفي من الموقع")
+  // Dynamic hours from admin panel
+  const workingHoursConfig = useMemo(() => ({
+    startTimeRegular: bookingSettings.startTime || '13:00',
+    endTimeRegular: bookingSettings.endTime || '21:00',
+    startTimeFriday: bookingSettings.startTimeFriday || '16:00',
+    endTimeFriday: bookingSettings.endTimeFriday || '22:00',
+  }), [bookingSettings]);
+
+  // Filter booked times for selected date ("الموعد اللي بيتحجز مينفعش حد تاني يحجز فيه")
   const bookedTimesForSelectedDate = useMemo(() => {
     return (bookings || [])
       .filter(
@@ -60,17 +71,27 @@ export const PublicBookingModule: React.FC = () => {
       .map((b) => b.appointmentTime);
   }, [bookings, selectedDate]);
 
-  // Generate slots (2 per hour) for selected date, omitting already booked or past slots
+  // Generate slots (1 per hour) for selected date, applying:
+  // 1. Dynamic operating hours from admin
+  // 2. 1 slot per hour
+  // 3. Minimum 3 hours advance booking rule
+  // 4. Omission of already booked slots
   const availableSlots = useMemo(() => {
-    const allSlots = generateDaySlots(selectedDate, bookedTimesForSelectedDate);
-    // Only return slots that are actually available (booked ones disappear!)
+    const allSlots = generateDaySlots(selectedDate, bookedTimesForSelectedDate, workingHoursConfig);
     return allSlots.filter((s) => s.isAvailable);
-  }, [selectedDate, bookedTimesForSelectedDate]);
+  }, [selectedDate, bookedTimesForSelectedDate, workingHoursConfig]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientName.trim() || !patientPhone.trim() || !selectedDate || !selectedTime) {
       alert('يرجى ملء جميع البيانات الأساسية واختيار موعد الكشف');
+      return;
+    }
+
+    // Double check availability before submitting
+    if (bookedTimesForSelectedDate.includes(selectedTime)) {
+      alert('عذراً، تم حجز هذا الموعد للتو بواسطة مريض آخر. يرجى اختيار موعد آخر.');
+      setSelectedTime('');
       return;
     }
 
@@ -88,6 +109,7 @@ export const PublicBookingModule: React.FC = () => {
     setSubmittedBooking({
       id: bookingRefId,
       patientName: patientName.trim(),
+      patientPhone: patientPhone.trim(),
       date: selectedDate,
       time: selectedTime,
       service,
@@ -132,7 +154,7 @@ export const PublicBookingModule: React.FC = () => {
           </h2>
 
           <p className="text-xs sm:text-sm md:text-base text-brand-muted leading-relaxed">
-            اختر الموعد الأنسب لك من المواعيد المتاحة؛ المواعيد بتوقيت القاهرة الرسمي، وبمعدل ميعادين كل ساعة لضمان راحتكم وعدم التكدس.
+            اختر الموعد الأنسب لك من المواعيد المتاحة؛ المواعيد بتوقيت القاهرة الرسمي، وبمعدل حجز واحد كل ساعة لضمان راحتكم وعدم التكدس (يلزم الحجز قبل الموعد بـ 3 ساعات على الأقل).
           </p>
 
           <div className="flex items-center justify-center gap-2 text-xs font-semibold text-purple-800 bg-purple-50 py-1.5 px-4 rounded-xl border border-purple-100 w-fit mx-auto">
@@ -156,27 +178,35 @@ export const PublicBookingModule: React.FC = () => {
                 أهلاً بك يا {submittedBooking.patientName}، موعدك مسجل لدينا!
               </h3>
               <p className="text-xs sm:text-sm text-brand-muted max-w-md mx-auto">
-                تم تسجيل موعد الكشف بنجاح، ويتم الآن إرسال بيانات الموعد لإدارة العيادة لتأكيده.
+                تم تسجيل موعد الكشف بنجاح، ويمكنك الآن تأكيد بيانات الموعد مع إدارة العيادة عبر الواتساب مباشرة.
               </p>
             </div>
 
             {/* Appointment Ticket Card */}
             <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 max-w-md mx-auto text-right space-y-3 text-xs">
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">كود الحجز:</span>
+                <span className="text-slate-500">رقم الحجز:</span>
                 <span className="font-mono font-bold text-brand-royal text-sm">{submittedBooking.id}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">اسم المريض:</span>
+                <span className="font-bold text-slate-800">{submittedBooking.patientName}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">رقم التواصل:</span>
+                <span className="font-mono font-bold text-slate-800" dir="ltr">{submittedBooking.patientPhone}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <span className="text-slate-500">الطبيب:</span>
                 <span className="font-bold text-slate-800">{doctor.nameAr}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">يوم الكشف:</span>
-                <span className="font-bold text-purple-700">{submittedBooking.date}</span>
+                <span className="text-slate-500">تاريخ الحجز:</span>
+                <span className="font-bold text-purple-700">{formatAppointmentDateArabic(submittedBooking.date)}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">توقيت الكشف (توقيت القاهرة):</span>
-                <span className="font-black text-emerald-700 text-sm">{formatTimeArabic(submittedBooking.time)}</span>
+                <span className="text-slate-500">موعد الزيارة (توقيت القاهرة):</span>
+                <span className="font-black text-emerald-700 text-sm">{formatTimeArabicFull(submittedBooking.time)}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <span className="text-slate-500">نوع الخدمة:</span>
@@ -188,11 +218,19 @@ export const PublicBookingModule: React.FC = () => {
               </div>
             </div>
 
-            {/* WhatsApp Confirmation Action */}
+            {/* WhatsApp Confirmation Action with Exact User Template */}
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <a
                 href={`https://wa.me/201060918977?text=${encodeURIComponent(
-                  `السلام عليكم يا دكتور، قمت بحجز موعد عبر الموقع برقم (${submittedBooking.id}) باسم ${submittedBooking.patientName} يوم ${submittedBooking.date} الساعة ${formatTimeArabic(submittedBooking.time)}.`
+`السلام عليكم، أرغب في تأكيد حجز موعد بالعيادة.
+
+اسم المريض: ${submittedBooking.patientName}
+رقم التواصل: ${submittedBooking.patientPhone}
+رقم الحجز: ${submittedBooking.id}
+تاريخ الحجز: ${formatAppointmentDateArabic(submittedBooking.date)}
+موعد الزيارة: ${formatTimeArabicFull(submittedBooking.time)}
+
+شكرًا لحضرتكم.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -255,17 +293,20 @@ export const PublicBookingModule: React.FC = () => {
               </div>
             </div>
 
-            {/* STEP 2: SELECT TIME SLOT (2 SLOTS PER HOUR - DISAPPEARS WHEN BOOKED) */}
+            {/* STEP 2: SELECT TIME SLOT (1 SLOT PER HOUR - DISAPPEARS WHEN BOOKED) */}
             <div className="space-y-3 pt-2 border-t border-slate-100">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <h3 className="text-sm sm:text-base font-bold text-brand-dark flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">2</span>
-                  <span>اختر التوقيت المتاح (ميعادين كل ساعة):</span>
+                  <span>اختر التوقيت المتاح (حجز واحد كل ساعة):</span>
                 </h3>
                 <span className="text-xs font-bold text-purple-700">
-                  {availableSlots.length} موعد متاح اليوم
+                  {availableSlots.length} مواعيد شاغرة متاحة
                 </span>
               </div>
+              <p className="text-[11px] text-slate-500">
+                • يتم حجز موعد واحد لكل ساعة لمنع التكدس • يشترط الحجز قبل الموعد بـ 3 ساعات على الأقل • الموعد المحجوز يختفي فوراً
+              </p>
 
               {availableSlots.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-2.5">

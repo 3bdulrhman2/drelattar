@@ -94,7 +94,9 @@ export interface FutureBookingSettings {
   allowedDays: string[]; // e.g. ['Saturday', 'Sunday', ...]
   startTime: string; // "13:00"
   endTime: string; // "21:00"
-  slotDurationMinutes: number; // 30
+  startTimeFriday?: string; // "16:00"
+  endTimeFriday?: string; // "22:00"
+  slotDurationMinutes: number; // 60 for 1 slot per hour
   maxDailyBookings: number;
   instructionText: string;
 }

@@ -24,6 +24,7 @@ import { getCairoDateTime, formatTimeArabic } from '../../../lib/cairoTime';
 export const FutureBookingTab: React.FC = () => {
   const {
     data,
+    updateClinic,
     updateBookingSettings,
     addBookingAppointment,
     updateBookingStatus,
@@ -63,6 +64,11 @@ export const FutureBookingTab: React.FC = () => {
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     updateBookingSettings(settings);
+    // Also keep clinic displayed working hours text in sync
+    updateClinic({
+      hoursRegular: `السبت إلى الخميس: من ${formatTimeArabic(settings.startTime || '13:00')} حتى ${formatTimeArabic(settings.endTime || '21:00')}`,
+      hoursFriday: `الجمعة: من ${formatTimeArabic(settings.startTimeFriday || '16:00')} حتى ${formatTimeArabic(settings.endTimeFriday || '22:00')}`,
+    });
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 3000);
   };
@@ -183,9 +189,91 @@ export const FutureBookingTab: React.FC = () => {
 
       {/* Booking Parameters Form */}
       <div className="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/60 space-y-5">
-        <h4 className="text-sm font-bold text-white border-b border-slate-700/60 pb-2">
-          إعدادات نظام المواعيد (ميعادين كل ساعة - كل 30 دقيقة)
+        <h4 className="text-sm font-bold text-white border-b border-slate-700/60 pb-2 flex items-center justify-between">
+          <span>إعدادات نظام المواعيد وساعات العمل المعتمدة</span>
+          <span className="text-xs font-semibold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+            حجز واحد كل ساعة
+          </span>
         </h4>
+
+        {/* Dynamic Working Hours Control */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          
+          {/* Regular Days (Saturday - Thursday) */}
+          <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-brand-cyan" />
+                <span>مواعيد السبت إلى الخميس:</span>
+              </span>
+              <span className="text-[11px] text-slate-400">حجز واحد لكل ساعة</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <label className="text-slate-400 block mb-1">ساعة البدء (24h)</label>
+                <input
+                  type="time"
+                  value={settings.startTime || '13:00'}
+                  onChange={(e) => setSettings(prev => ({ ...prev, startTime: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-hidden focus:border-purple-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-400 block mb-1">ساعة الانتهاء (24h)</label>
+                <input
+                  type="time"
+                  value={settings.endTime || '21:00'}
+                  onChange={(e) => setSettings(prev => ({ ...prev, endTime: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-hidden focus:border-purple-400"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-brand-cyan">
+              الحالي: من {formatTimeArabic(settings.startTime || '13:00')} حتى {formatTimeArabic(settings.endTime || '21:00')}
+            </p>
+          </div>
+
+          {/* Friday Working Hours */}
+          <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-brand-lime" />
+                <span>مواعيد يوم الجمعة:</span>
+              </span>
+              <span className="text-[11px] text-slate-400">حجز واحد لكل ساعة</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <label className="text-slate-400 block mb-1">ساعة البدء (24h)</label>
+                <input
+                  type="time"
+                  value={settings.startTimeFriday || '16:00'}
+                  onChange={(e) => setSettings(prev => ({ ...prev, startTimeFriday: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-hidden focus:border-purple-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-400 block mb-1">ساعة الانتهاء (24h)</label>
+                <input
+                  type="time"
+                  value={settings.endTimeFriday || '22:00'}
+                  onChange={(e) => setSettings(prev => ({ ...prev, endTimeFriday: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-hidden focus:border-purple-400"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-brand-lime">
+              الحالي: من {formatTimeArabic(settings.startTimeFriday || '16:00')} حتى {formatTimeArabic(settings.endTimeFriday || '22:00')}
+            </p>
+          </div>
+
+        </div>
 
         {/* Days of week selector */}
         <div>
@@ -214,16 +302,17 @@ export const FutureBookingTab: React.FC = () => {
         </div>
 
         {/* Slot rule explanation */}
-        <div className="p-3.5 bg-slate-900/60 rounded-xl border border-slate-700/50 text-xs text-slate-300 space-y-1">
+        <div className="p-3.5 bg-slate-900/60 rounded-xl border border-slate-700/50 text-xs text-slate-300 space-y-1.5">
           <p className="font-bold text-brand-lime flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>قاعدة الحجز التلقائي الذكية:</span>
+            <span>قواعد الحجز الذكية الصارمة:</span>
           </p>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            • يتم توليد ميعادين كل ساعة تلقائياً (دقيقة 00: و 30:) وفق مواعيد العيادة الرسمية بتوقيت القاهرة.<br />
-            • عندما يقوم أي مريض بحجز موعد، <strong className="text-white">يختفي هذا الموعد فوراً من الموقع</strong> ولا يظهر لأي مريض آخر في نفس اليوم.<br />
-            • عند إلغاء أو حذف الموعد من لوحة التحكم، يعود الموعد ليظهر تلقائياً في قائمة الشواغر.
-          </p>
+          <ul className="text-[11px] text-slate-400 space-y-1 pr-1 list-disc list-inside leading-relaxed">
+            <li><strong className="text-white">حجز واحد فقط كل ساعة:</strong> يتم توليد ميعاد واحد فقط في رأس كل ساعة (:00) لمنع أي تكدس للمرضى.</li>
+            <li><strong className="text-white">مهلة 3 ساعات مسبقة:</strong> يشترط على المريض الحجز قبل الموعد بـ 3 ساعات على الأقل، وتُستبعد تلقائياً المواعيد الأقرب من ذلك.</li>
+            <li><strong className="text-white">إخفاء الموعد المحجوز:</strong> الموعد الذي يقوم مريض بحجزه يختفي فوراً ولا يمكن لأي مريض آخر حجزه.</li>
+            <li><strong className="text-white">التحديث اللحظي للمواعيد:</strong> أي تعديل في ساعات العمل أعلاه ينعكس فورياً وسحابياً على مواعيد الحجز المتاحة بالموقع.</li>
+          </ul>
         </div>
 
       </div>

@@ -54,7 +54,7 @@ export const getCairoDateTime = (): CairoDateTimeInfo => {
 };
 
 /**
- * Formats a 24h time string like "13:30" into friendly Arabic 12h: "01:30 م"
+ * Formats a 24h time string like "20:00" into friendly Arabic 12h: "08:00 م"
  */
 export const formatTimeArabic = (time24: string): string => {
   const [hStr, mStr] = time24.split(':');
@@ -69,46 +69,107 @@ export const formatTimeArabic = (time24: string): string => {
 };
 
 /**
- * Generates all 30-minute appointment slots (2 per hour) for a given day.
- * - Saturday - Thursday: 1:00 PM to 9:00 PM (13:00 to 21:00)
- * - Friday: 4:00 PM to 10:00 PM (16:00 to 22:00)
+ * Formats a 24h time string into full Arabic representation: e.g. "08:00 مساءً" or "01:00 ظهراً"
+ */
+export const formatTimeArabicFull = (time24: string): string => {
+  const [hStr, mStr] = time24.split(':');
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr || '0', 10);
+  const minutePadded = m.toString().padStart(2, '0');
+
+  if (h === 0) return `12:${minutePadded} صباحاً`;
+  if (h < 12) return `${h.toString().padStart(2, '0')}:${minutePadded} صباحاً`;
+  if (h === 12) return `12:${minutePadded} ظهراً`;
+  return `${(h - 12).toString().padStart(2, '0')}:${minutePadded} مساءً`;
+};
+
+/**
+ * Formats a date string like "2026-11-19" into full Arabic: "الخميس 19 نوفمبر 2026"
+ */
+export const formatAppointmentDateArabic = (dateStr: string): string => {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dateObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    // Use ar-EG with Latin numerals so dates appear as "الخميس 19 نوفمبر 2026"
+    const formatted = new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
+      timeZone: 'Africa/Cairo',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(dateObj);
+    return formatted.replace(/،/g, '').replace(/\s+/g, ' ').trim();
+  } catch {
+    return dateStr;
+  }
+};
+
+export interface WorkingHoursConfig {
+  startTimeRegular?: string; // "13:00"
+  endTimeRegular?: string;   // "21:00"
+  startTimeFriday?: string;  // "16:00"
+  endTimeFriday?: string;    // "22:00"
+}
+
+/**
+ * Generates 1 appointment slot per hour based on dynamic clinic working hours.
+ * Rules:
+ * 1. Exactly 1 slot per hour (:00).
+ * 2. If booking for today, slot must be at least 3 hours (180 mins) in the future.
+ * 3. Booked slots are marked unavailable.
+ * 4. Start and end hours adapt dynamically to admin settings.
  */
 export const generateDaySlots = (
   dateStr: string,
-  bookedTimesForDate: string[] = []
+  bookedTimesForDate: string[] = [],
+  hoursConfig?: WorkingHoursConfig
 ): { time: string; labelAr: string; isAvailable: boolean }[] => {
   const dateObj = new Date(dateStr + 'T12:00:00');
   const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Africa/Cairo' });
   const isFriday = dayOfWeek === 'Friday';
 
-  const startHour = isFriday ? 16 : 13; // 4:00 PM on Friday, 1:00 PM other days
-  const endHour = isFriday ? 22 : 21;   // 10:00 PM on Friday, 9:00 PM other days
+  // Dynamic hours resolution:
+  const parseHour = (timeStr?: string, defaultHour: number = 13) => {
+    if (!timeStr) return defaultHour;
+    const h = parseInt(timeStr.split(':')[0], 10);
+    return isNaN(h) ? defaultHour : h;
+  };
+
+  const startHour = isFriday
+    ? parseHour(hoursConfig?.startTimeFriday, 16)
+    : parseHour(hoursConfig?.startTimeRegular, 13);
+
+  const endHour = isFriday
+    ? parseHour(hoursConfig?.endTimeFriday, 22)
+    : parseHour(hoursConfig?.endTimeRegular, 21);
 
   const { cairoTodayStr, cairoHour, cairoMinute } = getCairoDateTime();
   const isToday = dateStr === cairoTodayStr;
+  const currentCairoTotalMinutes = cairoHour * 60 + cairoMinute;
 
   const slots: { time: string; labelAr: string; isAvailable: boolean }[] = [];
 
   for (let h = startHour; h < endHour; h++) {
-    // 2 slots every hour: :00 and :30
-    for (const m of [0, 30]) {
-      const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-      
-      // Check if slot has already passed today in Cairo
-      const isPastToday = isToday && (h < cairoHour || (h === cairoHour && m <= cairoMinute + 10));
-      
-      // Check if already booked
-      const isBooked = bookedTimesForDate.includes(timeStr);
+    // Exactly 1 slot each hour at :00
+    const m = 0;
+    const timeStr = `${h.toString().padStart(2, '0')}:00`;
+    const slotTotalMinutes = h * 60 + m;
 
-      // Only slots that are not past and not booked are available
-      const isAvailable = !isPastToday && !isBooked;
+    // Requirement: Must book at least 3 hours (180 minutes) before the appointment
+    const minutesUntilSlot = slotTotalMinutes - currentCairoTotalMinutes;
+    const isTooSoon = isToday && minutesUntilSlot < 180;
 
-      slots.push({
-        time: timeStr,
-        labelAr: formatTimeArabic(timeStr),
-        isAvailable,
-      });
-    }
+    // Check if already booked
+    const isBooked = bookedTimesForDate.includes(timeStr);
+
+    // Available only if at least 3 hours in advance and not already booked
+    const isAvailable = !isTooSoon && !isBooked;
+
+    slots.push({
+      time: timeStr,
+      labelAr: formatTimeArabic(timeStr),
+      isAvailable,
+    });
   }
 
   return slots;
