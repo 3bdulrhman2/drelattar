@@ -61,7 +61,7 @@ export const Hero: React.FC = () => {
                 <span>اتصل الآن</span>
               </a>
 
-              {/* احجز الآن (Right after اتصل الآن and before تعرف على الخدمات - controlled by bookingSettings.isEnabled) */}
+              {/* احجز موعدك الآن (Right after اتصل الآن and before تعرف على الخدمات - controlled by bookingSettings.isEnabled) */}
               {bookingSettings.isEnabled && (
                 <a
                   href="#booking"
@@ -77,7 +77,7 @@ export const Hero: React.FC = () => {
                   <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center group-hover:rotate-12 transition-transform">
                     <Calendar className="w-4 h-4 text-brand-lime" />
                   </div>
-                  <span>احجز الآن</span>
+                  <span>احجز موعدك الآن</span>
                 </a>
               )}
 
