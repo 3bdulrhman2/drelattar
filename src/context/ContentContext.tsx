@@ -10,6 +10,7 @@ import type {
   FutureBookingSettings,
   WebsiteVisibilitySettings,
   BookingAppointment,
+  SocialReviewImage,
 } from '../types';
 import { initialClinicData } from '../data/clinicData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -28,6 +29,9 @@ interface ContentContextType {
   updateBookingSettings: (settings: Partial<FutureBookingSettings>) => void;
   updateVisibility: (visibility: Partial<WebsiteVisibilitySettings>) => void;
   updateGoogleApiSettings: (apiKey: string, placeId: string) => void;
+  updateSocialReviewImages: (images: SocialReviewImage[]) => void;
+  addSocialReviewImage: (image: Omit<SocialReviewImage, 'id'>) => void;
+  deleteSocialReviewImage: (id: string) => void;
   addBookingAppointment: (appointment: Omit<BookingAppointment, 'id' | 'createdAt' | 'status'>) => boolean;
   updateBookingStatus: (id: string, status: BookingAppointment['status']) => void;
   resetToDefault: () => void;
@@ -51,6 +55,9 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           social: { ...initialClinicData.social, ...(parsed.social || {}) },
           bookingSettings: { ...initialClinicData.bookingSettings, ...(parsed.bookingSettings || {}) },
           visibility: { ...initialClinicData.visibility, ...(parsed.visibility || {}) },
+          socialReviewImages: Array.isArray(parsed.socialReviewImages) && parsed.socialReviewImages.length > 0
+            ? parsed.socialReviewImages
+            : initialClinicData.socialReviewImages,
         };
       }
     } catch (e) {
@@ -213,6 +220,31 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
   };
 
+  const updateSocialReviewImages = (images: SocialReviewImage[]) => {
+    setData((prev) => ({
+      ...prev,
+      socialReviewImages: images,
+    }));
+  };
+
+  const addSocialReviewImage = (image: Omit<SocialReviewImage, 'id'>) => {
+    const newImage: SocialReviewImage = {
+      ...image,
+      id: `rev-img-${Date.now()}`,
+    };
+    setData((prev) => ({
+      ...prev,
+      socialReviewImages: [newImage, ...(prev.socialReviewImages || [])],
+    }));
+  };
+
+  const deleteSocialReviewImage = (id: string) => {
+    setData((prev) => ({
+      ...prev,
+      socialReviewImages: (prev.socialReviewImages || []).filter((img) => img.id !== id),
+    }));
+  };
+
   const addBookingAppointment = (
     appointment: Omit<BookingAppointment, 'id' | 'createdAt' | 'status'>
   ): boolean => {
@@ -259,6 +291,9 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateBookingSettings,
         updateVisibility,
         updateGoogleApiSettings,
+        updateSocialReviewImages,
+        addSocialReviewImage,
+        deleteSocialReviewImage,
         addBookingAppointment,
         updateBookingStatus,
         resetToDefault,

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 540" width="100%" height="100%" style="background:#000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Arabic', sans-serif;">
+  <defs>
+    <linearGradient id="ig-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f09433"/>
+      <stop offset="25%" stop-color="#e6683c"/>
+      <stop offset="50%" stop-color="#dc2743"/>
+      <stop offset="75%" stop-color="#cc2366"/>
+      <stop offset="100%" stop-color="#bc1888"/>
+    </linearGradient>
+    <filter id="shadow-ig" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Container -->
+  <rect x="15" y="15" width="390" height="510" rx="24" fill="#121212" stroke="#262626" stroke-width="1.5"/>
+
+  <!-- Instagram Header -->
+  <circle cx="45" cy="48" r="16" fill="url(#ig-grad)"/>
+  <circle cx="45" cy="48" r="13" fill="#121212"/>
+  <circle cx="45" cy="48" r="6" stroke="#ffffff" stroke-width="1.5" fill="none"/>
+  <circle cx="49" cy="44" r="1.2" fill="#ffffff"/>
+
+  <text x="75" y="44" fill="#ffffff" font-size="14" font-weight="bold" direction="rtl">muhammed.elattar</text>
+  <text x="75" y="58" fill="#a8a8a8" font-size="10.5" direction="rtl">رسائل إنستغرام المباشرة • Instagram DM</text>
+
+  <line x1="15" y1="75" x2="405" y2="75" stroke="#262626" stroke-width="1"/>
+
+  <!-- User Info in chat -->
+  <circle cx="365" cy="115" r="22" fill="#262626"/>
+  <circle cx="365" cy="108" r="8" fill="#737373"/>
+  <path d="M351 126 C351 118 379 118 379 126" fill="#737373"/>
+
+  <text x="330" y="112" fill="#ffffff" font-size="13" font-weight="bold" direction="rtl">أم حبيبة (مراجعة بالعيادة)</text>
+  <text x="330" y="128" fill="#a8a8a8" font-size="10.5" direction="rtl">ردت على القصة الخاصة بالعيادة • 🌟🌟🌟🌟🌟</text>
+
+  <!-- Message Bubble from Patient -->
+  <g filter="url(#shadow-ig)">
+    <rect x="35" y="155" width="350" height="185" rx="18" fill="#262626"/>
+    <text x="365" y="185" fill="#ffffff" font-size="13" font-weight="bold" direction="rtl">مساء الخير يا دكتور محمد</text>
+    <text x="365" y="212" fill="#efefef" font-size="12.5" direction="rtl">حبيت أكتب لحضرتك رسالة شكر خاصة.. أنا جيت العيادة</text>
+    <text x="365" y="238" fill="#efefef" font-size="12.5" direction="rtl">الأسبوع اللي فات وأنا فاقدة الأمل من كتر أدوية المعدة</text>
+    <text x="365" y="264" fill="#efefef" font-size="12.5" direction="rtl">والقولون اللي باخدها من سنين بدون فايدة.</text>
+    <text x="365" y="292" fill="#00c853" font-size="12.5" font-weight="bold" direction="rtl">حضرتك بفضل الله شيلت معظم الأدوية وظبطتلي النظام،</text>
+    <text x="365" y="318" fill="#efefef" font-size="12" direction="rtl">وحالياً بحس براحة عمري ما حسيتها. ربنا يكرمك ويسعدك.</text>
+  </g>
+
+  <!-- Doctor response in purple gradient -->
+  <g filter="url(#shadow-ig)">
+    <rect x="50" y="360" width="335" height="95" rx="18" fill="url(#ig-grad)"/>
+    <text x="365" y="388" fill="#ffffff" font-size="12.5" font-weight="bold" direction="rtl">د. محمد السيد العطار</text>
+    <text x="365" y="415" fill="#ffffff" font-size="12.5" direction="rtl">ألف شكر على كلامك الطيب يا أم حبيبة.. الحمد لله</text>
+    <text x="365" y="438" fill="#ffffff" font-size="12" direction="rtl">دايماً وأنا في خدمتكم في أي وقت وبألف صحة وسلامة.</text>
+  </g>
+
+  <!-- Bottom IG badge -->
+  <rect x="110" y="475" width="200" height="32" rx="16" fill="#1c1c1c" stroke="#333333" stroke-width="1"/>
+  <text x="210" y="495" fill="#e0e0e0" font-size="11" font-weight="bold" text-anchor="middle">❤️ تقييم موثق عبر Instagram</text>
+</svg>

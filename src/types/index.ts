@@ -107,6 +107,16 @@ export interface WebsiteVisibilitySettings {
   maintenanceMode: boolean;
 }
 
+export interface SocialReviewImage {
+  id: string;
+  imageUrl: string;
+  title: string;
+  patientName?: string;
+  platform: 'whatsapp' | 'facebook' | 'instagram' | 'google' | 'other';
+  date?: string;
+  caption?: string;
+}
+
 export interface AppContentState {
   doctor: DoctorInfo;
   clinic: ClinicInfo;
@@ -119,4 +129,5 @@ export interface AppContentState {
   visibility: WebsiteVisibilitySettings;
   googlePlacesApiKey: string;
   googlePlaceId: string;
+  socialReviewImages: SocialReviewImage[];
 }

@@ -49,7 +49,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     { id: 'equipment', label: '5. التجهيزات والأجهزة', icon: Sparkles },
     { id: 'hours', label: '6. مواعيد العمل', icon: Clock },
     { id: 'social', label: '7. التواصل الاجتماعي', icon: Share2 },
-    { id: 'reviews', label: '8. تكامل Google Reviews', icon: Star },
+    { id: 'reviews', label: '8. آراء وسائل التواصل والتقييمات', icon: Star },
     { id: 'booking', label: '9. نظام الحجز المستقبلي', icon: Calendar },
     { id: 'visibility', label: '10. الرؤية والإعدادات', icon: Sliders },
   ];
