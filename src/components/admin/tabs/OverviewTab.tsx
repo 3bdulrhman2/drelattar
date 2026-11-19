@@ -6,6 +6,7 @@ import {
   Sparkles,
   CheckCircle2,
   ArrowUpRight,
+  ImageIcon,
 } from 'lucide-react';
 import { useContent } from '../../../context/ContentContext';
 
@@ -82,7 +83,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onSelectTab }) => {
         <div className="bg-slate-800/80 p-5 rounded-2xl border border-slate-700/60 space-y-2">
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span>آراء وسائل التواصل</span>
-            <Database className="w-4 h-4 text-blue-400" />
+            <ImageIcon className="w-4 h-4 text-blue-400" />
           </div>
           <p className="text-2xl font-black text-white">{socialReviewImages?.length || 0} صورة</p>
           <button
