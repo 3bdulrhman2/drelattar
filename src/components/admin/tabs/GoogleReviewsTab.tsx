@@ -79,7 +79,7 @@ export const GoogleReviewsTab: React.FC = () => {
 
     addSocialReviewImage({
       imageUrl,
-      title: title.trim() || 'رأي مريض موثق',
+      title: title.trim() || undefined,
       patientName: patientName.trim() || undefined,
       platform,
       date: date.trim() || undefined,
@@ -145,6 +145,32 @@ export const GoogleReviewsTab: React.FC = () => {
         <p className="text-xs text-slate-400 mt-1">
           إضافة صور ومحادثات الواتساب وتوصيات فيسبوك وإنستغرام لتظهر في شريط متحرك تلقائياً للزوار بالموقع الرئيسي
         </p>
+      </div>
+
+      {/* Image Size Guidance Banner */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-brand-royal/20 via-slate-800 to-brand-cyan/10 border border-brand-cyan/30 text-xs space-y-2.5">
+        <div className="flex items-center gap-2 font-bold text-white text-sm">
+          <Sparkles className="w-4 h-4 text-brand-cyan" />
+          <span>دليل المقاس المثالي لصور الآراء لتظهر دائماً مرتبة وبأعلى جودة:</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-300 pt-1">
+          <div className="bg-slate-900/70 p-3 rounded-xl border border-slate-700/60 space-y-1">
+            <p className="font-bold text-emerald-400">📱 صور سكرين شوت الموبايل (واتساب وإنستغرام):</p>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              • النسبة: <strong className="text-white">9:16</strong> (أبعاد شاشات الهواتف الطبيعية).<br />
+              • الدقة المثالية: <strong className="text-white">1080 × 1920 بكسل</strong> (أو سكرين شوت الموبايل العادي).<br />
+              • نصيحة: قص شريط البطارية والإشعارات وشريط التنقل السفلي لتبدو المحادثة نقية كالمحترفين.
+            </p>
+          </div>
+          <div className="bg-slate-900/70 p-3 rounded-xl border border-slate-700/60 space-y-1">
+            <p className="font-bold text-blue-400">🖼️ منشورات وتوصيات فيسبوك المربعة:</p>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              • النسبة: <strong className="text-white">1:1</strong> (مربع) أو <strong className="text-white">4:5</strong>.<br />
+              • الدقة المثالية: <strong className="text-white">1080 × 1080 بكسل</strong>.<br />
+              • الموقع يحافظ تلقائياً على أبعاد الصورة الأصلية بدون أي قص أو مط في منتصف الشاشة.
+            </p>
+          </div>
+        </div>
       </div>
 
       {addNotice && (
@@ -271,14 +297,13 @@ export const GoogleReviewsTab: React.FC = () => {
             
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                عنوان مختصر للرأي أو المحادثة *
+                عنوان أو وصف مختصر للرأي (اختياري)
               </label>
               <input
                 type="text"
-                required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="مثال: محادثة واتساب - شكر بعد تشخيص دقيق بالسونار"
+                placeholder="اختياري (يمكنك تركه فارغاً)"
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-brand-cyan"
               />
             </div>

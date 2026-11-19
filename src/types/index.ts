@@ -110,9 +110,9 @@ export interface WebsiteVisibilitySettings {
 export interface SocialReviewImage {
   id: string;
   imageUrl: string;
-  title: string;
+  title?: string;
   patientName?: string;
-  platform: 'whatsapp' | 'facebook' | 'instagram' | 'google' | 'other';
+  platform?: 'whatsapp' | 'facebook' | 'instagram' | 'google' | 'other';
   date?: string;
   caption?: string;
 }

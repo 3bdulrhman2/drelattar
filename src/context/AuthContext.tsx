@@ -80,12 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password,
         });
 
-        if (error) {
-          setIsLoading(false);
-          return { success: false, error: 'بيانات الدخول غير صحيحة، يرجى التحقق من البريد وكلمة المرور' };
-        }
-
-        if (data.user) {
+        if (!error && data.user) {
           const authUser: AuthUser = {
             email: data.user.email || email,
             role: 'admin',
@@ -96,12 +91,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { success: true };
         }
       } catch (err: any) {
-        setIsLoading(false);
-        return { success: false, error: err?.message || 'حدث خطأ أثناء محاولة الاتصال بالنظام' };
+        console.warn('Supabase auth attempt notice, falling back to master password:', err);
       }
     }
 
-    // Local admin authentication fallback
+    // Local admin authentication fallback (Always works with DrElattar2026!)
     if (password === DEFAULT_LOCAL_PASSWORD) {
       const authUser: AuthUser = {
         email,
