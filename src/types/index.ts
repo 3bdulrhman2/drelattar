@@ -89,6 +89,60 @@ export interface BookingAppointment {
   createdAt: string;
 }
 
+export interface ClinicHoliday {
+  id: string;
+  title: string;
+  startDate: string; // 'YYYY-MM-DD'
+  endDate: string; // 'YYYY-MM-DD'
+  reason?: string;
+  customMessage?: string;
+  isActive: boolean;
+  createdBy: 'admin' | 'secretary';
+  createdAt: string;
+}
+
+export interface ClinicAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  startDate?: string;
+  endDate?: string;
+  isActive: boolean;
+  type: 'info' | 'warning' | 'alert' | 'closure';
+  createdBy: 'admin' | 'secretary';
+  createdAt: string;
+}
+
+export interface SecretaryPermissions {
+  canManageBookings: boolean;
+  canCloseToday: boolean;
+  canCloseSpecificDates: boolean;
+  canScheduleHolidays: boolean;
+  canPostAnnouncements: boolean;
+}
+
+export interface SecretaryAccount {
+  id: string;
+  username: string;
+  passwordHash: string;
+  name: string;
+  phone?: string;
+  isActive: boolean;
+  permissions: SecretaryPermissions;
+  createdAt: string;
+  lastLogin?: string;
+}
+
+export interface DeviceTokenRecord {
+  id: string;
+  token: string;
+  role: 'admin' | 'secretary' | 'all';
+  userIdentifier?: string;
+  devicePlatform: 'android' | 'web' | 'ios';
+  lastActive: string;
+  createdAt: string;
+}
+
 export interface FutureBookingSettings {
   isEnabled: boolean;
   allowedDays: string[]; // e.g. ['Saturday', 'Sunday', ...]
@@ -99,6 +153,12 @@ export interface FutureBookingSettings {
   slotDurationMinutes: number; // 60 for 1 slot per hour
   maxDailyBookings: number;
   instructionText: string;
+  // Holiday and Closure Settings
+  isClosedToday?: boolean;
+  closedTodayReason?: string;
+  closedDates?: string[]; // array of 'YYYY-MM-DD'
+  holidays?: ClinicHoliday[];
+  announcements?: ClinicAnnouncement[];
 }
 
 export interface WebsiteVisibilitySettings {
@@ -133,4 +193,6 @@ export interface AppContentState {
   googlePlacesApiKey: string;
   googlePlaceId: string;
   socialReviewImages: SocialReviewImage[];
+  secretaryAccounts?: SecretaryAccount[];
+  deviceTokens?: DeviceTokenRecord[];
 }

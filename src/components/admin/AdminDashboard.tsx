@@ -30,6 +30,9 @@ import { SocialMediaTab } from './tabs/SocialMediaTab';
 import { GoogleReviewsTab } from './tabs/GoogleReviewsTab';
 import { FutureBookingTab } from './tabs/FutureBookingTab';
 import { SiteVisibilityTab } from './tabs/SiteVisibilityTab';
+import { HolidaysManagementTab } from './tabs/HolidaysManagementTab';
+import { SecretaryAccountsTab } from './tabs/SecretaryAccountsTab';
+import { CalendarOff, Users } from 'lucide-react';
 
 interface AdminDashboardProps {
   onBackToSite: () => void;
@@ -51,7 +54,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     { id: 'social', label: '7. التواصل الاجتماعي', icon: Share2 },
     { id: 'reviews', label: '8. آراء وسائل التواصل والتقييمات', icon: Star },
     { id: 'booking', label: '9. نظام الحجز المستقبلي', icon: Calendar },
-    { id: 'visibility', label: '10. الرؤية والإعدادات', icon: Sliders },
+    { id: 'holidays', label: '10. الإجازات وتنظيم المواعيد', icon: CalendarOff },
+    { id: 'secretaries', label: '11. مشرفي الحجوزات (السكرتارية)', icon: Users },
+    { id: 'visibility', label: '12. الرؤية والإعدادات', icon: Sliders },
   ];
 
   const renderActiveTab = () => {
@@ -74,6 +79,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
         return <GoogleReviewsTab />;
       case 'booking':
         return <FutureBookingTab />;
+      case 'holidays':
+        return <HolidaysManagementTab />;
+      case 'secretaries':
+        return <SecretaryAccountsTab />;
       case 'visibility':
         return <SiteVisibilityTab />;
       default:

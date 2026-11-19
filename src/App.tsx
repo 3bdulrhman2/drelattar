@@ -17,9 +17,13 @@ import { Footer } from './components/layout/Footer';
 import { AdminLogin } from './components/admin/AdminLogin';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { DoctorCard } from './components/card/DoctorCard';
+import { SecretaryLogin } from './components/secretary/SecretaryLogin';
+import { SecretaryDashboard } from './components/secretary/SecretaryDashboard';
+import { ClinicNoticeBanner } from './components/layout/ClinicNoticeBanner';
+import type { SecretaryAccount } from './types';
 import { Bell } from 'lucide-react';
 
-type AppRoute = 'public' | 'admin' | 'card' | 'booking';
+type AppRoute = 'public' | 'admin' | 'card' | 'booking' | 'secretary';
 
 const detectRoute = (): AppRoute => {
   const path = window.location.pathname.toLowerCase();
@@ -27,6 +31,9 @@ const detectRoute = (): AppRoute => {
 
   if (path.startsWith('/admin') || hash.includes('admin')) {
     return 'admin';
+  }
+  if (path.startsWith('/secretary') || hash.includes('secretary')) {
+    return 'secretary';
   }
   if (
     path.startsWith('/card') ||
@@ -51,9 +58,18 @@ const detectRoute = (): AppRoute => {
 export const AppContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { data } = useContent();
-  const { visibility } = data;
 
   const [route, setRoute] = useState<AppRoute>(detectRoute);
+
+  // Secretary session state
+  const [secretaryUser, setSecretaryUser] = useState<SecretaryAccount | null>(() => {
+    try {
+      const stored = sessionStorage.getItem('drelattar_secretary_session');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     const handlePopState = () => {
@@ -70,6 +86,12 @@ export const AppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const navigateToSecretary = () => {
+    window.history.pushState(null, '', '/secretary');
+    setRoute('secretary');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const navigateToPublic = () => {
     window.history.pushState(null, '', '/');
     setRoute('public');
@@ -80,6 +102,12 @@ export const AppContent: React.FC = () => {
     window.history.pushState(null, '', '/booking');
     setRoute('booking');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSecretaryLogout = () => {
+    sessionStorage.removeItem('drelattar_secretary_session');
+    setSecretaryUser(null);
+    navigateToPublic();
   };
 
   // Route: Digital Smart Card (Direct link: /card or /pay)
@@ -97,6 +125,25 @@ export const AppContent: React.FC = () => {
     );
   }
 
+  // Route: Secretary Portal (Direct link: /secretary)
+  if (route === 'secretary') {
+    if (secretaryUser) {
+      return (
+        <SecretaryDashboard
+          account={secretaryUser}
+          onLogout={handleSecretaryLogout}
+          onBackToSite={navigateToPublic}
+        />
+      );
+    }
+    return (
+      <SecretaryLogin
+        onBackToSite={navigateToPublic}
+        onLoginSuccess={(acc) => setSecretaryUser(acc)}
+      />
+    );
+  }
+
   // Route: Admin Console (Direct link: /admin)
   if (route === 'admin') {
     if (isAuthenticated) {
@@ -109,13 +156,8 @@ export const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-brand-bg text-brand-dark selection:bg-brand-cyan/20 selection:text-brand-royal overflow-x-hidden w-full max-w-full relative">
       
-      {/* Emergency Notice Banner if activated by admin */}
-      {visibility.emergencyNoticeActive && visibility.emergencyNoticeText && (
-        <div className="bg-amber-500 text-slate-900 px-4 py-2 text-xs sm:text-sm font-bold text-center flex items-center justify-center gap-2 shadow-sm">
-          <Bell className="w-4 h-4 animate-bounce" />
-          <span>{visibility.emergencyNoticeText}</span>
-        </div>
-      )}
+      {/* Unified Clinic Notice / Closure / Announcement Banner */}
+      <ClinicNoticeBanner />
 
       {/* Header Navigation */}
       <Header onNavigateAdmin={navigateToAdmin} />

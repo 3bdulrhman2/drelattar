@@ -24,3 +24,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Mobile App
+mobile_app/build/
+mobile_app/.dart_tool/
+mobile_app/.flutter-plugins*
+mobile_app/android/.kotlin/
+*.apk

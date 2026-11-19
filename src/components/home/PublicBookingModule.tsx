@@ -13,6 +13,7 @@ import {
   ChevronRight,
   ShieldCheck,
   MessageCircle,
+  CalendarOff,
 } from 'lucide-react';
 import { useContent } from '../../context/ContentContext';
 import {
@@ -22,6 +23,7 @@ import {
   formatTimeArabic,
   formatTimeArabicFull,
   formatAppointmentDateArabic,
+  isDateClosed,
 } from '../../lib/cairoTime';
 
 export const PublicBookingModule: React.FC = () => {
@@ -71,18 +73,29 @@ export const PublicBookingModule: React.FC = () => {
       .map((b) => b.appointmentTime);
   }, [bookings, selectedDate]);
 
+  // Check if selected date is closed by admin, secretary or holiday
+  const selectedDateClosure = useMemo(() => {
+    return isDateClosed(selectedDate, bookingSettings);
+  }, [selectedDate, bookingSettings]);
+
   // Generate slots (1 per hour) for selected date, applying:
   // 1. Dynamic operating hours from admin
   // 2. 1 slot per hour
   // 3. Minimum 3 hours advance booking rule
   // 4. Omission of already booked slots
+  // 5. Total closure of day if clinic is closed
   const availableSlots = useMemo(() => {
+    if (selectedDateClosure.isClosed) return [];
     const allSlots = generateDaySlots(selectedDate, bookedTimesForSelectedDate, workingHoursConfig);
     return allSlots.filter((s) => s.isAvailable);
-  }, [selectedDate, bookedTimesForSelectedDate, workingHoursConfig]);
+  }, [selectedDate, bookedTimesForSelectedDate, workingHoursConfig, selectedDateClosure]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedDateClosure.isClosed) {
+      alert(`عذراً، هذا اليوم غير متاح للحجز (${selectedDateClosure.reason || 'العيادة مغلقة'}). يرجى اختيار يوم آخر.`);
+      return;
+    }
     if (!patientName.trim() || !patientPhone.trim() || !selectedDate || !selectedTime) {
       alert('يرجى ملء جميع البيانات الأساسية واختيار موعد الكشف');
       return;
@@ -269,6 +282,7 @@ export const PublicBookingModule: React.FC = () => {
               <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar">
                 {upcomingDays.map((day) => {
                   const isSelected = selectedDate === day.dateStr;
+                  const dayClosure = isDateClosed(day.dateStr, bookingSettings);
                   return (
                     <button
                       key={day.dateStr}
@@ -280,6 +294,8 @@ export const PublicBookingModule: React.FC = () => {
                       className={`shrink-0 px-4 py-2.5 rounded-2xl border text-center transition-all ${
                         isSelected
                           ? 'bg-purple-700 border-purple-700 text-white shadow-md scale-[1.02]'
+                          : dayClosure.isClosed
+                          ? 'bg-rose-50/70 border-rose-200 text-slate-600 hover:bg-rose-100/60'
                           : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-200'
                       }`}
                     >
@@ -287,6 +303,11 @@ export const PublicBookingModule: React.FC = () => {
                       <span className={`block text-[10px] mt-0.5 ${isSelected ? 'text-purple-200' : 'text-slate-400'}`}>
                         {day.dateFormattedAr}
                       </span>
+                      {dayClosure.isClosed && (
+                        <span className={`block text-[9px] font-black mt-0.5 ${isSelected ? 'text-rose-200' : 'text-rose-500'}`}>
+                          إجازة / مغلق
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -301,14 +322,20 @@ export const PublicBookingModule: React.FC = () => {
                   <span>اختر التوقيت المتاح (حجز واحد كل ساعة):</span>
                 </h3>
                 <span className="text-xs font-bold text-purple-700">
-                  {availableSlots.length} مواعيد شاغرة متاحة
+                  {selectedDateClosure.isClosed ? 'مغلق' : `${availableSlots.length} مواعيد شاغرة متاحة`}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
                 • يتم حجز موعد واحد لكل ساعة لمنع التكدس • يشترط الحجز قبل الموعد بـ 3 ساعات على الأقل • الموعد المحجوز يختفي فوراً
               </p>
 
-              {availableSlots.length > 0 ? (
+              {selectedDateClosure.isClosed ? (
+                <div className="p-5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm font-bold text-center flex flex-col items-center gap-2">
+                  <CalendarOff className="w-6 h-6 text-rose-600 animate-pulse" />
+                  <span>{selectedDateClosure.reason || 'نعتذر، العيادة مغلقة في هذا اليوم ولا يتم استقبال حجوزات جديدة.'}</span>
+                  <span className="text-[11px] font-normal text-rose-600">يرجى اختيار يوم آخر متاح من الأيام الموضحة بالأعلى.</span>
+                </div>
+              ) : availableSlots.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-2.5">
                   {availableSlots.map((slot) => {
                     const isSelected = selectedTime === slot.time;

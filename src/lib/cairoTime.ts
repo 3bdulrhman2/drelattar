@@ -112,6 +112,61 @@ export interface WorkingHoursConfig {
 }
 
 /**
+ * Returns today's ISO date string strictly in Africa/Cairo timezone: "YYYY-MM-DD"
+ */
+export const getCairoTodayString = (): string => {
+  return getCairoDateTime().cairoTodayStr;
+};
+
+/**
+ * Checks if a specific date is closed due to today's closure, closed dates list, or scheduled holidays.
+ */
+export const isDateClosed = (
+  dateStr: string,
+  settings?: {
+    isClosedToday?: boolean;
+    closedTodayReason?: string;
+    closedDates?: string[];
+    holidays?: { startDate: string; endDate: string; title: string; isActive: boolean; customMessage?: string }[];
+  }
+): { isClosed: boolean; reason?: string } => {
+  if (!settings) return { isClosed: false };
+
+  const todayStr = getCairoTodayString();
+
+  // 1. Is today closed?
+  if (dateStr === todayStr && settings.isClosedToday) {
+    return {
+      isClosed: true,
+      reason: settings.closedTodayReason || 'الحجز متوقف اليوم',
+    };
+  }
+
+  // 2. Is this specific date in closedDates?
+  if (settings.closedDates && settings.closedDates.includes(dateStr)) {
+    return {
+      isClosed: true,
+      reason: 'العيادة مغلقة في هذا اليوم',
+    };
+  }
+
+  // 3. Is this date within an active scheduled holiday?
+  if (settings.holidays && settings.holidays.length > 0) {
+    const matchingHoliday = settings.holidays.find(
+      (h) => h.isActive && dateStr >= h.startDate && dateStr <= h.endDate
+    );
+    if (matchingHoliday) {
+      return {
+        isClosed: true,
+        reason: matchingHoliday.customMessage || `عطلة رسمية (${matchingHoliday.title})`,
+      };
+    }
+  }
+
+  return { isClosed: false };
+};
+
+/**
  * Generates 1 appointment slot per hour based on dynamic clinic working hours.
  * Rules:
  * 1. Exactly 1 slot per hour (:00).

@@ -11,6 +11,10 @@ import type {
   WebsiteVisibilitySettings,
   BookingAppointment,
   SocialReviewImage,
+  ClinicHoliday,
+  ClinicAnnouncement,
+  SecretaryAccount,
+  DeviceTokenRecord,
 } from '../types';
 import { initialClinicData } from '../data/clinicData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -35,6 +39,22 @@ interface ContentContextType {
   addBookingAppointment: (appointment: Omit<BookingAppointment, 'id' | 'createdAt' | 'status'>) => boolean;
   updateBookingStatus: (id: string, status: BookingAppointment['status']) => void;
   deleteBookingAppointment: (id: string) => void;
+  // Holiday and Closure Management
+  toggleCloseToday: (isClosed: boolean, reason?: string) => void;
+  toggleCloseDate: (dateStr: string, isClosed: boolean) => void;
+  addHoliday: (holiday: Omit<ClinicHoliday, 'id' | 'createdAt'>) => void;
+  updateHoliday: (id: string, update: Partial<ClinicHoliday>) => void;
+  deleteHoliday: (id: string) => void;
+  // Announcements
+  addAnnouncement: (announcement: Omit<ClinicAnnouncement, 'id' | 'createdAt'>) => void;
+  updateAnnouncement: (id: string, update: Partial<ClinicAnnouncement>) => void;
+  deleteAnnouncement: (id: string) => void;
+  // Secretary Management
+  addSecretaryAccount: (account: Omit<SecretaryAccount, 'id' | 'createdAt'>) => void;
+  updateSecretaryAccount: (id: string, update: Partial<SecretaryAccount>) => void;
+  deleteSecretaryAccount: (id: string) => void;
+  // Notifications
+  registerDeviceToken: (token: string, role: 'admin' | 'secretary', platform?: 'web' | 'android') => void;
   resetToDefault: () => void;
 }
 
@@ -182,8 +202,42 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
               socialReviewImages: Array.isArray(newContent.socialReviewImages)
                 ? newContent.socialReviewImages
                 : prev.socialReviewImages,
+              secretaryAccounts: Array.isArray(newContent.secretaryAccounts)
+                ? newContent.secretaryAccounts
+                : prev.secretaryAccounts,
+              deviceTokens: Array.isArray(newContent.deviceTokens)
+                ? newContent.deviceTokens
+                : prev.deviceTokens,
             }));
             setIsBackendSynced(true);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments' },
+        async () => {
+          try {
+            const { data: updatedApts, error: err } = await client
+              .from('appointments')
+              .select('*')
+              .order('created_at', { ascending: false });
+            if (!err && updatedApts && Array.isArray(updatedApts)) {
+              const mapped: BookingAppointment[] = updatedApts.map((a: any) => ({
+                id: a.id,
+                patientName: a.patient_name,
+                patientPhone: a.patient_phone,
+                appointmentDate: a.appointment_date,
+                appointmentTime: a.appointment_time,
+                service: a.notes?.includes('الخدمة:') ? a.notes.split('|')[0].replace('الخدمة:', '').trim() : undefined,
+                notes: a.notes,
+                status: a.status || 'pending',
+                createdAt: a.created_at,
+              }));
+              setData((prev) => ({ ...prev, bookings: mapped }));
+            }
+          } catch (e) {
+            console.warn('Realtime appointments fetch error:', e);
           }
         }
       )
@@ -401,6 +455,203 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const toggleCloseToday = (isClosed: boolean, reason?: string) => {
+    setData((prev) => {
+      const updated: AppContentState = {
+        ...prev,
+        bookingSettings: {
+          ...prev.bookingSettings,
+          isClosedToday: isClosed,
+          closedTodayReason: reason !== undefined ? reason : prev.bookingSettings.closedTodayReason || '',
+        },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const toggleCloseDate = (dateStr: string, isClosed: boolean) => {
+    setData((prev) => {
+      const currentClosedDates = prev.bookingSettings.closedDates || [];
+      const updatedClosedDates = isClosed
+        ? Array.from(new Set([...currentClosedDates, dateStr]))
+        : currentClosedDates.filter((d) => d !== dateStr);
+      const updated: AppContentState = {
+        ...prev,
+        bookingSettings: {
+          ...prev.bookingSettings,
+          closedDates: updatedClosedDates,
+        },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const addHoliday = (holiday: Omit<ClinicHoliday, 'id' | 'createdAt'>) => {
+    const newHoliday: ClinicHoliday = {
+      ...holiday,
+      id: `hol-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => {
+      const updated: AppContentState = {
+        ...prev,
+        bookingSettings: {
+          ...prev.bookingSettings,
+          holidays: [newHoliday, ...(prev.bookingSettings.holidays || [])],
+        },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const updateHoliday = (id: string, update: Partial<ClinicHoliday>) => {
+    setData((prev) => {
+      const updatedHolidays = (prev.bookingSettings.holidays || []).map((h) =>
+        h.id === id ? { ...h, ...update } : h
+      );
+      const updated: AppContentState = {
+        ...prev,
+        bookingSettings: {
+          ...prev.bookingSettings,
+          holidays: updatedHolidays,
+        },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const deleteHoliday = (id: string) => {
+    setData((prev) => {
+      const updated: AppContentState = {
+        ...prev,
+        bookingSettings: {
+          ...prev.bookingSettings,
+          holidays: (prev.bookingSettings.holidays || []).filter((h) => h.id !== id),
+        },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const addAnnouncement = (announcement: Omit<ClinicAnnouncement, 'id' | 'createdAt'>) => {
+    const newAnnouncement: ClinicAnnouncement = {
+      ...announcement,
+      id: `ann-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => {
+      const updated: AppContentState = {
+        ...prev,
+        bookingSettings: {
+          ...prev.bookingSettings,
+          announcements: [newAnnouncement, ...(prev.bookingSettings.announcements || [])],
+        },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const updateAnnouncement = (id: string, update: Partial<ClinicAnnouncement>) => {
+    setData((prev) => {
+      const updatedList = (prev.bookingSettings.announcements || []).map((a) =>
+        a.id === id ? { ...a, ...update } : a
+      );
+      const updated: AppContentState = {
+        ...prev,
+        bookingSettings: {
+          ...prev.bookingSettings,
+          announcements: updatedList,
+        },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const deleteAnnouncement = (id: string) => {
+    setData((prev) => {
+      const updated: AppContentState = {
+        ...prev,
+        bookingSettings: {
+          ...prev.bookingSettings,
+          announcements: (prev.bookingSettings.announcements || []).filter((a) => a.id !== id),
+        },
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const addSecretaryAccount = (account: Omit<SecretaryAccount, 'id' | 'createdAt'>) => {
+    const newAccount: SecretaryAccount = {
+      ...account,
+      id: `sec-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => {
+      const updated: AppContentState = {
+        ...prev,
+        secretaryAccounts: [newAccount, ...(prev.secretaryAccounts || [])],
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const updateSecretaryAccount = (id: string, update: Partial<SecretaryAccount>) => {
+    setData((prev) => {
+      const updatedList = (prev.secretaryAccounts || []).map((sec) =>
+        sec.id === id ? { ...sec, ...update } : sec
+      );
+      const updated: AppContentState = {
+        ...prev,
+        secretaryAccounts: updatedList,
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const deleteSecretaryAccount = (id: string) => {
+    setData((prev) => {
+      const updated: AppContentState = {
+        ...prev,
+        secretaryAccounts: (prev.secretaryAccounts || []).filter((sec) => sec.id !== id),
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const registerDeviceToken = (token: string, role: 'admin' | 'secretary', platform: 'web' | 'android' = 'web') => {
+    setData((prev) => {
+      const existing = prev.deviceTokens || [];
+      const updatedTokens = [
+        {
+          id: `tok-${Date.now()}`,
+          token,
+          role,
+          devicePlatform: platform,
+          lastActive: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        },
+        ...existing.filter((t) => t.token !== token),
+      ];
+      const updated: AppContentState = {
+        ...prev,
+        deviceTokens: updatedTokens,
+      };
+      saveToSupabase(updated);
+      return updated;
+    });
+  };
+
   const resetToDefault = () => {
     setData(initialClinicData);
     localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -428,6 +679,18 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addBookingAppointment,
         updateBookingStatus,
         deleteBookingAppointment,
+        toggleCloseToday,
+        toggleCloseDate,
+        addHoliday,
+        updateHoliday,
+        deleteHoliday,
+        addAnnouncement,
+        updateAnnouncement,
+        deleteAnnouncement,
+        addSecretaryAccount,
+        updateSecretaryAccount,
+        deleteSecretaryAccount,
+        registerDeviceToken,
         resetToDefault,
       }}
     >
