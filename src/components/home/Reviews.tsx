@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Star,
   ExternalLink,
@@ -22,46 +22,106 @@ export const Reviews: React.FC = () => {
   const { visibility, socialReviewImages, social } = data;
 
   const images = socialReviewImages && socialReviewImages.length > 0 ? socialReviewImages : [];
+  const totalImages = images.length;
+  const isLoopable = totalImages > 1;
 
-  // Carousel State: Single centered card slider
-  const [currentIndex, setCurrentIndex] = useState(0);
+  // Infinite Circular Slider: Clone last slide at start and first slide at end
+  const slides: SocialReviewImage[] = useMemo(() => {
+    if (!isLoopable) return images;
+    return [images[totalImages - 1], ...images, images[0]];
+  }, [images, isLoopable, totalImages]);
+
+  // Carousel State: Single centered card slider (index 1 is the first real image when loopable)
+  const [currentIndex, setCurrentIndex] = useState(isLoopable ? 1 : 0);
+  const [withTransition, setWithTransition] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [selectedImage, setSelectedImage] = useState<SocialReviewImage | null>(null);
+  const isJumping = useRef(false);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
-  const totalImages = images.length;
+  // Sync index if images list changes
+  useEffect(() => {
+    setCurrentIndex(isLoopable ? 1 : 0);
+    setWithTransition(true);
+    isJumping.current = false;
+  }, [images.length, isLoopable]);
+
+  // Re-enable CSS transitions after an instant boundary snap
+  useEffect(() => {
+    if (!withTransition) {
+      const raf1 = requestAnimationFrame(() => {
+        const raf2 = requestAnimationFrame(() => {
+          setWithTransition(true);
+          isJumping.current = false;
+        });
+        return () => cancelAnimationFrame(raf2);
+      });
+      return () => cancelAnimationFrame(raf1);
+    }
+  }, [withTransition]);
+
+  // Real active index for pagination dots and counter
+  const activeRealIndex = useMemo(() => {
+    if (!isLoopable) return 0;
+    if (currentIndex === 0) return totalImages - 1;
+    if (currentIndex === totalImages + 1) return 0;
+    return currentIndex - 1;
+  }, [currentIndex, isLoopable, totalImages]);
+
+  const handleNext = () => {
+    if (!isLoopable || isJumping.current || currentIndex > totalImages) return;
+    setWithTransition(true);
+    setCurrentIndex((prev) => prev + 1);
+  };
+
+  const handlePrev = () => {
+    if (!isLoopable || isJumping.current || currentIndex < 1) return;
+    setWithTransition(true);
+    setCurrentIndex((prev) => prev - 1);
+  };
+
+  // Seamless boundary crossing on transition end
+  const handleTransitionEnd = () => {
+    if (!isLoopable) return;
+
+    if (currentIndex === totalImages + 1) {
+      // Reached cloned first slide at end -> snap instantly to real first slide (index 1)
+      isJumping.current = true;
+      setWithTransition(false);
+      setCurrentIndex(1);
+    } else if (currentIndex === 0) {
+      // Reached cloned last slide at start -> snap instantly to real last slide (index totalImages)
+      isJumping.current = true;
+      setWithTransition(false);
+      setCurrentIndex(totalImages);
+    }
+  };
 
   // Auto-play timer: resets and counts a fresh 5 seconds on EVERY slide change or swipe
   useEffect(() => {
-    if (isPaused || totalImages <= 1) return;
+    if (isPaused || !isLoopable || !withTransition) return;
 
     const timer = setTimeout(() => {
-      setCurrentIndex((prev) => (prev >= totalImages - 1 ? 0 : prev + 1));
+      handleNext();
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [currentIndex, isPaused, totalImages]);
-
-  const handlePrev = () => {
-    setCurrentIndex((prev) => (prev <= 0 ? totalImages - 1 : prev - 1));
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev >= totalImages - 1 ? 0 : prev + 1));
-  };
+  }, [currentIndex, isPaused, isLoopable, withTransition]);
 
   // Touch swipe: follows natural finger direction
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isLoopable) return;
     touchStartX.current = e.targetTouches[0].clientX;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isLoopable) return;
     touchEndX.current = e.targetTouches[0].clientX;
   };
 
   const handleTouchEnd = () => {
-    if (touchStartX.current === null || touchEndX.current === null) return;
+    if (touchStartX.current === null || touchEndX.current === null || !isLoopable) return;
     const diff = touchStartX.current - touchEndX.current;
     const minSwipeDistance = 45;
 
@@ -208,15 +268,16 @@ export const Reviews: React.FC = () => {
               
               {/* Slider Track (Direction: ltr for perfectly synced swipe and slide) */}
               <div
-                className="flex transition-transform duration-500 ease-out"
+                onTransitionEnd={handleTransitionEnd}
+                className={`flex ${withTransition ? 'transition-transform duration-500 ease-out' : ''}`}
                 style={{
                   transform: `translateX(-${currentIndex * 100}%)`,
                   direction: 'ltr',
                 }}
               >
-                {images.map((item, index) => (
+                {slides.map((item, index) => (
                   <div
-                    key={item.id || index}
+                    key={`${item.id || 'review'}-${index}`}
                     className="w-full shrink-0 flex flex-col"
                     style={{ direction: 'rtl' }}
                   >
@@ -288,16 +349,20 @@ export const Reviews: React.FC = () => {
               {/* Image Counter & Pagination Dots */}
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-slate-500">
-                  {currentIndex + 1} من {totalImages}
+                  {activeRealIndex + 1} من {totalImages}
                 </span>
 
                 <div className="flex items-center justify-center gap-1.5">
                   {images.map((_, dotIdx) => (
                     <button
                       key={dotIdx}
-                      onClick={() => setCurrentIndex(dotIdx)}
+                      onClick={() => {
+                        if (isJumping.current) return;
+                        setWithTransition(true);
+                        setCurrentIndex(dotIdx + 1);
+                      }}
                       className={`h-2 rounded-full transition-all duration-300 ${
-                        currentIndex === dotIdx
+                        activeRealIndex === dotIdx
                           ? 'w-6 bg-brand-royal'
                           : 'w-2 bg-slate-300 hover:bg-slate-400'
                       }`}
