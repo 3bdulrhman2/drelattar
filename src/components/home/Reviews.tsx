@@ -32,16 +32,16 @@ export const Reviews: React.FC = () => {
 
   const totalImages = images.length;
 
-  // Auto-play interval: moves automatically and seamlessly
+  // Auto-play timer: resets and counts a fresh 5 seconds on EVERY slide change or swipe
   useEffect(() => {
     if (isPaused || totalImages <= 1) return;
 
-    const interval = setInterval(() => {
+    const timer = setTimeout(() => {
       setCurrentIndex((prev) => (prev >= totalImages - 1 ? 0 : prev + 1));
-    }, 4200);
+    }, 5000);
 
-    return () => clearInterval(interval);
-  }, [isPaused, totalImages]);
+    return () => clearTimeout(timer);
+  }, [currentIndex, isPaused, totalImages]);
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev <= 0 ? totalImages - 1 : prev - 1));
@@ -306,27 +306,6 @@ export const Reviews: React.FC = () => {
                   ))}
                 </div>
               </div>
-
-              {/* Mobile Arrows for easy one-thumb control */}
-              {totalImages > 1 && (
-                <div className="flex md:hidden items-center gap-3 pt-1">
-                  <button
-                    onClick={handleNext}
-                    className="px-4 py-2 rounded-xl bg-white border border-brand-border text-xs font-bold text-slate-700 flex items-center gap-1.5 shadow-xs active:bg-slate-50"
-                  >
-                    <span>التالي</span>
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={handlePrev}
-                    className="px-4 py-2 rounded-xl bg-white border border-brand-border text-xs font-bold text-slate-700 flex items-center gap-1.5 shadow-xs active:bg-slate-50"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                    <span>السابق</span>
-                  </button>
-                </div>
-              )}
 
             </div>
 
