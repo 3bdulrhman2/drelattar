@@ -1,10 +1,10 @@
 import React from 'react';
-import { Phone, ArrowDown, Award, ShieldCheck, HeartPulse, Sparkles, Stethoscope, ChevronLeft } from 'lucide-react';
+import { Phone, ArrowDown, Award, ShieldCheck, HeartPulse, Sparkles, Stethoscope, ChevronLeft, Calendar } from 'lucide-react';
 import { useContent } from '../../context/ContentContext';
 
 export const Hero: React.FC = () => {
   const { data } = useContent();
-  const { doctor, clinic } = data;
+  const { doctor, clinic, bookingSettings } = data;
 
   return (
     <section id="hero" className="relative overflow-hidden w-full max-w-full pt-8 pb-16 lg:py-20 bg-gradient-to-b from-white via-brand-bg to-brand-bg">
@@ -60,6 +60,26 @@ export const Hero: React.FC = () => {
                 </div>
                 <span>اتصل الآن</span>
               </a>
+
+              {/* احجز الآن (Right after اتصل الآن and before تعرف على الخدمات - controlled by bookingSettings.isEnabled) */}
+              {bookingSettings.isEnabled && (
+                <a
+                  href="#booking"
+                  onClick={(e) => {
+                    const el = document.querySelector('#booking');
+                    if (el) {
+                      e.preventDefault();
+                      el.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-royal text-white text-base font-bold px-7 py-3.5 rounded-xl shadow-elevated hover:shadow-hover hover:scale-[1.02] active:scale-[0.98] transition-all group animate-fadeIn"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                    <Calendar className="w-4 h-4 text-brand-lime" />
+                  </div>
+                  <span>احجز الآن</span>
+                </a>
+              )}
 
               <a
                 href="#services"

@@ -83,6 +83,7 @@ export interface BookingAppointment {
   patientPhone: string;
   appointmentDate: string;
   appointmentTime: string;
+  service?: string;
   notes?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   createdAt: string;

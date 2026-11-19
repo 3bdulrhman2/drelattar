@@ -1,200 +1,417 @@
-import React, { useState } from 'react';
-import { Calendar, Clock, User, Phone, CheckCircle2, X, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  Calendar,
+  Clock,
+  User,
+  Phone,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  MapPin,
+  Stethoscope,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  MessageCircle,
+} from 'lucide-react';
 import { useContent } from '../../context/ContentContext';
+import {
+  getCairoDateTime,
+  generateDaySlots,
+  getUpcomingCairoDays,
+  formatTimeArabic,
+} from '../../lib/cairoTime';
 
 export const PublicBookingModule: React.FC = () => {
   const { data, addBookingAppointment } = useContent();
-  const { bookingSettings } = data;
+  const { bookingSettings, bookings, clinic, doctor } = data;
 
-  // STRICT FEATURE FLAG: If disabled, render absolutely nothing
+  // STRICT FEATURE FLAG: Controlled by Admin Dashboard
   if (!bookingSettings.isEnabled) {
     return null;
   }
 
-  const [isOpen, setIsOpen] = useState(false);
+  const { cairoTodayStr, formattedDateArabic } = getCairoDateTime();
+  const upcomingDays = useMemo(() => getUpcomingCairoDays(14), [cairoTodayStr]);
+
+  // Form State
+  const [selectedDate, setSelectedDate] = useState<string>(upcomingDays[0]?.dateStr || cairoTodayStr);
+  const [selectedTime, setSelectedTime] = useState<string>('');
   const [patientName, setPatientName] = useState('');
   const [patientPhone, setPatientPhone] = useState('');
-  const [appointmentDate, setAppointmentDate] = useState('');
-  const [appointmentTime, setAppointmentTime] = useState(bookingSettings.startTime || '14:00');
+  const [service, setService] = useState('كشف باطنة عامة ورعاية حرجة');
   const [notes, setNotes] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedBooking, setSubmittedBooking] = useState<{
+    id: string;
+    patientName: string;
+    date: string;
+    time: string;
+    service: string;
+  } | null>(null);
+
+  // Filter booked times for selected date ("لو حد حجز معاد يختفي من الموقع")
+  const bookedTimesForSelectedDate = useMemo(() => {
+    return (bookings || [])
+      .filter(
+        (b) =>
+          b.appointmentDate === selectedDate &&
+          (b.status === 'pending' || b.status === 'confirmed')
+      )
+      .map((b) => b.appointmentTime);
+  }, [bookings, selectedDate]);
+
+  // Generate slots (2 per hour) for selected date, omitting already booked or past slots
+  const availableSlots = useMemo(() => {
+    const allSlots = generateDaySlots(selectedDate, bookedTimesForSelectedDate);
+    // Only return slots that are actually available (booked ones disappear!)
+    return allSlots.filter((s) => s.isAvailable);
+  }, [selectedDate, bookedTimesForSelectedDate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!patientName.trim() || !patientPhone.trim() || !appointmentDate) return;
+    if (!patientName.trim() || !patientPhone.trim() || !selectedDate || !selectedTime) {
+      alert('يرجى ملء جميع البيانات الأساسية واختيار موعد الكشف');
+      return;
+    }
+
+    const bookingRefId = `EL-${Date.now().toString().slice(-6)}`;
 
     addBookingAppointment({
-      patientName,
-      patientPhone,
-      appointmentDate,
-      appointmentTime,
-      notes,
+      patientName: patientName.trim(),
+      patientPhone: patientPhone.trim(),
+      appointmentDate: selectedDate,
+      appointmentTime: selectedTime,
+      service,
+      notes: notes.trim() || undefined,
     });
 
-    setSubmitted(true);
-  };
+    setSubmittedBooking({
+      id: bookingRefId,
+      patientName: patientName.trim(),
+      date: selectedDate,
+      time: selectedTime,
+      service,
+    });
 
-  const handleReset = () => {
-    setSubmitted(false);
+    // Reset fields
+    setSelectedTime('');
     setPatientName('');
     setPatientPhone('');
-    setAppointmentDate('');
     setNotes('');
-    setIsOpen(false);
   };
 
+  const servicesList = [
+    'كشف باطنة عامة ورعاية حرجة',
+    'فحص الموجات فوق الصوتية (السونار)',
+    'تخطيط ورسم كهربية القلب (ECG)',
+    'متابعة وتشخيص السكري ومقاومة الإنسولين',
+    'ضبط ضغط الدم والدهون والوقاية الوعائية',
+    'تشخيص أمراض الجهاز الهضمي والكبد والقولون',
+    'جلسات أكسجين وتنفس بالبخار (Nebulizer)',
+    'استشارة طبية وفحص شامل',
+  ];
+
   return (
-    <div className="py-8 bg-purple-50/60 border-y border-purple-200/60">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-right">
-        <div>
-          <span className="inline-block text-[11px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full mb-1">
-            خدمة إضافية متاحة الآن
-          </span>
-          <h3 className="text-base sm:text-lg font-bold text-brand-dark">
-            طلب حجز موعد كشف إلكتروني مسبق
-          </h3>
-          <p className="text-xs sm:text-sm text-brand-muted">
-            يمكنك إرسال طلب حجز لتأكيد موعدك مباشرة لدى إدارة العيادة.
+    <section id="booking" className="py-16 lg:py-24 bg-gradient-to-b from-white via-purple-50/30 to-brand-bg relative overflow-hidden">
+      
+      {/* Background Glow Orbs */}
+      <div className="absolute top-1/4 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 left-0 w-96 h-96 bg-brand-royal/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        
+        {/* Section Heading */}
+        <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold shadow-xs">
+            <Calendar className="w-4 h-4 text-purple-700" />
+            <span>نظام الحجز المسبق الإلكتروني</span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-brand-dark leading-tight">
+            احجز موعد كشفك مسبقاً بكل سهولة
+          </h2>
+
+          <p className="text-xs sm:text-sm md:text-base text-brand-muted leading-relaxed">
+            اختر الموعد الأنسب لك من المواعيد المتاحة؛ المواعيد بتوقيت القاهرة الرسمي، وبمعدل ميعادين كل ساعة لضمان راحتكم وعدم التكدس.
           </p>
+
+          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-purple-800 bg-purple-50 py-1.5 px-4 rounded-xl border border-purple-100 w-fit mx-auto">
+            <Clock className="w-3.5 h-3.5 text-purple-600" />
+            <span>التوقيت الحالي: بتوقيت القاهرة (Africa/Cairo) • {formattedDateArabic}</span>
+          </div>
         </div>
 
-        <button
-          onClick={() => setIsOpen(true)}
-          className="bg-purple-700 hover:bg-purple-800 text-white font-bold px-6 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0"
-        >
-          طلب حجز موعد
-        </button>
-      </div>
+        {/* BOOKING SUCCESS SCREEN */}
+        {submittedBooking ? (
+          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-emerald-200 shadow-xl text-center space-y-6 animate-fadeIn">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
 
-      {/* Booking Form Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-purple-100 text-right relative animate-in fade-in zoom-in-95">
-            <button
-              onClick={() => setIsOpen(false)}
-              className="absolute left-4 top-4 p-2 text-slate-400 hover:text-slate-700 rounded-full"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                تم استلام طلب الحجز بنجاح
+              </span>
+              <h3 className="text-xl sm:text-2xl font-black text-brand-dark">
+                أهلاً بك يا {submittedBooking.patientName}، موعدك مسجل لدينا!
+              </h3>
+              <p className="text-xs sm:text-sm text-brand-muted max-w-md mx-auto">
+                تم تسجيل موعد الكشف بنجاح، ويتم الآن إرسال بيانات الموعد لإدارة العيادة لتأكيده.
+              </p>
+            </div>
 
-            {submitted ? (
-              <div className="text-center py-6 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h4 className="text-lg font-bold text-brand-dark">
-                  تم استلام طلب الحجز بنجاح
-                </h4>
-                <p className="text-xs sm:text-sm text-brand-muted max-w-xs mx-auto">
-                  شكراً لك {patientName}. سيقوم طاقم العيادة بمراجعة الموعد والتواصل معك على رقم الهاتف ({patientPhone}) لتأكيده.
-                </p>
-                <button
-                  onClick={handleReset}
-                  className="bg-brand-royal text-white px-6 py-2.5 rounded-xl text-xs font-bold"
-                >
-                  حسناً، تم
-                </button>
+            {/* Appointment Ticket Card */}
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 max-w-md mx-auto text-right space-y-3 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">كود الحجز:</span>
+                <span className="font-mono font-bold text-brand-royal text-sm">{submittedBooking.id}</span>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="text-right">
-                  <h4 className="text-lg font-bold text-brand-dark">
-                    طلب موعد كشف بعيادة د. محمد السيد العطار
-                  </h4>
-                  <p className="text-xs text-brand-muted mt-1">
-                    يرجى إدخال بيانات المريض لاختيار الوقت المناسب
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">الطبيب:</span>
+                <span className="font-bold text-slate-800">{doctor.nameAr}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">يوم الكشف:</span>
+                <span className="font-bold text-purple-700">{submittedBooking.date}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">توقيت الكشف (توقيت القاهرة):</span>
+                <span className="font-black text-emerald-700 text-sm">{formatTimeArabic(submittedBooking.time)}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">نوع الخدمة:</span>
+                <span className="font-bold text-slate-800">{submittedBooking.service}</span>
+              </div>
+              <div className="flex items-start justify-between pt-1">
+                <span className="text-slate-500 shrink-0">مقر العيادة:</span>
+                <span className="font-medium text-slate-700 text-left">{clinic.address}</span>
+              </div>
+            </div>
+
+            {/* WhatsApp Confirmation Action */}
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <a
+                href={`https://wa.me/201060918977?text=${encodeURIComponent(
+                  `السلام عليكم يا دكتور، قمت بحجز موعد عبر الموقع برقم (${submittedBooking.id}) باسم ${submittedBooking.patientName} يوم ${submittedBooking.date} الساعة ${formatTimeArabic(submittedBooking.time)}.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition-all shadow-md"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>إرسال تفاصيل الموعد عبر الواتساب لتأكيده فوراً</span>
+              </a>
+
+              <button
+                onClick={() => setSubmittedBooking(null)}
+                className="px-5 py-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition-colors"
+              >
+                حجز موعد آخر
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* MAIN BOOKING FORM */
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white rounded-3xl p-6 sm:p-10 border border-brand-border/80 shadow-soft space-y-8 text-right"
+          >
+            
+            {/* STEP 1: SELECT DATE */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm sm:text-base font-bold text-brand-dark flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">1</span>
+                  <span>اختر يوم الكشف:</span>
+                </h3>
+                <span className="text-xs text-brand-muted">متاح لـ 14 يوماً قادمة</span>
+              </div>
+
+              {/* Day selection pills carousel */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar">
+                {upcomingDays.map((day) => {
+                  const isSelected = selectedDate === day.dateStr;
+                  return (
+                    <button
+                      key={day.dateStr}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(day.dateStr);
+                        setSelectedTime(''); // Reset selected time when date changes
+                      }}
+                      className={`shrink-0 px-4 py-2.5 rounded-2xl border text-center transition-all ${
+                        isSelected
+                          ? 'bg-purple-700 border-purple-700 text-white shadow-md scale-[1.02]'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-200'
+                      }`}
+                    >
+                      <span className="block text-xs font-bold leading-tight">{day.dayNameAr}</span>
+                      <span className={`block text-[10px] mt-0.5 ${isSelected ? 'text-purple-200' : 'text-slate-400'}`}>
+                        {day.dateFormattedAr}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* STEP 2: SELECT TIME SLOT (2 SLOTS PER HOUR - DISAPPEARS WHEN BOOKED) */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm sm:text-base font-bold text-brand-dark flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">2</span>
+                  <span>اختر التوقيت المتاح (ميعادين كل ساعة):</span>
+                </h3>
+                <span className="text-xs font-bold text-purple-700">
+                  {availableSlots.length} موعد متاح اليوم
+                </span>
+              </div>
+
+              {availableSlots.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-2.5">
+                  {availableSlots.map((slot) => {
+                    const isSelected = selectedTime === slot.time;
+                    return (
+                      <button
+                        key={slot.time}
+                        type="button"
+                        onClick={() => setSelectedTime(slot.time)}
+                        className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-md scale-105'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300'
+                        }`}
+                      >
+                        <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                        <span>{slot.labelAr}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-2">
+                  <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
+                  <p className="text-xs sm:text-sm font-bold text-amber-900">
+                    عذراً، اكتملت جميع المواعيد المتاحة لهذا اليوم ({selectedDate})
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    يرجى اختيار يوم آخر من الأيام بالأعلى، أو الاتصال بالعيادة مباشرة للحالات الطارئة.
                   </p>
                 </div>
+              )}
 
+              {selectedTime && (
+                <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 pt-1">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>الموعد المختار: {formatTimeArabic(selectedTime)} بتوقيت القاهرة</span>
+                </p>
+              )}
+            </div>
+
+            {/* STEP 3: PATIENT INFORMATION */}
+            <div className="space-y-4 pt-2 border-t border-slate-100">
+              <h3 className="text-sm sm:text-base font-bold text-brand-dark flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">3</span>
+                <span>بيانات المريض للتأكيد:</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Patient Name */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-dark mb-1">
-                    اسم المريض ثلاثي
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    اسم المريض ثلاثي / رباعي *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={patientName}
+                      onChange={(e) => setPatientName(e.target.value)}
+                      placeholder="مثال: أحمد محمد علي"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-3 py-2.5 text-xs sm:text-sm text-brand-dark placeholder-slate-400 focus:outline-hidden focus:border-purple-600 focus:bg-white transition-colors"
+                    />
+                    <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
+                  </div>
+                </div>
+
+                {/* Patient Phone */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    رقم هاتف المريض أو المرافق (للتأكيد) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      required
+                      value={patientPhone}
+                      onChange={(e) => setPatientPhone(e.target.value)}
+                      placeholder="010xxxxxxxx"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-3 py-2.5 text-xs sm:text-sm text-brand-dark placeholder-slate-400 focus:outline-hidden focus:border-purple-600 focus:bg-white transition-colors text-right"
+                    />
+                    <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
+                  </div>
+                </div>
+
+                {/* Service Selection */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    سبب الكشف أو الخدمة المطلوبة
+                  </label>
+                  <select
+                    value={service}
+                    onChange={(e) => setService(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-brand-dark focus:outline-hidden focus:border-purple-600 focus:bg-white transition-colors"
+                  >
+                    {servicesList.map((srv, idx) => (
+                      <option key={idx} value={srv}>
+                        {srv}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Optional Notes */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    أعراض أو ملاحظات إضافية (اختياري)
                   </label>
                   <input
                     type="text"
-                    required
-                    value={patientName}
-                    onChange={(e) => setPatientName(e.target.value)}
-                    placeholder="الاسم بالكامل"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-brand-royal"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-brand-dark mb-1">
-                    رقم الهاتف المحمول (للتأكيد والمتابعة)
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={patientPhone}
-                    onChange={(e) => setPatientPhone(e.target.value)}
-                    placeholder="010XXXXXXXX"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-brand-royal text-left"
-                    dir="ltr"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-dark mb-1">
-                      تاريخ الكشف المطلوب
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={appointmentDate}
-                      onChange={(e) => setAppointmentDate(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-royal"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-dark mb-1">
-                      الوقت التقريبي المفضل
-                    </label>
-                    <input
-                      type="time"
-                      value={appointmentTime}
-                      onChange={(e) => setAppointmentTime(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-royal"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-brand-dark mb-1">
-                    ملاحظات أو شكوى طبية رئيسية (اختياري)
-                  </label>
-                  <textarea
-                    rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="مثل: متابعة ضغط وسكر، كشف جديد، فحص بعد الخروج من المستشفى..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand-royal"
+                    placeholder="مثال: متابعة دورية، قياس سكر وضغط"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-brand-dark placeholder-slate-400 focus:outline-hidden focus:border-purple-600 focus:bg-white transition-colors"
                   />
                 </div>
 
-                <div className="pt-2 flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-brand-muted hover:text-brand-dark"
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-brand-royal hover:bg-brand-medical text-white font-bold px-6 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all"
-                  >
-                    إرسال طلب الحجز
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+              </div>
+            </div>
+
+            {/* SUBMIT BUTTON */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs text-brand-muted">
+                * بمجرد الحجز سيختفي هذا الموعد فوراً من الموقع لضمان عدم تكرار الحجز.
+              </div>
+
+              <button
+                type="submit"
+                disabled={!selectedTime}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-royal text-white font-bold text-xs sm:text-sm px-8 py-3.5 rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:pointer-events-none hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <Calendar className="w-4 h-4 text-brand-lime" />
+                <span>
+                  {selectedTime
+                    ? `تأكيد الحجز (${formatTimeArabic(selectedTime)})`
+                    : 'اختر التوقيت أولاً لتأكيد الحجز'}
+                </span>
+              </button>
+            </div>
+
+          </form>
+        )}
+
+      </div>
+    </section>
   );
 };

@@ -34,6 +34,7 @@ interface ContentContextType {
   deleteSocialReviewImage: (id: string) => void;
   addBookingAppointment: (appointment: Omit<BookingAppointment, 'id' | 'createdAt' | 'status'>) => boolean;
   updateBookingStatus: (id: string, status: BookingAppointment['status']) => void;
+  deleteBookingAppointment: (id: string) => void;
   resetToDefault: () => void;
 }
 
@@ -111,6 +112,34 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } else if (remoteData && remoteData.content) {
           setData(remoteData.content);
           setIsBackendSynced(true);
+        }
+
+        // Also fetch remote appointments from Supabase if table exists
+        try {
+          const { data: remoteAppointments, error: aptError } = await client
+            .from('appointments')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!aptError && remoteAppointments && Array.isArray(remoteAppointments)) {
+            const mappedBookings: BookingAppointment[] = remoteAppointments.map((a: any) => ({
+              id: a.id,
+              patientName: a.patient_name,
+              patientPhone: a.patient_phone,
+              appointmentDate: a.appointment_date,
+              appointmentTime: a.appointment_time,
+              service: a.notes?.includes('الخدمة:') ? a.notes.split('|')[0].replace('الخدمة:', '').trim() : undefined,
+              notes: a.notes,
+              status: a.status || 'pending',
+              createdAt: a.created_at,
+            }));
+            setData((prev) => ({
+              ...prev,
+              bookings: mappedBookings,
+            }));
+          }
+        } catch (aptErr) {
+          console.warn('Could not load remote appointments:', aptErr);
         }
       } catch (err) {
         console.warn('Could not connect to remote Supabase database:', err);
@@ -248,9 +277,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addBookingAppointment = (
     appointment: Omit<BookingAppointment, 'id' | 'createdAt' | 'status'>
   ): boolean => {
+    const tempId = `booking-${Date.now()}`;
     const newAppointment: BookingAppointment = {
       ...appointment,
-      id: `booking-${Date.now()}`,
+      id: tempId,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
@@ -260,6 +290,22 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       bookings: [newAppointment, ...prev.bookings],
     }));
 
+    // Insert into Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('appointments').insert({
+        patient_name: appointment.patientName,
+        patient_phone: appointment.patientPhone,
+        appointment_date: appointment.appointmentDate,
+        appointment_time: appointment.appointmentTime,
+        notes: appointment.service ? `الخدمة: ${appointment.service} | ${appointment.notes || ''}` : appointment.notes || '',
+        status: 'pending',
+      }).then(({ error }) => {
+        if (error) {
+          console.error('Failed to insert appointment into Supabase:', error.message);
+        }
+      });
+    }
+
     return true;
   };
 
@@ -268,6 +314,25 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...prev,
       bookings: prev.bookings.map((b) => (b.id === id ? { ...b, status } : b)),
     }));
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('appointments').update({ status }).eq('id', id).then(({ error }) => {
+        if (error) console.error('Failed to update appointment in Supabase:', error);
+      });
+    }
+  };
+
+  const deleteBookingAppointment = (id: string) => {
+    setData((prev) => ({
+      ...prev,
+      bookings: prev.bookings.filter((b) => b.id !== id),
+    }));
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('appointments').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Failed to delete appointment in Supabase:', error);
+      });
+    }
   };
 
   const resetToDefault = () => {
@@ -296,6 +361,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteSocialReviewImage,
         addBookingAppointment,
         updateBookingStatus,
+        deleteBookingAppointment,
         resetToDefault,
       }}
     >
