@@ -49,11 +49,14 @@ class _SecretaryMainScreenState extends State<SecretaryMainScreen> {
             padding: const EdgeInsets.only(left: 14),
             child: Hero(
               tag: 'clinic_header_logo',
-              child: Image.asset(
-                'assets/images/clinic_logo.png',
-                width: 38,
-                height: 38,
-                fit: BoxFit.contain,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Image.asset(
+                  'assets/images/clinic_logo.png',
+                  width: 38,
+                  height: 38,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),

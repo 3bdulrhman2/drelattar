@@ -22,17 +22,17 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    // Fast, crisp animation like WhatsApp / Facebook
+    // Ultra-snappy 320ms entrance like WhatsApp
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 450),
+      duration: const Duration(milliseconds: 320),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.90, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.92, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.2, end: 1.0).animate(
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
 
@@ -41,10 +41,9 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuthAndTransition() async {
-    // Parallel fast execution: auth check + silent background data warm-up
+    // Fast parallel auth check and brief visual pause (total ~600ms)
     final results = await Future.wait([
       AuthService.loadUser(),
-      // Tiny delay (550ms) so the eye registers the brand logo, then immediately glides into header
       Future.delayed(const Duration(milliseconds: 550)),
     ]);
 
@@ -52,7 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     final user = results[0];
 
-    // Background silent refresh of network data while UI opens instantly
+    // Background silent refresh of live appointments and settings
     SupabaseService.getClinicSettings(forceRefresh: true);
     SupabaseService.getAppointments(forceRefresh: true);
 
@@ -72,11 +71,14 @@ class _SplashScreenState extends State<SplashScreen>
         pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
-            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOutCubic,
+            ),
             child: child,
           );
         },
-        transitionDuration: const Duration(milliseconds: 480),
+        transitionDuration: const Duration(milliseconds: 400),
       ),
     );
   }
@@ -102,14 +104,17 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Clean, standalone Clinic Logo with Hero tag for gliding to Header
+                    // Standalone original Clinic Logo flying directly to header via Hero tag
                     Hero(
                       tag: 'clinic_header_logo',
-                      child: Image.asset(
-                        'assets/images/clinic_logo.png',
-                        width: 135,
-                        height: 135,
-                        fit: BoxFit.contain,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: Image.asset(
+                          'assets/images/clinic_logo.png',
+                          width: 140,
+                          height: 140,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),

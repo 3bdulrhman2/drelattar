@@ -102,9 +102,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 90,
                     child: Hero(
                       tag: 'clinic_header_logo',
-                      child: Image.asset(
-                        'assets/images/clinic_logo.png',
-                        fit: BoxFit.contain,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: Image.asset(
+                          'assets/images/clinic_logo.png',
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
