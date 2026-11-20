@@ -18,6 +18,7 @@ import type {
 } from '../types';
 import { initialClinicData } from '../data/clinicData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { triggerLocalNotification } from '../lib/pushNotifications';
 
 interface ContentContextType {
   data: AppContentState;
@@ -30,7 +31,7 @@ interface ContentContextType {
   updateEquipment: (equipment: MedicalEquipment[]) => void;
   updateFAQ: (faq: FAQItem[]) => void;
   updateSocial: (social: Partial<SocialLinks>) => void;
-  updateBookingSettings: (settings: Partial<FutureBookingSettings>) => void;
+  updateBookingSettings: (settings: Partial<FutureBookingSettings>, clinicUpdate?: Partial<ClinicInfo>) => void;
   updateVisibility: (visibility: Partial<WebsiteVisibilitySettings>) => void;
   updateGoogleApiSettings: (apiKey: string, placeId: string) => void;
   updateSocialReviewImages: (images: SocialReviewImage[]) => void;
@@ -216,7 +217,22 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
-        async () => {
+        async (payload: any) => {
+          // Play audio chime and trigger notification on new appointment
+          if (payload && payload.eventType === 'INSERT' && payload.new) {
+            const patientName = payload.new.patient_name || 'مريض جديد';
+            const apptDate = payload.new.appointment_date || '';
+            const apptTime = payload.new.appointment_time || '';
+            triggerLocalNotification({
+              title: 'حجز كشف جديد بالعيادة! 🔔',
+              body: `المريض: ${patientName} - الموعد: ${apptDate} (${apptTime})`,
+              patientName,
+              appointmentDate: apptDate,
+              appointmentTime: apptTime,
+              type: 'new_booking',
+            });
+          }
+
           try {
             const { data: updatedApts, error: err } = await client
               .from('appointments')
@@ -255,18 +271,26 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       setIsSaving(true);
       const payload = contentToSave || data;
-      const { error } = await supabase
-        .from('clinic_settings')
-        .upsert(
-          { key: 'main_settings', content: payload, updated_at: new Date().toISOString() },
-          { onConflict: 'key' }
-        );
 
-      if (error) {
-        console.error('Supabase save error:', error);
-        setIsBackendSynced(false);
-        setIsSaving(false);
-        return { success: false, error: error.message };
+      // Update existing main_settings row
+      const { data: updateData, error: updateError } = await supabase
+        .from('clinic_settings')
+        .update({ content: payload, updated_at: new Date().toISOString() })
+        .eq('key', 'main_settings')
+        .select();
+
+      if (updateError || !updateData || updateData.length === 0) {
+        // If row does not exist, insert it
+        const { error: insertError } = await supabase
+          .from('clinic_settings')
+          .insert({ key: 'main_settings', content: payload, updated_at: new Date().toISOString() });
+
+        if (insertError) {
+          console.error('Supabase save error:', insertError);
+          setIsBackendSynced(false);
+          setIsSaving(false);
+          return { success: false, error: insertError.message };
+        }
       }
       setIsBackendSynced(true);
       setIsSaving(false);
@@ -323,12 +347,21 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
   };
 
-  const updateBookingSettings = (bookingUpdate: Partial<FutureBookingSettings>) => {
+  const updateBookingSettings = (
+    bookingUpdate: Partial<FutureBookingSettings>,
+    clinicUpdate?: Partial<ClinicInfo>
+  ) => {
     setData((prev) => {
-      const updated = {
+      const updated: AppContentState = {
         ...prev,
         bookingSettings: { ...prev.bookingSettings, ...bookingUpdate },
+        clinic: clinicUpdate ? { ...prev.clinic, ...clinicUpdate } : prev.clinic,
       };
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to update localStorage:', e);
+      }
       saveToSupabase(updated);
       return updated;
     });

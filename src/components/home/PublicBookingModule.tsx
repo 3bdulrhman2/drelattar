@@ -60,7 +60,16 @@ export const PublicBookingModule: React.FC = () => {
     endTimeRegular: bookingSettings.endTime || '21:00',
     startTimeFriday: bookingSettings.startTimeFriday || '16:00',
     endTimeFriday: bookingSettings.endTimeFriday || '22:00',
+    slotDurationMinutes: bookingSettings.slotDurationMinutes || 60,
   }), [bookingSettings]);
+
+  const slotIntervalLabel = useMemo(() => {
+    const mins = Number(bookingSettings.slotDurationMinutes) || 60;
+    if (mins === 15) return 'كل ربع ساعة';
+    if (mins === 30) return 'كل نصف ساعة';
+    if (mins === 45) return 'كل ساعة إلا ربع';
+    return 'كل ساعة';
+  }, [bookingSettings.slotDurationMinutes]);
 
   // Filter booked times for selected date ("الموعد اللي بيتحجز مينفعش حد تاني يحجز فيه")
   const bookedTimesForSelectedDate = useMemo(() => {
@@ -319,14 +328,14 @@ export const PublicBookingModule: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <h3 className="text-sm sm:text-base font-bold text-brand-dark flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">2</span>
-                  <span>اختر التوقيت المتاح (حجز واحد كل ساعة):</span>
+                  <span>اختر التوقيت المتاح ({slotIntervalLabel}):</span>
                 </h3>
                 <span className="text-xs font-bold text-purple-700">
                   {selectedDateClosure.isClosed ? 'مغلق' : `${availableSlots.length} مواعيد شاغرة متاحة`}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                • يتم حجز موعد واحد لكل ساعة لمنع التكدس • يشترط الحجز قبل الموعد بـ 3 ساعات على الأقل • الموعد المحجوز يختفي فوراً
+                • فاصل المواعيد: {slotIntervalLabel} لمنع التكدس • يشترط الحجز قبل الموعد بـ 3 ساعات على الأقل • الموعد المحجوز يختفي فوراً
               </p>
 
               {selectedDateClosure.isClosed ? (

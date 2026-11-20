@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/secretary_account.dart';
 import '../../services/auth_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
@@ -295,7 +296,121 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          // Notification Settings Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.royal.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.notifications_active, color: AppColors.royal, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('إشعارات وتنبيهات الحجوزات الفورية',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          Text('تنبيه صوتي وإشعار فوري عند حجز أي مريض جديد',
+                              style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Color(0xFF10B981), size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'قناة الإشعارات الفورية نشطة ومتصلة بسيرفر العيادة',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          await NotificationService.testNotification();
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('تم إرسال إشعار تجريبي وتنبيه صوتي بنجاح 🔔'),
+                              backgroundColor: AppColors.royal,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.volume_up, size: 16),
+                        label: const Text('تجربة الإشعار والصوت'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.royal,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final granted = await NotificationService.requestPermission();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(granted
+                                ? 'إذن الإشعارات مفعّل بنجاح ✓'
+                                : 'يرجى تفعيل الإذن من إعدادات الهاتف'),
+                            backgroundColor: granted ? const Color(0xFF10B981) : Colors.orange,
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.security, size: 16),
+                      label: const Text('فحص الإذن'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
 
           // Logout Button
           SizedBox(

@@ -19,6 +19,8 @@ void main() async {
       // ignore: deprecated_member_use
       anonKey: SupabaseService.anonKey,
     );
+    // Start listening for real-time booking push alerts
+    NotificationService.startRealtimeListener();
   } catch (e) {
     debugPrint('Supabase initialization notice: $e');
   }

@@ -1,21 +1,27 @@
-import React, { useState } from 'react';
-import { Save, Check, Clock, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, Check, Clock, Calendar, Sparkles } from 'lucide-react';
 import { useContent } from '../../../context/ContentContext';
 
 export const HoursTab: React.FC = () => {
-  const { data, updateClinic } = useContent();
-  const { clinic } = data;
+  const { data, updateClinic, updateBookingSettings } = useContent();
+  const { clinic, bookingSettings } = data;
 
   const [form, setForm] = useState({
     hoursRegular: clinic.hoursRegular,
     hoursFriday: clinic.hoursFriday,
   });
 
+  const [slotDuration, setSlotDuration] = useState<number>(bookingSettings.slotDurationMinutes || 60);
   const [savedNotice, setSavedNotice] = useState(false);
+
+  useEffect(() => {
+    setSlotDuration(bookingSettings.slotDurationMinutes || 60);
+  }, [bookingSettings.slotDurationMinutes]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateClinic(form);
+    updateBookingSettings({ slotDurationMinutes: slotDuration });
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 3000);
   };
@@ -24,8 +30,8 @@ export const HoursTab: React.FC = () => {
     <form onSubmit={handleSave} className="space-y-6 text-right max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-white">مواعيد عمل العيادة</h3>
-          <p className="text-xs text-slate-400">تحديث أوقات الاستقبال الأسبوعية ويوم الجمعة</p>
+          <h3 className="text-lg font-bold text-white">مواعيد عمل العيادة وفترات الحجز</h3>
+          <p className="text-xs text-slate-400">تحديث أوقات الاستقبال الأسبوعية وفترات الحجز المتاحة للمرضى</p>
         </div>
         <button
           type="submit"
@@ -39,9 +45,66 @@ export const HoursTab: React.FC = () => {
       {savedNotice && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
           <Check className="w-4 h-4" />
-          <span>تم حفظ مواعيد العمل بنجاح.</span>
+          <span>تم حفظ مواعيد العمل وفترات الحجز بنجاح.</span>
         </div>
       )}
+
+      {/* Slot Interval Selector */}
+      <div className="bg-slate-800/80 rounded-2xl p-6 border border-purple-500/30 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <label className="text-xs font-bold text-white flex items-center gap-2">
+            <Clock className="w-4 h-4 text-purple-400" />
+            <span>الفاصل الزمني بين مواعيد الكشف (مدة الموعد):</span>
+          </label>
+          <span className="text-[11px] text-brand-lime font-bold">
+            {slotDuration === 15 ? 'كل ربع ساعة (15 دقيقة)' :
+             slotDuration === 30 ? 'كل نصف ساعة (30 دقيقة)' :
+             slotDuration === 45 ? 'كل ساعة إلا ربع (45 دقيقة)' :
+             'كل ساعة كاملة (60 دقيقة)'}
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-400 leading-relaxed">
+          يمكنك تغيير تكرار المواعيد في أي وقت، وسيتم تقسيم ساعات العمل بالموقع تلقائياً بناءً على اختيارك:
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+          {[
+            { minutes: 15, label: 'كل ربع ساعة', badge: '15 دقيقة', sub: '4 مواعيد / ساعة' },
+            { minutes: 30, label: 'كل نصف ساعة', badge: '30 دقيقة', sub: 'موعدان / ساعة' },
+            { minutes: 45, label: 'ساعة إلا ربع', badge: '45 دقيقة', sub: 'فحص واستشارة' },
+            { minutes: 60, label: 'كل ساعة', badge: '60 دقيقة', sub: 'موعد واحد / ساعة' },
+          ].map(opt => {
+            const isSelected = slotDuration === opt.minutes;
+            return (
+              <button
+                key={opt.minutes}
+                type="button"
+                onClick={() => setSlotDuration(opt.minutes)}
+                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
+                  isSelected
+                    ? 'bg-purple-600/30 border-purple-400 text-white shadow-md shadow-purple-500/20 ring-1 ring-purple-400'
+                    : 'bg-slate-900/90 border-slate-700/70 text-slate-300 hover:border-slate-600 hover:bg-slate-900'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                    {opt.label}
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                    isSelected ? 'bg-purple-500 text-white font-bold' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {opt.badge}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {opt.sub}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/60 space-y-4">
         <div>

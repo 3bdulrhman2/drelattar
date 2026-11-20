@@ -109,6 +109,7 @@ export interface WorkingHoursConfig {
   endTimeRegular?: string;   // "21:00"
   startTimeFriday?: string;  // "16:00"
   endTimeFriday?: string;    // "22:00"
+  slotDurationMinutes?: number; // 15, 30, 45, 60
 }
 
 /**
@@ -167,9 +168,10 @@ export const isDateClosed = (
 };
 
 /**
- * Generates 1 appointment slot per hour based on dynamic clinic working hours.
+ * Generates appointment slots based on dynamic clinic working hours and interval.
+ * Supported intervals: 15 mins (كل ربع ساعة), 30 mins (كل نصف ساعة), 45 mins (ساعة إلا ربع), 60 mins (كل ساعة).
  * Rules:
- * 1. Exactly 1 slot per hour (:00).
+ * 1. Slots generated at the configured interval step.
  * 2. If booking for today, slot must be at least 3 hours (180 mins) in the future.
  * 3. Booked slots are marked unavailable.
  * 4. Start and end hours adapt dynamically to admin settings.
@@ -184,19 +186,32 @@ export const generateDaySlots = (
   const isFriday = dayOfWeek === 'Friday';
 
   // Dynamic hours resolution:
-  const parseHour = (timeStr?: string, defaultHour: number = 13) => {
-    if (!timeStr) return defaultHour;
-    const h = parseInt(timeStr.split(':')[0], 10);
-    return isNaN(h) ? defaultHour : h;
+  const parseTime = (timeStr?: string, defaultHour: number = 13, defaultMinute: number = 0) => {
+    if (!timeStr) return { hour: defaultHour, minute: defaultMinute };
+    const parts = timeStr.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1] || '0', 10);
+    return {
+      hour: isNaN(h) ? defaultHour : h,
+      minute: isNaN(m) ? defaultMinute : m,
+    };
   };
 
-  const startHour = isFriday
-    ? parseHour(hoursConfig?.startTimeFriday, 16)
-    : parseHour(hoursConfig?.startTimeRegular, 13);
+  const startTime = isFriday
+    ? parseTime(hoursConfig?.startTimeFriday, 16, 0)
+    : parseTime(hoursConfig?.startTimeRegular, 13, 0);
 
-  const endHour = isFriday
-    ? parseHour(hoursConfig?.endTimeFriday, 22)
-    : parseHour(hoursConfig?.endTimeRegular, 21);
+  const endTime = isFriday
+    ? parseTime(hoursConfig?.endTimeFriday, 22, 0)
+    : parseTime(hoursConfig?.endTimeRegular, 21, 0);
+
+  const startTotalMinutes = startTime.hour * 60 + startTime.minute;
+  const endTotalMinutes = endTime.hour * 60 + endTime.minute;
+
+  const validSteps = [15, 30, 45, 60];
+  const step = hoursConfig?.slotDurationMinutes && validSteps.includes(Number(hoursConfig.slotDurationMinutes))
+    ? Number(hoursConfig.slotDurationMinutes)
+    : 60;
 
   const { cairoTodayStr, cairoHour, cairoMinute } = getCairoDateTime();
   const isToday = dateStr === cairoTodayStr;
@@ -204,14 +219,13 @@ export const generateDaySlots = (
 
   const slots: { time: string; labelAr: string; isAvailable: boolean }[] = [];
 
-  for (let h = startHour; h < endHour; h++) {
-    // Exactly 1 slot each hour at :00
-    const m = 0;
-    const timeStr = `${h.toString().padStart(2, '0')}:00`;
-    const slotTotalMinutes = h * 60 + m;
+  for (let totalMin = startTotalMinutes; totalMin < endTotalMinutes; totalMin += step) {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 
     // Requirement: Must book at least 3 hours (180 minutes) before the appointment
-    const minutesUntilSlot = slotTotalMinutes - currentCairoTotalMinutes;
+    const minutesUntilSlot = totalMin - currentCairoTotalMinutes;
     const isTooSoon = isToday && minutesUntilSlot < 180;
 
     // Check if already booked

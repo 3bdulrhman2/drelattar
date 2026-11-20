@@ -18,9 +18,11 @@ import {
   ShieldCheck,
   RefreshCw,
   Bell,
+  BellRing,
   Sparkles,
 } from 'lucide-react';
 import { useContent } from '../../context/ContentContext';
+import { requestWebNotificationPermission, triggerLocalNotification } from '../../lib/pushNotifications';
 import {
   getCairoDateTime,
   getCairoTodayString,
@@ -67,6 +69,28 @@ export const SecretaryDashboard: React.FC<SecretaryDashboardProps> = ({
   const [holidayStart, setHolidayStart] = useState(todayStr);
   const [holidayEnd, setHolidayEnd] = useState(todayStr);
   const [holidayReason, setHolidayReason] = useState('');
+
+  // Browser Notification State
+  const [notificationStatus, setNotificationStatus] = useState<string>(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'unsupported';
+  });
+
+  const handleToggleNotifications = async () => {
+    const perm = await requestWebNotificationPermission();
+    setNotificationStatus(perm);
+    if (perm === 'granted') {
+      triggerLocalNotification({
+        title: 'تم تفعيل التنبيهات بنجاح! 🔔',
+        body: 'سيصلك تنبيه صوتي وإشعار فوري عند قيام أي مريض بحجز موعد جديد بالعيادة.',
+        type: 'new_booking',
+      });
+    } else if (perm === 'denied') {
+      alert('الإشعارات محظورة في إعدادات المتصفح. لتفعيلها: اضغط على أيقونة القفل بجانب رابط الموقع في شريط العنوان واختر "سماح" للإشعارات.');
+    }
+  };
 
   // Future Date Closure State
   const [selectedCloseDate, setSelectedCloseDate] = useState(todayStr);
@@ -188,6 +212,33 @@ export const SecretaryDashboard: React.FC<SecretaryDashboardProps> = ({
 
           {/* Quick Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Notification Activation Button */}
+            <button
+              onClick={handleToggleNotifications}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                notificationStatus === 'granted'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                  : 'bg-brand-royal/20 border-brand-cyan/40 text-brand-cyan hover:bg-brand-royal/40 animate-pulse'
+              }`}
+              title={
+                notificationStatus === 'granted'
+                  ? 'الإشعارات الصوتية والفورية مفعلة (انقر لإرسال تنبيه تجريبي)'
+                  : 'انقر لتفعيل التنبيه الصوتي وإشعارات المتصفح للحجوزات الجديدة'
+              }
+            >
+              {notificationStatus === 'granted' ? (
+                <>
+                  <BellRing className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">الإشعارات مفعّلة</span>
+                </>
+              ) : (
+                <>
+                  <Bell className="w-3.5 h-3.5 text-brand-cyan" />
+                  <span>تفعيل التنبيهات</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={onBackToSite}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"

@@ -61,11 +61,9 @@ export const FutureBookingTab: React.FC = () => {
     { id: 'Friday', label: 'الجمعة' },
   ];
 
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateBookingSettings(settings);
-    // Also keep clinic displayed working hours text in sync
-    updateClinic({
+  const handleSaveSettings = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    updateBookingSettings(settings, {
       hoursRegular: `السبت إلى الخميس: من ${formatTimeArabic(settings.startTime || '13:00')} حتى ${formatTimeArabic(settings.endTime || '21:00')}`,
       hoursFriday: `الجمعة: من ${formatTimeArabic(settings.startTimeFriday || '16:00')} حتى ${formatTimeArabic(settings.endTimeFriday || '22:00')}`,
     });
@@ -197,6 +195,66 @@ export const FutureBookingTab: React.FC = () => {
         </h4>
 
         {/* Dynamic Working Hours Control */}
+        {/* Slot Duration / Interval Selector */}
+        <div className="bg-slate-900/80 p-4 rounded-xl border border-purple-500/30 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-purple-400" />
+              <span>الفاصل الزمني بين المواعيد (تكرار الحجز):</span>
+            </span>
+            <span className="text-[11px] text-brand-lime font-bold">
+              المفعل حالياً: {
+                settings.slotDurationMinutes === 15 ? 'كل ربع ساعة (15 دقيقة)' :
+                settings.slotDurationMinutes === 30 ? 'كل نصف ساعة (30 دقيقة)' :
+                settings.slotDurationMinutes === 45 ? 'كل ساعة إلا ربع (45 دقيقة)' :
+                'كل ساعة كاملة (60 دقيقة)'
+              }
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            اختر الفاصل الزمني المطلوب لتقسيم ساعات العمل وتوليد فترات الكشف المتاحة للمرضى تلقائياً:
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {[
+              { minutes: 15, label: 'كل ربع ساعة', badge: '15 دقيقة', sub: '4 مواعيد / ساعة' },
+              { minutes: 30, label: 'كل نصف ساعة', badge: '30 دقيقة', sub: 'موعدان / ساعة' },
+              { minutes: 45, label: 'ساعة إلا ربع', badge: '45 دقيقة', sub: 'فحص واستشارة' },
+              { minutes: 60, label: 'كل ساعة', badge: '60 دقيقة', sub: 'موعد واحد / ساعة' },
+            ].map(option => {
+              const isSelected = (settings.slotDurationMinutes || 60) === option.minutes;
+              return (
+                <button
+                  key={option.minutes}
+                  type="button"
+                  onClick={() => setSettings(prev => ({ ...prev, slotDurationMinutes: option.minutes }))}
+                  className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-purple-600/30 border-purple-400 text-white shadow-md shadow-purple-500/20 ring-1 ring-purple-400'
+                      : 'bg-slate-800/80 border-slate-700/70 text-slate-300 hover:border-slate-600 hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                      {option.label}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                      isSelected ? 'bg-purple-500 text-white font-bold' : 'bg-slate-700 text-slate-400'
+                    }`}>
+                      {option.badge}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    {option.sub}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Operating Hours Configuration (Regular & Friday) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           {/* Regular Days (Saturday - Thursday) */}
@@ -206,7 +264,12 @@ export const FutureBookingTab: React.FC = () => {
                 <Clock className="w-3.5 h-3.5 text-brand-cyan" />
                 <span>مواعيد السبت إلى الخميس:</span>
               </span>
-              <span className="text-[11px] text-slate-400">حجز واحد لكل ساعة</span>
+              <span className="text-[11px] text-slate-400 font-mono">
+                {settings.slotDurationMinutes === 15 ? 'كل ربع ساعة' :
+                 settings.slotDurationMinutes === 30 ? 'كل نصف ساعة' :
+                 settings.slotDurationMinutes === 45 ? 'كل 45 دقيقة' :
+                 'حجز واحد لكل ساعة'}
+              </span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -243,7 +306,12 @@ export const FutureBookingTab: React.FC = () => {
                 <Clock className="w-3.5 h-3.5 text-brand-lime" />
                 <span>مواعيد يوم الجمعة:</span>
               </span>
-              <span className="text-[11px] text-slate-400">حجز واحد لكل ساعة</span>
+              <span className="text-[11px] text-slate-400 font-mono">
+                {settings.slotDurationMinutes === 15 ? 'كل ربع ساعة' :
+                 settings.slotDurationMinutes === 30 ? 'كل نصف ساعة' :
+                 settings.slotDurationMinutes === 45 ? 'كل 45 دقيقة' :
+                 'حجز واحد لكل ساعة'}
+              </span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -308,7 +376,12 @@ export const FutureBookingTab: React.FC = () => {
             <span>قواعد الحجز الذكية الصارمة:</span>
           </p>
           <ul className="text-[11px] text-slate-400 space-y-1 pr-1 list-disc list-inside leading-relaxed">
-            <li><strong className="text-white">حجز واحد فقط كل ساعة:</strong> يتم توليد ميعاد واحد فقط في رأس كل ساعة (:00) لمنع أي تكدس للمرضى.</li>
+            <li><strong className="text-white">الفاصل الزمني التلقائي:</strong> يتم تقسيم ساعات العمل تلقائياً بحسب اختيارك ({
+              settings.slotDurationMinutes === 15 ? 'كل ربع ساعة - 15 دقيقة' :
+              settings.slotDurationMinutes === 30 ? 'كل نصف ساعة - 30 دقيقة' :
+              settings.slotDurationMinutes === 45 ? 'كل 45 دقيقة' :
+              'كل ساعة - 60 دقيقة'
+            }) لمنع أي تكدس للمرضى.</li>
             <li><strong className="text-white">مهلة 3 ساعات مسبقة:</strong> يشترط على المريض الحجز قبل الموعد بـ 3 ساعات على الأقل، وتُستبعد تلقائياً المواعيد الأقرب من ذلك.</li>
             <li><strong className="text-white">إخفاء الموعد المحجوز:</strong> الموعد الذي يقوم مريض بحجزه يختفي فوراً ولا يمكن لأي مريض آخر حجزه.</li>
             <li><strong className="text-white">التحديث اللحظي للمواعيد:</strong> أي تعديل في ساعات العمل أعلاه ينعكس فورياً وسحابياً على مواعيد الحجز المتاحة بالموقع.</li>

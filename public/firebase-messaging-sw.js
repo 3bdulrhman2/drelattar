@@ -6,14 +6,15 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-// Standard Firebase config placeholder (populated from environment or Firebase Console)
+// Official Firebase config for Dr. Elattar Clinic project
 const firebaseConfig = {
-  apiKey: "AIzaSy_YOUR_API_KEY",
-  authDomain: "drelattar-clinic.firebaseapp.com",
-  projectId: "drelattar-clinic",
-  storageBucket: "drelattar-clinic.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef"
+  apiKey: "AIzaSyB0CX4kNXIu_yKgcpQGcSVyNR4rfXWMhus",
+  authDomain: "drelattarclinic.firebaseapp.com",
+  projectId: "drelattarclinic",
+  storageBucket: "drelattarclinic.firebasestorage.app",
+  messagingSenderId: "75146239883",
+  appId: "1:75146239883:web:9fb39ec1d616370d6bd98e",
+  measurementId: "G-ST5XMXMVBT"
 };
 
 try {
