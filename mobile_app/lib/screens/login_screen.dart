@@ -97,24 +97,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo
-                  Container(
+                  SizedBox(
                     width: 90,
                     height: 90,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x15123E91),
-                          blurRadius: 16,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/images/clinic_logo.png',
-                      fit: BoxFit.contain,
+                    child: Hero(
+                      tag: 'clinic_header_logo',
+                      child: Image.asset(
+                        'assets/images/clinic_logo.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

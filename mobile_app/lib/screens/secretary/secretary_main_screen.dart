@@ -46,16 +46,15 @@ class _SecretaryMainScreenState extends State<SecretaryMainScreen> {
         title: Text(_appBarTitle),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: Container(
-              width: 32,
-              height: 32,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+            padding: const EdgeInsets.only(left: 14),
+            child: Hero(
+              tag: 'clinic_header_logo',
+              child: Image.asset(
+                'assets/images/clinic_logo.png',
+                width: 38,
+                height: 38,
+                fit: BoxFit.contain,
               ),
-              child: Image.asset('assets/images/clinic_logo.png', fit: BoxFit.contain),
             ),
           ),
         ],

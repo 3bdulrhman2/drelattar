@@ -20,13 +20,76 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
   bool _isLoading = true;
   final ImagePicker _picker = ImagePicker();
 
+  // Controllers for working hours
+  late TextEditingController _regularHoursController;
+  late TextEditingController _fridayHoursController;
+  String _startTimeRegular = '13:00';
+  String _endTimeRegular = '21:00';
+  String _startTimeFriday = '16:00';
+  String _endTimeFriday = '22:00';
+
+  // Booking rules state
+  int _slotDuration = 60;
+  int _minAdvanceHours = 3;
+  int _maxAdvanceDays = 14;
+  List<String> _allowedDays = [
+    'Saturday',
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday'
+  ];
+  bool _enableFutureBooking = true;
+
   @override
   void initState() {
     super.initState();
+    _regularHoursController = TextEditingController();
+    _fridayHoursController = TextEditingController();
+
     _reviews = SupabaseService.cachedReviews;
     _settings = SupabaseService.cachedSettings;
     _isLoading = _reviews.isEmpty && _settings == null;
+
+    if (_settings != null) {
+      _extractFormValues(_settings!);
+    }
+
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _regularHoursController.dispose();
+    _fridayHoursController.dispose();
+    super.dispose();
+  }
+
+  void _extractFormValues(Map<String, dynamic> settings) {
+    final clinic = Map<String, dynamic>.from(settings['clinic'] ?? {});
+    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
+
+    _regularHoursController.text =
+        clinic['hoursRegular']?.toString() ?? 'السبت إلى الخميس: من 1:00 ظهراً حتى 9:00 مساءً';
+    _fridayHoursController.text =
+        clinic['hoursFriday']?.toString() ?? 'يوم الجمعة: من 4:00 عصراً حتى 10:00 مساءً';
+
+    _startTimeRegular = bookingSettings['startTime']?.toString() ?? '13:00';
+    _endTimeRegular = bookingSettings['endTime']?.toString() ?? '21:00';
+    _startTimeFriday = bookingSettings['startTimeFriday']?.toString() ?? '16:00';
+    _endTimeFriday = bookingSettings['endTimeFriday']?.toString() ?? '22:00';
+
+    _slotDuration = int.tryParse(bookingSettings['slotDurationMinutes']?.toString() ?? '60') ?? 60;
+    _minAdvanceHours = int.tryParse(bookingSettings['minAdvanceHours']?.toString() ?? '3') ?? 3;
+    _maxAdvanceDays = int.tryParse(bookingSettings['maxAdvanceDays']?.toString() ?? '14') ?? 14;
+
+    if (bookingSettings['allowedDays'] is List) {
+      _allowedDays = List<String>.from(bookingSettings['allowedDays']);
+    }
+
+    _enableFutureBooking = bookingSettings['enableFutureBooking'] != false;
   }
 
   Future<void> _loadData({bool forceRefresh = false}) async {
@@ -43,6 +106,9 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
     setState(() {
       _reviews = results[0] as List<SocialReview>;
       _settings = results[1] as Map<String, dynamic>?;
+      if (_settings != null) {
+        _extractFormValues(_settings!);
+      }
       _isLoading = false;
     });
   }
@@ -79,7 +145,81 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
     }
   }
 
-  // Helper widget to render review image regardless of format (base64, relative URL, full URL)
+  // Quick slot change handler
+  Future<void> _handleSlotDurationSelect(int minutes) async {
+    setState(() => _slotDuration = minutes);
+
+    if (_settings != null) {
+      final bSettings = Map<String, dynamic>.from(_settings?['bookingSettings'] ?? {});
+      bSettings['slotDurationMinutes'] = minutes;
+      _settings?['bookingSettings'] = bSettings;
+    }
+
+    final success = await SupabaseService.updateSlotDuration(minutes);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'تم تغيير مدة الموعد إلى ($minutes دقيقة) وتحديث الموقع فوراً! ⏱️'
+                : 'حدث خطأ أثناء حفظ مدة الموعد',
+          ),
+          backgroundColor: success ? const Color(0xFF059669) : Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  // Save working hours
+  Future<void> _saveWorkingHours() async {
+    final success = await SupabaseService.updateClinicWorkingHours(
+      hoursRegular: _regularHoursController.text.trim(),
+      hoursFriday: _fridayHoursController.text.trim(),
+      startTime: _startTimeRegular,
+      endTime: _endTimeRegular,
+      startTimeFriday: _startTimeFriday,
+      endTimeFriday: _endTimeFriday,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'تم حفظ وتحديث مواعيد العمل بالموقع الإلكتروني بنجاح! 🕒'
+                : 'تعذر حفظ مواعيد العمل',
+          ),
+          backgroundColor: success ? const Color(0xFF059669) : Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Save advance booking rules
+  Future<void> _saveBookingRules() async {
+    final success = await SupabaseService.updateBookingRules(
+      minAdvanceHours: _minAdvanceHours,
+      maxAdvanceDays: _maxAdvanceDays,
+      allowedDays: _allowedDays,
+      enableFutureBooking: _enableFutureBooking,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'تم حفظ إعدادات وقواعد الحجز بالموقع بنجاح! 📅'
+                : 'تعذر حفظ إعدادات الحجز',
+          ),
+          backgroundColor: success ? const Color(0xFF059669) : Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Helper widget to render review image
   Widget _buildReviewImage(String? imageUrl, {double width = 54, double height = 54, double radius = 10}) {
     if (imageUrl == null || imageUrl.trim().isEmpty) {
       return Container(
@@ -116,7 +256,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
       } catch (_) {}
     }
 
-    // 2. Full HTTP/HTTPS URL
+    // 2. Full HTTP/HTTPS or Relative URL
     String targetUrl = trimmed;
     if (trimmed.startsWith('/')) {
       targetUrl = 'https://elattar.site$trimmed';
@@ -130,7 +270,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
         height: height,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => _buildFallbackThumbnail(width, height, radius),
-        loadingBuilder: (_, child, progress) {
+        loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
           return Container(
             width: width,
@@ -216,7 +356,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
     );
   }
 
-  // Dialog to Add a new Review (with mobile gallery/camera picker)
+  // Dialog to Add a new Review
   void _showAddReviewDialog() {
     final titleController = TextEditingController();
     final nameController = TextEditingController();
@@ -273,12 +413,9 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                   decoration: const InputDecoration(hintText: 'الحمد لله الحالة استقرت تماماً بفضل الله والدكتور...'),
                 ),
                 const SizedBox(height: 12),
-
-                // Image Selection Section
                 const Text('صورة التقييم / المحادثة:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
 
-                // Instant preview of chosen image
                 if (selectedBase64Image != null || imageController.text.trim().isNotEmpty) ...[
                   Center(
                     child: Stack(
@@ -307,7 +444,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                   const SizedBox(height: 10),
                 ],
 
-                // Mobile Picker Buttons
                 Row(
                   children: [
                     Expanded(
@@ -350,7 +486,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                     if (val.isNotEmpty) setDialogState(() => selectedBase64Image = null);
                   },
                   decoration: const InputDecoration(
-                    hintText: 'أو الصق رابط صورة خارجي https://...',
+                    hintText: 'أو أدخل رابط صورة خارجي https://...',
                     contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   ),
                   style: const TextStyle(fontSize: 11),
@@ -382,7 +518,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
 
                 if (ctx.mounted) Navigator.pop(ctx);
 
-                // Optimistic UI update
                 setState(() {
                   _reviews.insert(0, review);
                 });
@@ -398,7 +533,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
     );
   }
 
-  // Dialog to Edit existing Review (with mobile gallery/camera picker & pencil trigger)
+  // Dialog to Edit existing Review
   void _showEditReviewDialog(SocialReview rev) {
     final titleController = TextEditingController(text: rev.title ?? '');
     final nameController = TextEditingController(text: rev.patientName ?? '');
@@ -458,8 +593,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                   decoration: const InputDecoration(hintText: 'نص التقييم...'),
                 ),
                 const SizedBox(height: 12),
-
-                // Image Section
                 const Text('صورة التقييم الحالية:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
 
@@ -470,7 +603,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                   const SizedBox(height: 10),
                 ],
 
-                // Pick from phone
                 Row(
                   children: [
                     Expanded(
@@ -534,7 +666,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
 
                 if (ctx.mounted) Navigator.pop(ctx);
 
-                // Optimistic UI update
                 setState(() {
                   final idx = _reviews.indexWhere((r) => r.id == rev.id);
                   if (idx != -1) {
@@ -559,7 +690,15 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
       return const Center(child: CircularProgressIndicator(color: AppColors.royal));
     }
 
-    final clinic = Map<String, dynamic>.from(_settings?['clinic'] ?? {});
+    final dayLabels = [
+      {'id': 'Saturday', 'label': 'السبت'},
+      {'id': 'Sunday', 'label': 'الأحد'},
+      {'id': 'Monday', 'label': 'الاثنين'},
+      {'id': 'Tuesday', 'label': 'الثلاثاء'},
+      {'id': 'Wednesday', 'label': 'الأربعاء'},
+      {'id': 'Thursday', 'label': 'الخميس'},
+      {'id': 'Friday', 'label': 'الجمعة'},
+    ];
 
     return RefreshIndicator(
       onRefresh: () => _loadData(forceRefresh: true),
@@ -570,7 +709,396 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Web Admin Banner Shortcut
+            // ================= CARD 1: SLOT DURATION INTERVAL SELECTOR =================
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.purple.shade200, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.purple.withValues(alpha: 0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.timer_outlined, color: Colors.purple, size: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'الفاصل الزمني بين المواعيد',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.purple.shade200),
+                        ),
+                        child: Text(
+                          _slotDuration == 15
+                              ? 'كل ربع ساعة'
+                              : _slotDuration == 30
+                                  ? 'كل نصف ساعة'
+                                  : _slotDuration == 45
+                                      ? 'ساعة إلا ربع'
+                                      : 'كل ساعة كاملة',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'اختر مدة كل كشف لتقسيم ساعات العمل بالموقع الإلكتروني تلقائياً فورياً:',
+                    style: TextStyle(fontSize: 11, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 4 Dynamic Duration Cards
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 1.8,
+                    children: [
+                      _buildSlotOptionCard(
+                        minutes: 15,
+                        label: 'كل ربع ساعة',
+                        sub: '4 مواعيد / ساعة',
+                        badge: '15 دقيقة',
+                      ),
+                      _buildSlotOptionCard(
+                        minutes: 30,
+                        label: 'كل نصف ساعة',
+                        sub: 'موعدان / ساعة',
+                        badge: '30 دقيقة',
+                      ),
+                      _buildSlotOptionCard(
+                        minutes: 45,
+                        label: 'ساعة إلا ربع',
+                        sub: 'فحص واستشارة',
+                        badge: '45 دقيقة',
+                      ),
+                      _buildSlotOptionCard(
+                        minutes: 60,
+                        label: 'كل ساعة',
+                        sub: 'موعد واحد / ساعة',
+                        badge: '60 دقيقة',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ================= CARD 2: WORKING HOURS MANAGEMENT =================
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.royal.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.royal.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.access_time_filled, color: AppColors.royal, size: 20),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'مواعيد وساعات العمل بالعيادة',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'تعديل نصوص وساعات العمل التي تظهر في ترويسة الموقع ونظام الحجز:',
+                    style: TextStyle(fontSize: 11, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Regular days (Saturday to Thursday)
+                  const Text('السبت إلى الخميس:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _regularHoursController,
+                    decoration: const InputDecoration(
+                      hintText: 'السبت إلى الخميس: من 1:00 ظهراً حتى 9:00 مساءً',
+                      prefixIcon: Icon(Icons.calendar_month, size: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTimeDropdown(
+                          label: 'ساعة البدء:',
+                          value: _startTimeRegular,
+                          onChanged: (val) => setState(() => _startTimeRegular = val!),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildTimeDropdown(
+                          label: 'ساعة الانتهاء:',
+                          value: _endTimeRegular,
+                          onChanged: (val) => setState(() => _endTimeRegular = val!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Friday
+                  const Text('يوم الجمعة:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _fridayHoursController,
+                    decoration: const InputDecoration(
+                      hintText: 'يوم الجمعة: من 4:00 عصراً حتى 10:00 مساءً',
+                      prefixIcon: Icon(Icons.wb_sunny_outlined, size: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTimeDropdown(
+                          label: 'ساعة البدء (الجمعة):',
+                          value: _startTimeFriday,
+                          onChanged: (val) => setState(() => _startTimeFriday = val!),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildTimeDropdown(
+                          label: 'ساعة الانتهاء (الجمعة):',
+                          value: _endTimeFriday,
+                          onChanged: (val) => setState(() => _endTimeFriday = val!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _saveWorkingHours,
+                      icon: const Icon(Icons.save, size: 18),
+                      label: const Text('حفظ وتحديث مواعيد العمل بالموقع'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ================= CARD 3: ADVANCE BOOKING RULES =================
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.royal.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.settings_suggest, color: Color(0xFF047857), size: 20),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'قواعد وشروط الحجز المسبق بالموقع',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'التحكم في فترات الحجز المسبق وإتاحة أيام الأسبوع للزوار:',
+                    style: TextStyle(fontSize: 11, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Rule A: Minimum Advance Notice Hours
+                  const Text('شرط الحجز قبل الموعد بـ:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                  const SizedBox(height: 4),
+                  const Text('الحد الأدنى لمهلة الحجز قبل موعد الكشف:', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [1, 2, 3, 4, 6].map((hours) {
+                      final isSelected = _minAdvanceHours == hours;
+                      return ChoiceChip(
+                        label: Text(
+                          hours == 1
+                              ? 'ساعة واحدة'
+                              : hours == 2
+                                  ? 'ساعتان'
+                                  : '$hours ساعات',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (sel) {
+                          if (sel) setState(() => _minAdvanceHours = hours);
+                        },
+                        selectedColor: AppColors.royal,
+                        labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.dark),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Rule B: Maximum Advance Days
+                  const Text('فترة فتح جدول المواعيد مقدماً:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                  const SizedBox(height: 4),
+                  const Text('أقصى مدة مستقبلية يسمح للمريض بالحجز خلالها:', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [7, 14, 30, 60].map((days) {
+                      final isSelected = _maxAdvanceDays == days;
+                      return ChoiceChip(
+                        label: Text(
+                          '$days يوماً',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (sel) {
+                          if (sel) setState(() => _maxAdvanceDays = days);
+                        },
+                        selectedColor: AppColors.royal,
+                        labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.dark),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Rule C: Allowed Days
+                  const Text('أيام استقبال الحجوزات المتاحة بالأسبوع:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                  const SizedBox(height: 4),
+                  const Text('اضغط على أي يوم لتفعيله أو إيقافه من جدول الحجز:', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: dayLabels.map((d) {
+                      final id = d['id']!;
+                      final isAllowed = _allowedDays.contains(id);
+                      return FilterChip(
+                        label: Text(d['label']!, style: const TextStyle(fontSize: 11)),
+                        selected: isAllowed,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              if (!_allowedDays.contains(id)) _allowedDays.add(id);
+                            } else {
+                              _allowedDays.remove(id);
+                            }
+                          });
+                        },
+                        selectedColor: const Color(0xFFDCFCE7),
+                        checkmarkColor: const Color(0xFF047857),
+                        labelStyle: TextStyle(
+                          color: isAllowed ? const Color(0xFF047857) : AppColors.muted,
+                          fontWeight: isAllowed ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Rule D: Enable / Disable Booking System
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('تفعيل نظام الحجز الإلكتروني بالموقع', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('عند الإيقاف، يتم إخفاء مواعيد الحجز من الموقع مؤقتاً', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                    value: _enableFutureBooking,
+                    activeThumbColor: AppColors.royal,
+                    activeTrackColor: AppColors.royal.withValues(alpha: 0.3),
+                    onChanged: (val) => setState(() => _enableFutureBooking = val),
+                  ),
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _saveBookingRules,
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      label: const Text('حفظ وتطبيق قواعد الحجز بالموقع'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ================= CARD 4: WEB ADMIN CMS SHORTCUT =================
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -610,7 +1138,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: OutlinedButton.icon(
                       onPressed: _openWebAdmin,
                       icon: const Icon(Icons.open_in_browser, size: 18),
                       label: const Text('فتح لوحة الموقع elattar.site/admin'),
@@ -621,46 +1149,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
             ),
             const SizedBox(height: 16),
 
-            // Clinic Working Hours Summary
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('مواعيد العمل الحالية بالعيادة', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 16, color: AppColors.medical),
-                      const SizedBox(width: 8),
-                      Text(
-                        'السبت إلى الخميس: ${clinic['hoursRegular'] ?? 'من 1:00 ظهراً حتى 9:00 مساءً'}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.dark),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time_filled, size: 16, color: Colors.purple),
-                      const SizedBox(width: 8),
-                      Text(
-                        'يوم الجمعة: ${clinic['hoursFriday'] ?? 'من 4:00 عصراً حتى 10:00 مساءً'}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.dark),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Social Reviews Manager Card
+            // ================= CARD 5: SOCIAL REVIEWS MANAGER =================
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -708,7 +1197,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // Clickable thumbnail with preview modal
                               GestureDetector(
                                 onTap: () => _showImagePreviewDialog(rev),
                                 child: Stack(
@@ -730,8 +1218,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-
-                              // Review Details
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -766,19 +1252,14 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                                   ],
                                 ),
                               ),
-
-                              // Action Buttons: Edit Pencil & Delete Trash
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Edit Pencil Icon
                                   IconButton(
                                     icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.royal),
                                     tooltip: 'تعديل التقييم والصورة',
                                     onPressed: () => _showEditReviewDialog(rev),
                                   ),
-
-                                  // Delete Icon
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
                                     tooltip: 'حذف التقييم',
@@ -816,9 +1297,110 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSlotOptionCard({
+    required int minutes,
+    required String label,
+    required String sub,
+    required String badge,
+  }) {
+    final isSelected = _slotDuration == minutes;
+    return GestureDetector(
+      onTap: () => _handleSlotDurationSelect(minutes),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.purple.shade50 : AppColors.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? Colors.purple : AppColors.border,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.purple.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.purple.shade900 : AppColors.dark,
+                  ),
+                ),
+                if (isSelected)
+                  const Icon(Icons.check_circle, size: 16, color: Colors.purple),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              style: TextStyle(
+                fontSize: 10,
+                color: isSelected ? Colors.purple.shade700 : AppColors.muted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeDropdown({
+    required String label,
+    required String value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final times = [
+      '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00',
+      '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
+    ];
+    if (!times.contains(value)) times.add(value);
+    times.sort();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+        const SizedBox(height: 4),
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          isDense: true,
+          decoration: const InputDecoration(
+            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          ),
+          items: times.map((t) {
+            final hour = int.parse(t.split(':')[0]);
+            final display = hour > 12
+                ? '${hour - 12}:00 م'
+                : hour == 12
+                    ? '12:00 م'
+                    : '$hour:00 ص';
+            return DropdownMenuItem(value: t, child: Text('$t ($display)', style: const TextStyle(fontSize: 11)));
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }

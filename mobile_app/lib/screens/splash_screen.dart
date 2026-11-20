@@ -22,65 +22,63 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    // Fast, crisp animation like WhatsApp / Facebook
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 450),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.88, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.90, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _fadeAnimation = Tween<double>(begin: 0.2, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
 
     _controller.forward();
-    _warmUpAndCheckAuth();
+    _checkAuthAndTransition();
   }
 
-  Future<void> _warmUpAndCheckAuth() async {
+  Future<void> _checkAuthAndTransition() async {
+    // Parallel fast execution: auth check + silent background data warm-up
     final results = await Future.wait([
       AuthService.loadUser(),
-      SupabaseService.getClinicSettings(),
-      SupabaseService.getAppointments(),
-      Future.delayed(const Duration(milliseconds: 1600)),
+      // Tiny delay (550ms) so the eye registers the brand logo, then immediately glides into header
+      Future.delayed(const Duration(milliseconds: 550)),
     ]);
 
     if (!mounted) return;
 
     final user = results[0];
 
+    // Background silent refresh of network data while UI opens instantly
+    SupabaseService.getClinicSettings(forceRefresh: true);
+    SupabaseService.getAppointments(forceRefresh: true);
+
+    Widget targetScreen;
     if (user != null) {
       if (user.role == UserRole.admin) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const AdminMainScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-                FadeTransition(opacity: animation, child: child),
-            transitionDuration: const Duration(milliseconds: 400),
-          ),
-        );
+        targetScreen = const AdminMainScreen();
       } else {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const SecretaryMainScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-                FadeTransition(opacity: animation, child: child),
-            transitionDuration: const Duration(milliseconds: 400),
-          ),
-        );
+        targetScreen = const SecretaryMainScreen();
       }
     } else {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
+      targetScreen = const LoginScreen();
     }
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 480),
+      ),
+    );
   }
 
   @override
@@ -104,56 +102,35 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Premium Clinic Logo Container on White Background
-                    Container(
-                      width: 140,
-                      height: 140,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.royal.withValues(alpha: 0.10),
-                            blurRadius: 32,
-                            offset: const Offset(0, 12),
-                            spreadRadius: 2,
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: AppColors.royal.withValues(alpha: 0.08),
-                          width: 1.5,
-                        ),
-                      ),
+                    // Clean, standalone Clinic Logo with Hero tag for gliding to Header
+                    Hero(
+                      tag: 'clinic_header_logo',
                       child: Image.asset(
                         'assets/images/clinic_logo.png',
+                        width: 135,
+                        height: 135,
                         fit: BoxFit.contain,
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
                     // App Title
                     const Text(
                       'عيادتي | My Clinic',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.w900,
                         color: AppColors.royal,
                         letterSpacing: 0.3,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
                     // Doctor Name
                     const Text(
                       'عيادة د. محمد السيد العطار',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF1E293B),
                       ),
@@ -165,19 +142,9 @@ class _SplashScreenState extends State<SplashScreen>
                       'أخصائي الباطنة العامة والعناية المركزة والحالات الحرجة',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF64748B),
-                      ),
-                    ),
-
-                    const SizedBox(height: 44),
-                    const SizedBox(
-                      width: 26,
-                      height: 26,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.royal),
                       ),
                     ),
                   ],

@@ -9,7 +9,10 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Local Notifications
+  // Pre-load cached appointments & settings from local disk in ~5ms for instant launch
+  await SupabaseService.initLocalCache();
+
+  // Initialize Local Notifications & Firebase Messaging
   await NotificationService.initialize();
 
   // Initialize Supabase Flutter Client

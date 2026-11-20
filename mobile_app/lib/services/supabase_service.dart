@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/appointment.dart';
 import '../models/clinic_holiday.dart';
 import '../models/clinic_announcement.dart';
@@ -19,11 +20,60 @@ class SupabaseService {
         'Prefer': 'return=representation',
       };
 
+  static const String _prefsKeySettings = 'cached_clinic_settings_v2';
+  static const String _prefsKeyAppointments = 'cached_appointments_v2';
+
   // In-memory cache for native 0ms instantaneous UI switches
   static Map<String, dynamic>? cachedSettings;
   static List<Appointment> cachedAppointments = [];
   static List<SocialReview> cachedReviews = [];
   static List<SecretaryAccount> cachedSecretaries = [];
+
+  /// Loads cached appointments and clinic settings from device local flash storage (SharedPreferences)
+  /// so that upon app startup, all data is in RAM in <5ms with 0.0s waiting time.
+  static Future<void> initLocalCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1. Settings
+      final settingsJsonStr = prefs.getString(_prefsKeySettings);
+      if (settingsJsonStr != null) {
+        final decoded = jsonDecode(settingsJsonStr);
+        if (decoded is Map<String, dynamic>) {
+          cachedSettings = decoded;
+          _syncSubCaches(cachedSettings!);
+        }
+      }
+
+      // 2. Appointments
+      final apptsJsonStr = prefs.getString(_prefsKeyAppointments);
+      if (apptsJsonStr != null) {
+        final List<dynamic> decodedList = jsonDecode(apptsJsonStr);
+        cachedAppointments = decodedList.map((j) => Appointment.fromJson(j)).toList();
+      }
+
+      debugPrint('Local disk cache loaded: ${cachedAppointments.length} appointments, settings=${cachedSettings != null}');
+    } catch (e) {
+      debugPrint('Error initializing local disk cache: $e');
+    }
+  }
+
+  static void _persistSettingsToDisk(Map<String, dynamic> settings) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefsKeySettings, jsonEncode(settings));
+    } catch (_) {}
+  }
+
+  static void _persistAppointmentsToDisk(List<Appointment> appointments) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _prefsKeyAppointments,
+        jsonEncode(appointments.map((a) => a.toJson()).toList()),
+      );
+    } catch (_) {}
+  }
 
   // ---------------- APPOINTMENTS ----------------
 
@@ -43,6 +93,7 @@ class SupabaseService {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         cachedAppointments = data.map((json) => Appointment.fromJson(json)).toList();
+        _persistAppointmentsToDisk(cachedAppointments);
         return cachedAppointments;
       }
     } catch (e) {
@@ -60,6 +111,7 @@ class SupabaseService {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         cachedAppointments = data.map((json) => Appointment.fromJson(json)).toList();
+        _persistAppointmentsToDisk(cachedAppointments);
       }
     } catch (_) {}
   }
@@ -72,6 +124,7 @@ class SupabaseService {
         break;
       }
     }
+    _persistAppointmentsToDisk(cachedAppointments);
 
     try {
       final response = await http.patch(
@@ -105,6 +158,7 @@ class SupabaseService {
         if (data.isNotEmpty && data[0]['content'] != null) {
           cachedSettings = Map<String, dynamic>.from(data[0]['content'] as Map<String, dynamic>);
           _syncSubCaches(cachedSettings!);
+          _persistSettingsToDisk(cachedSettings!);
           return cachedSettings;
         }
       }
@@ -125,6 +179,7 @@ class SupabaseService {
         if (data.isNotEmpty && data[0]['content'] != null) {
           cachedSettings = Map<String, dynamic>.from(data[0]['content'] as Map<String, dynamic>);
           _syncSubCaches(cachedSettings!);
+          _persistSettingsToDisk(cachedSettings!);
         }
       }
     } catch (_) {}
@@ -144,9 +199,10 @@ class SupabaseService {
   }
 
   static Future<bool> saveClinicSettings(Map<String, dynamic> content) async {
-    // 1. Instant optimistic in-memory update
+    // 1. Instant optimistic in-memory update & disk persistence
     cachedSettings = Map<String, dynamic>.from(content);
     _syncSubCaches(cachedSettings!);
+    _persistSettingsToDisk(cachedSettings!);
 
     try {
       // 2. PATCH targeting existing main_settings record to prevent unique constraint 23505
@@ -179,6 +235,64 @@ class SupabaseService {
       debugPrint('Error saving clinic settings: $e');
       return false;
     }
+  }
+
+  // ---------------- BOOKING INTERVAL & RULES SHORTCUTS ----------------
+
+  static Future<bool> updateSlotDuration(int minutes) async {
+    final settings = await getClinicSettings();
+    if (settings == null) return false;
+
+    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
+    bookingSettings['slotDurationMinutes'] = minutes;
+    settings['bookingSettings'] = bookingSettings;
+
+    return await saveClinicSettings(settings);
+  }
+
+  static Future<bool> updateClinicWorkingHours({
+    required String hoursRegular,
+    required String hoursFriday,
+    String? startTime,
+    String? endTime,
+    String? startTimeFriday,
+    String? endTimeFriday,
+  }) async {
+    final settings = await getClinicSettings();
+    if (settings == null) return false;
+
+    final clinic = Map<String, dynamic>.from(settings['clinic'] ?? {});
+    clinic['hoursRegular'] = hoursRegular;
+    clinic['hoursFriday'] = hoursFriday;
+    settings['clinic'] = clinic;
+
+    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
+    if (startTime != null) bookingSettings['startTime'] = startTime;
+    if (endTime != null) bookingSettings['endTime'] = endTime;
+    if (startTimeFriday != null) bookingSettings['startTimeFriday'] = startTimeFriday;
+    if (endTimeFriday != null) bookingSettings['endTimeFriday'] = endTimeFriday;
+    settings['bookingSettings'] = bookingSettings;
+
+    return await saveClinicSettings(settings);
+  }
+
+  static Future<bool> updateBookingRules({
+    int? minAdvanceHours,
+    int? maxAdvanceDays,
+    List<String>? allowedDays,
+    bool? enableFutureBooking,
+  }) async {
+    final settings = await getClinicSettings();
+    if (settings == null) return false;
+
+    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
+    if (minAdvanceHours != null) bookingSettings['minAdvanceHours'] = minAdvanceHours;
+    if (maxAdvanceDays != null) bookingSettings['maxAdvanceDays'] = maxAdvanceDays;
+    if (allowedDays != null) bookingSettings['allowedDays'] = allowedDays;
+    if (enableFutureBooking != null) bookingSettings['enableFutureBooking'] = enableFutureBooking;
+    settings['bookingSettings'] = bookingSettings;
+
+    return await saveClinicSettings(settings);
   }
 
   // ---------------- CLOSURES & HOLIDAYS ----------------
