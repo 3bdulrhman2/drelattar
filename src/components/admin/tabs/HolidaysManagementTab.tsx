@@ -12,6 +12,7 @@ export const HolidaysManagementTab: React.FC = () => {
     deleteHoliday,
     addAnnouncement,
     deleteAnnouncement,
+    publishBroadcastNotification,
   } = useContent();
 
   const { bookingSettings } = data;
@@ -56,20 +57,19 @@ export const HolidaysManagementTab: React.FC = () => {
     setTimeout(() => setHolidayNotice(false), 3000);
   };
 
-  const handleAddAnnouncement = (e: React.FormEvent) => {
+  const handleAddAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!annTitle.trim() || !annContent.trim()) {
       alert('يرجى ملء عنوان ومحتوى التنبيه');
       return;
     }
 
-    addAnnouncement({
-      title: annTitle.trim(),
-      content: annContent.trim(),
-      type: annType,
-      isActive: true,
-      createdBy: 'admin',
-    });
+    await publishBroadcastNotification(
+      annTitle.trim(),
+      annContent.trim(),
+      annType as any,
+      true
+    );
 
     setAnnTitle('');
     setAnnContent('');

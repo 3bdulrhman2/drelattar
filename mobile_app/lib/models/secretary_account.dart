@@ -40,4 +40,24 @@ class SecretaryAccount {
       'createdAt': createdAt,
     };
   }
+
+  SecretaryAccount copyWith({
+    String? id,
+    String? username,
+    String? passwordHash,
+    String? name,
+    String? phone,
+    bool? isActive,
+    String? createdAt,
+  }) {
+    return SecretaryAccount(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      passwordHash: passwordHash ?? this.passwordHash,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }

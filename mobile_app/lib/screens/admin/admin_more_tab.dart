@@ -20,12 +20,16 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
   @override
   void initState() {
     super.initState();
+    _secretaries = SupabaseService.cachedSecretaries;
+    _isLoading = _secretaries.isEmpty;
     _loadSecretaries();
   }
 
-  Future<void> _loadSecretaries() async {
-    setState(() => _isLoading = true);
-    final list = await SupabaseService.getSecretaryAccounts();
+  Future<void> _loadSecretaries({bool forceRefresh = false}) async {
+    if (_secretaries.isEmpty) {
+      setState(() => _isLoading = true);
+    }
+    final list = await SupabaseService.getSecretaryAccounts(forceRefresh: forceRefresh);
     if (!mounted) return;
     setState(() {
       _secretaries = list;
@@ -99,8 +103,15 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                 phone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
                 createdAt: DateTime.now().toIso8601String(),
               );
-              await SupabaseService.addSecretaryAccount(account);
+
               if (ctx.mounted) Navigator.pop(ctx);
+
+              // Optimistic UI update
+              setState(() {
+                _secretaries.insert(0, account);
+              });
+
+              await SupabaseService.addSecretaryAccount(account);
               _loadSecretaries();
             },
             child: const Text('حفظ المشرف'),
@@ -135,10 +146,11 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
           ElevatedButton(
             onPressed: () async {
               if (newPassController.text.trim().isEmpty) return;
+              if (ctx.mounted) Navigator.pop(ctx);
+
               await SupabaseService.updateSecretaryAccount(account.id, {
                 'passwordHash': newPassController.text.trim(),
               });
-              if (ctx.mounted) Navigator.pop(ctx);
               _loadSecretaries();
             },
             child: const Text('تحديث'),
@@ -148,292 +160,383 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
     );
   }
 
+  void _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تأكيد تسجيل الخروج'),
+        content: const Text('هل ترغب في تسجيل الخروج من لوحة إدارة العيادة؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('تسجيل خروج'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthService.logout();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Doctor Profile Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: AppColors.royal.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
+    return RefreshIndicator(
+      onRefresh: () => _loadSecretaries(forceRefresh: true),
+      color: AppColors.royal,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Doctor Profile Card with Real Photo
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.royal.withValues(alpha: 0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
-                  child: const Icon(Icons.person, color: AppColors.royal, size: 28),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'د. محمد السيد العطار',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.dark),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'أخصائي الباطنة العامة والعناية المركزة والحالات الحرجة',
-                        style: TextStyle(fontSize: 11, color: AppColors.muted),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Secretary Accounts Management Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'مشرفي وسكرتارية الحجوزات',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark),
-                    ),
-                    IconButton(
-                      onPressed: _showAddSecretaryDialog,
-                      icon: const Icon(Icons.person_add, color: AppColors.royal),
-                      tooltip: 'إضافة سكرتير',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'يمكنك إنشاء حسابات للسكرتارية لإدارة الحجوزات فقط دون صلاحيات تعديل الموقع.',
-                  style: TextStyle(fontSize: 11, color: AppColors.muted),
-                ),
-                const SizedBox(height: 12),
-
-                if (_isLoading)
-                  const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppColors.royal)))
-                else if (_secretaries.isEmpty)
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Official Doctor Portrait
                   Container(
-                    padding: const EdgeInsets.all(16),
-                    width: double.infinity,
+                    width: 68,
+                    height: 68,
                     decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('لا توجد حسابات سكرتارية مضافة بعد', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.muted)),
-                  )
-                else
-                  ..._secretaries.map((sec) => Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.royal.withValues(alpha: 0.2), width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.royal.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.asset(
+                        'assets/images/doctor_photo.jpg',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: AppColors.royal.withValues(alpha: 0.1),
+                          child: const Icon(Icons.person, color: AppColors.royal, size: 36),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(sec.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                Text('اسم المستخدم: ${sec.username}', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
-                              ],
+                            const Text(
+                              'د. محمد السيد العطار',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.dark),
                             ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.key, size: 18, color: AppColors.royal),
-                                  tooltip: 'تغيير كلمة المرور',
-                                  onPressed: () => _showResetPasswordDialog(sec),
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    sec.isActive ? Icons.check_circle : Icons.pause_circle_outline,
-                                    size: 18,
-                                    color: sec.isActive ? const Color(0xFF10B981) : Colors.amber,
-                                  ),
-                                  tooltip: sec.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب',
-                                  onPressed: () async {
-                                    await SupabaseService.updateSecretaryAccount(sec.id, {
-                                      'isActive': !sec.isActive,
-                                    });
-                                    _loadSecretaries();
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                  tooltip: 'حذف الحساب',
-                                  onPressed: () async {
-                                    await SupabaseService.deleteSecretaryAccount(sec.id);
-                                    _loadSecretaries();
-                                  },
-                                ),
-                              ],
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.royal.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'المدير الطبي',
+                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.royal),
+                              ),
                             ),
                           ],
                         ),
-                      )),
-              ],
-            ),
-          ),
-          // Notification Settings Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.royal.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.notifications_active, color: AppColors.royal, size: 20),
+                        const SizedBox(height: 3),
+                        const Text(
+                          'أخصائي الباطنة العامة والعناية المركزة والحالات الحرجة',
+                          style: TextStyle(fontSize: 11, color: AppColors.muted),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: const [
+                            Icon(Icons.location_on_outlined, size: 12, color: AppColors.medical),
+                            SizedBox(width: 4),
+                            Text(
+                              'فاقوس - الشرقية | elattar.site',
+                              style: TextStyle(fontSize: 10, color: AppColors.dark, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('إشعارات وتنبيهات الحجوزات الفورية',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                          Text('تنبيه صوتي وإشعار فوري عند حجز أي مريض جديد',
-                              style: TextStyle(fontSize: 11, color: AppColors.muted)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
                   ),
-                  child: const Row(
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Secretary Accounts Management Section
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.check_circle, color: Color(0xFF10B981), size: 16),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'قناة الإشعارات الفورية نشطة ومتصلة بسيرفر العيادة',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                      Text(
+                        'مشرفي وسكرتارية الحجوزات (${_secretaries.length})',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _showAddSecretaryDialog,
+                        icon: const Icon(Icons.person_add, size: 16),
+                        label: const Text('إضافة سكرتير', style: TextStyle(fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          await NotificationService.testNotification();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('تم إرسال إشعار تجريبي وتنبيه صوتي بنجاح 🔔'),
-                              backgroundColor: AppColors.royal,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.volume_up, size: 16),
-                        label: const Text('تجربة الإشعار والصوت'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.royal,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 11),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final granted = await NotificationService.requestPermission();
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(granted
-                                ? 'إذن الإشعارات مفعّل بنجاح ✓'
-                                : 'يرجى تفعيل الإذن من إعدادات الهاتف'),
-                            backgroundColor: granted ? const Color(0xFF10B981) : Colors.orange,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.security, size: 16),
-                      label: const Text('فحص الإذن'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'يمكنك إنشاء حسابات للسكرتارية لإدارة الحجوزات وتنظيم المواعيد فقط دون صلاحيات تعديل الموقع.',
+                    style: TextStyle(fontSize: 11, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 12),
 
-          // Logout Button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                await AuthService.logout();
-                if (!context.mounted) return;
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              },
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('تسجيل الخروج من التطبيق'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red.shade600,
-                side: BorderSide(color: Colors.red.shade200),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  if (_isLoading && _secretaries.isEmpty)
+                    const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppColors.royal)))
+                  else if (_secretaries.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: const [
+                          Icon(Icons.people_outline, size: 36, color: AppColors.muted),
+                          SizedBox(height: 6),
+                          Text(
+                            'لم تتم إضافة حسابات سكرتارية بعد',
+                            style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'اضغط زر "إضافة سكرتير" بالأعلى لإنشاء حساب جديد',
+                            style: TextStyle(fontSize: 10, color: AppColors.muted),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._secretaries.map((sec) => Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: sec.isActive ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  sec.isActive ? Icons.person : Icons.person_off,
+                                  color: sec.isActive ? const Color(0xFF047857) : Colors.red.shade700,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      sec.name,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.dark),
+                                    ),
+                                    Text(
+                                      'المستخدم: ${sec.username} | ${sec.phone ?? "بدون هاتف"}',
+                                      style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Toggle Active
+                                  IconButton(
+                                    icon: Icon(
+                                      sec.isActive ? Icons.check_circle : Icons.cancel,
+                                      color: sec.isActive ? const Color(0xFF059669) : Colors.red,
+                                      size: 20,
+                                    ),
+                                    tooltip: sec.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب',
+                                    onPressed: () async {
+                                      setState(() {
+                                        final idx = _secretaries.indexWhere((s) => s.id == sec.id);
+                                        if (idx != -1) {
+                                          _secretaries[idx] = _secretaries[idx].copyWith(isActive: !sec.isActive);
+                                        }
+                                      });
+                                      await SupabaseService.updateSecretaryAccount(sec.id, {
+                                        'isActive': !sec.isActive,
+                                      });
+                                      _loadSecretaries();
+                                    },
+                                  ),
+
+                                  // Reset password
+                                  IconButton(
+                                    icon: const Icon(Icons.key, size: 20, color: AppColors.royal),
+                                    tooltip: 'تغيير كلمة المرور',
+                                    onPressed: () => _showResetPasswordDialog(sec),
+                                  ),
+
+                                  // Delete
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                    tooltip: 'حذف المشرف',
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('تأكيد حذف الحساب'),
+                                          content: Text('هل أنت متأكد من حذف حساب "${sec.name}" نهائياً؟'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+                                            ElevatedButton(
+                                              onPressed: () => Navigator.pop(ctx, true),
+                                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                              child: const Text('حذف'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (confirm == true) {
+                                        setState(() {
+                                          _secretaries.removeWhere((s) => s.id == sec.id);
+                                        });
+                                        await SupabaseService.deleteSecretaryAccount(sec.id);
+                                        _loadSecretaries();
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+
+            // Notification Testing Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('نظام التنبيهات والإشعارات الفورية', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'يتم تشغيل التنبيه الفوري بالصوت والاهتزاز عند وصول أي حجز جديد من الموقع الإلكتروني حتى لو كان الهاتف مقفلاً.',
+                    style: TextStyle(fontSize: 11, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await NotificationService.testNotification();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم إرسال إشعار تجريبي بالصوت والاهتزاز بنجاح! 🔔')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.notifications_active, size: 18, color: AppColors.royal),
+                      label: const Text('اختبار إرسال إشعار تجريبي للموبايل 🔔'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // App Version & Logout Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text('إصدار التطبيق', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                      Text('1.0.0 (Native Edition)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _handleLogout,
+                      icon: const Icon(Icons.logout, color: Colors.red, size: 18),
+                      label: const Text('تسجيل الخروج من التطبيق', style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }

@@ -40,4 +40,24 @@ class SocialReview {
       'caption': caption,
     };
   }
+
+  SocialReview copyWith({
+    String? id,
+    String? imageUrl,
+    String? title,
+    String? patientName,
+    String? platform,
+    String? date,
+    String? caption,
+  }) {
+    return SocialReview(
+      id: id ?? this.id,
+      imageUrl: imageUrl ?? this.imageUrl,
+      title: title ?? this.title,
+      patientName: patientName ?? this.patientName,
+      platform: platform ?? this.platform,
+      date: date ?? this.date,
+      caption: caption ?? this.caption,
+    );
+  }
 }

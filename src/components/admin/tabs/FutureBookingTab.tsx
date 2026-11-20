@@ -74,13 +74,17 @@ export const FutureBookingTab: React.FC = () => {
   const toggleDay = (dayId: string) => {
     setSettings(prev => {
       const exists = prev.allowedDays.includes(dayId);
+      const newDays = exists
+        ? prev.allowedDays.filter(d => d !== dayId)
+        : [...prev.allowedDays, dayId];
+      updateBookingSettings({ allowedDays: newDays });
       return {
         ...prev,
-        allowedDays: exists
-          ? prev.allowedDays.filter(d => d !== dayId)
-          : [...prev.allowedDays, dayId],
+        allowedDays: newDays,
       };
     });
+    setSavedNotice(true);
+    setTimeout(() => setSavedNotice(false), 3000);
   };
 
   const handleCreateTestBooking = (e: React.FormEvent) => {
@@ -172,7 +176,13 @@ export const FutureBookingTab: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setSettings(prev => ({ ...prev, isEnabled: !prev.isEnabled }))}
+            onClick={() => {
+              const nextVal = !settings.isEnabled;
+              setSettings(prev => ({ ...prev, isEnabled: nextVal }));
+              updateBookingSettings({ isEnabled: nextVal });
+              setSavedNotice(true);
+              setTimeout(() => setSavedNotice(false), 3000);
+            }}
             className={`p-1 rounded-full transition-colors shrink-0 ${settings.isEnabled ? 'text-purple-400' : 'text-slate-500'}`}
             title={settings.isEnabled ? 'اضغط للتعطيل' : 'اضغط للتفعيل'}
           >
@@ -189,31 +199,34 @@ export const FutureBookingTab: React.FC = () => {
       <div className="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/60 space-y-5">
         <h4 className="text-sm font-bold text-white border-b border-slate-700/60 pb-2 flex items-center justify-between">
           <span>إعدادات نظام المواعيد وساعات العمل المعتمدة</span>
-          <span className="text-xs font-semibold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
-            حجز واحد كل ساعة
+          <span className="text-xs font-semibold text-brand-lime bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+            {settings.slotDurationMinutes === 15 ? '4 حجوزات / ساعة (كل 15 دقيقة)' :
+             settings.slotDurationMinutes === 30 ? 'حجزان / ساعة (كل نصف ساعة)' :
+             settings.slotDurationMinutes === 45 ? 'فحص واستشارة (كل 45 دقيقة)' :
+             'حجز واحد / ساعة (كل 60 دقيقة)'}
           </span>
         </h4>
 
         {/* Dynamic Working Hours Control */}
         {/* Slot Duration / Interval Selector */}
-        <div className="bg-slate-900/80 p-4 rounded-xl border border-purple-500/30 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-            <span className="text-xs font-bold text-white flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-purple-400" />
-              <span>الفاصل الزمني بين المواعيد (تكرار الحجز):</span>
+        <div className="bg-slate-900/80 p-5 rounded-2xl border border-purple-500/40 space-y-3.5 shadow-inner">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <span className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+              <Clock className="w-4 h-4 text-purple-400 shrink-0" />
+              <span>الفاصل الزمني بين المواعيد (عدد الحجوزات في الساعة):</span>
             </span>
-            <span className="text-[11px] text-brand-lime font-bold">
-              المفعل حالياً: {
-                settings.slotDurationMinutes === 15 ? 'كل ربع ساعة (15 دقيقة)' :
-                settings.slotDurationMinutes === 30 ? 'كل نصف ساعة (30 دقيقة)' :
+            <span className="text-[11px] text-brand-lime font-bold bg-purple-950/60 border border-purple-500/30 px-3 py-1 rounded-xl">
+              المفعل سحابياً: {
+                settings.slotDurationMinutes === 15 ? 'كل ربع ساعة (4 كشوفات في الساعة)' :
+                settings.slotDurationMinutes === 30 ? 'كل نصف ساعة (كشفان في الساعة)' :
                 settings.slotDurationMinutes === 45 ? 'كل ساعة إلا ربع (45 دقيقة)' :
-                'كل ساعة كاملة (60 دقيقة)'
+                'كل ساعة كاملة (كشف واحد في الساعة)'
               }
             </span>
           </div>
 
-          <p className="text-[11px] text-slate-400">
-            اختر الفاصل الزمني المطلوب لتقسيم ساعات العمل وتوليد فترات الكشف المتاحة للمرضى تلقائياً:
+          <p className="text-[11px] text-slate-300">
+            اضغط على الخيار المطلوب لتعديله، <strong>يتم الحفظ السحابي والتطبيق على الموقع والعيادة فورياً وبشكل تلقائي:</strong>
           </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -228,14 +241,20 @@ export const FutureBookingTab: React.FC = () => {
                 <button
                   key={option.minutes}
                   type="button"
-                  onClick={() => setSettings(prev => ({ ...prev, slotDurationMinutes: option.minutes }))}
-                  className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
+                  onClick={() => {
+                    const newMinutes = option.minutes;
+                    setSettings(prev => ({ ...prev, slotDurationMinutes: newMinutes }));
+                    updateBookingSettings({ slotDurationMinutes: newMinutes });
+                    setSavedNotice(true);
+                    setTimeout(() => setSavedNotice(false), 3000);
+                  }}
+                  className={`p-3.5 rounded-xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
                     isSelected
-                      ? 'bg-purple-600/30 border-purple-400 text-white shadow-md shadow-purple-500/20 ring-1 ring-purple-400'
-                      : 'bg-slate-800/80 border-slate-700/70 text-slate-300 hover:border-slate-600 hover:bg-slate-800'
+                      ? 'bg-purple-600/30 border-purple-400 text-white shadow-md shadow-purple-500/20 ring-2 ring-purple-400 scale-[1.02]'
+                      : 'bg-slate-800/80 border-slate-700/70 text-slate-300 hover:border-purple-400/50 hover:bg-slate-800'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-1.5">
                     <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-200'}`}>
                       {option.label}
                     </span>
@@ -245,12 +264,39 @@ export const FutureBookingTab: React.FC = () => {
                       {option.badge}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[11px] text-slate-300 mb-1">
                     {option.sub}
                   </span>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-700/50 text-[10px]">
+                    {isSelected ? (
+                      <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        <Check className="w-3 h-3" /> تم الحفظ والتفعيل
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">اضغط للاختيار</span>
+                    )}
+                  </div>
                 </button>
               );
             })}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-800">
+            <span className="text-[11px] text-slate-400">
+              * بمجرد الضغط يتم تقسيم مواعيد الحجز المتاحة للمرضى تلقائياً دون الحاجة لإعادة ضبط الفترات.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                updateBookingSettings({ slotDurationMinutes: settings.slotDurationMinutes || 60 });
+                setSavedNotice(true);
+                setTimeout(() => setSavedNotice(false), 3000);
+              }}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shrink-0"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>تأكيد حفظ الفاصل</span>
+            </button>
           </div>
         </div>
 

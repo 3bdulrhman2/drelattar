@@ -21,12 +21,16 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
   @override
   void initState() {
     super.initState();
+    _allBookings = SupabaseService.cachedAppointments;
+    _isLoading = _allBookings.isEmpty;
     _loadBookings();
   }
 
-  Future<void> _loadBookings() async {
-    setState(() => _isLoading = true);
-    final bookings = await SupabaseService.getAppointments();
+  Future<void> _loadBookings({bool forceRefresh = false}) async {
+    if (_allBookings.isEmpty) {
+      setState(() => _isLoading = true);
+    }
+    final bookings = await SupabaseService.getAppointments(forceRefresh: forceRefresh);
     if (!mounted) return;
     setState(() {
       _allBookings = bookings;
@@ -48,7 +52,7 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
     final todayStr = _getTodayString();
     final tomorrowStr = _getTomorrowString();
 
-    return _allBookings.filter((b) {
+    return _allBookings.where((b) {
       // Search filter
       final query = _searchQuery.toLowerCase();
       final matchSearch = _searchQuery.isEmpty ||
@@ -77,42 +81,42 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final bookings = _filteredBookings;
-
-    return RefreshIndicator(
-      onRefresh: _loadBookings,
-      color: AppColors.royal,
-      child: Column(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
         children: [
-          // Search & Filter Header
+          // Filter & Search Header Card
           Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
             child: Column(
               children: [
                 // Search Bar
                 TextField(
                   onChanged: (val) => setState(() => _searchQuery = val),
                   decoration: InputDecoration(
-                    hintText: 'بحث باسم المريض أو الهاتف أو كود الحجز...',
+                    hintText: 'ابحث بالاسم، الهاتف، أو رقم الحجز...',
                     prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.muted),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear, size: 18),
                             onPressed: () => setState(() => _searchQuery = ''),
                           )
                         : null,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
                 ),
                 const SizedBox(height: 10),
 
-                // Date Filters Carousel
+                // Date Filters
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildDateFilterChip('الكل', 'all'),
+                      _buildDateFilterChip('جميع التواريخ', 'all'),
                       _buildDateFilterChip('اليوم', 'today'),
                       _buildDateFilterChip('غداً', 'tomorrow'),
                       _buildDateFilterChip('القادمة', 'upcoming'),
@@ -120,85 +124,79 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
 
-                // Status Filters Carousel
+                // Status Filters
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildStatusFilterChip('جميع الحالات', 'all'),
-                      _buildStatusFilterChip('بانتظار التأكيد', 'pending'),
-                      _buildStatusFilterChip('مؤكدة', 'confirmed'),
-                      _buildStatusFilterChip('تم الكشف', 'completed'),
-                      _buildStatusFilterChip('ملغية', 'cancelled'),
+                      _buildStatusFilterChip('الكل (${_allBookings.length})', 'all'),
+                      _buildStatusFilterChip(
+                        'انتظار (${_allBookings.where((b) => b.status == 'pending').length})',
+                        'pending',
+                      ),
+                      _buildStatusFilterChip(
+                        'مؤكد (${_allBookings.where((b) => b.status == 'confirmed').length})',
+                        'confirmed',
+                      ),
+                      _buildStatusFilterChip(
+                        'تم الكشف (${_allBookings.where((b) => b.status == 'completed').length})',
+                        'completed',
+                      ),
+                      _buildStatusFilterChip(
+                        'ملغي (${_allBookings.where((b) => b.status == 'cancelled').length})',
+                        'cancelled',
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.border),
 
-          // Count Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'عدد الحجوزات: ${bookings.length}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.muted,
-                  ),
-                ),
-                if (_isLoading)
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.royal),
-                  ),
-              ],
-            ),
-          ),
-
-          // Bookings List
+          // Bookings List View
           Expanded(
             child: _isLoading && _allBookings.isEmpty
                 ? const Center(child: CircularProgressIndicator(color: AppColors.royal))
-                : bookings.isEmpty
+                : _filteredBookings.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            Icon(Icons.inbox_outlined, size: 48, color: AppColors.muted),
+                            Icon(Icons.calendar_today_outlined, size: 48, color: AppColors.muted),
                             SizedBox(height: 12),
                             Text(
-                              'لا توجد حجوزات مطابقة للبحث أو الفلتر',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.muted,
-                              ),
+                              'لا توجد حجوزات مطابقة لمعايير البحث',
+                              style: TextStyle(fontSize: 13, color: AppColors.muted, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: bookings.length,
-                        itemBuilder: (context, index) {
-                          final appt = bookings[index];
-                          return BookingCard(
-                            appointment: appt,
-                            onStatusChange: (status) async {
-                              await SupabaseService.updateAppointmentStatus(appt.id, status);
-                              _loadBookings();
-                            },
-                          );
-                        },
+                    : RefreshIndicator(
+                        onRefresh: () => _loadBookings(forceRefresh: true),
+                        color: AppColors.royal,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _filteredBookings.length,
+                          itemBuilder: (context, index) {
+                            final appt = _filteredBookings[index];
+                            return BookingCard(
+                              appointment: appt,
+                              onStatusChange: (newStatus) async {
+                                // Optimistic instant status change
+                                setState(() {
+                                  final idx = _allBookings.indexWhere((a) => a.id == appt.id);
+                                  if (idx != -1) {
+                                    _allBookings[idx] = _allBookings[idx].copyWith(status: newStatus);
+                                  }
+                                });
+                                await SupabaseService.updateAppointmentStatus(appt.id, newStatus);
+                                _loadBookings();
+                              },
+                            );
+                          },
+                        ),
                       ),
           ),
         ],
@@ -240,11 +238,5 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
         side: BorderSide(color: isSelected ? AppColors.cyan : AppColors.border),
       ),
     );
-  }
-}
-
-extension ListFilterExtension<T> on List<T> {
-  List<T> filter(bool Function(T element) test) {
-    return where(test).toList();
   }
 }

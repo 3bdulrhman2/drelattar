@@ -52,6 +52,7 @@ export const SecretaryDashboard: React.FC<SecretaryDashboardProps> = ({
     deleteHoliday,
     addAnnouncement,
     deleteAnnouncement,
+    publishBroadcastNotification,
   } = useContent();
 
   const { bookings, bookingSettings, doctor } = data;
@@ -167,19 +168,18 @@ export const SecretaryDashboard: React.FC<SecretaryDashboardProps> = ({
     setShowHolidayModal(false);
   };
 
-  const handleAddAnnounceSubmit = (e: React.FormEvent) => {
+  const handleAddAnnounceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announceTitle.trim() || !announceContent.trim()) {
       alert('يرجى كتابة عنوان التنبيه ومحتواه');
       return;
     }
-    addAnnouncement({
-      title: announceTitle.trim(),
-      content: announceContent.trim(),
-      type: announceType,
-      isActive: true,
-      createdBy: 'secretary',
-    });
+    await publishBroadcastNotification(
+      announceTitle.trim(),
+      announceContent.trim(),
+      announceType as any,
+      true
+    );
     setAnnounceTitle('');
     setAnnounceContent('');
     setShowAnnounceModal(false);

@@ -22,14 +22,19 @@ class _SecretaryHomeTabState extends State<SecretaryHomeTab> {
   @override
   void initState() {
     super.initState();
+    _appointments = SupabaseService.cachedAppointments;
+    _settings = SupabaseService.cachedSettings;
+    _isLoading = _appointments.isEmpty && _settings == null;
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    if (_appointments.isEmpty && _settings == null) {
+      setState(() => _isLoading = true);
+    }
     final results = await Future.wait([
-      SupabaseService.getAppointments(),
-      SupabaseService.getClinicSettings(),
+      SupabaseService.getAppointments(forceRefresh: forceRefresh),
+      SupabaseService.getClinicSettings(forceRefresh: forceRefresh),
     ]);
 
     if (!mounted) return;
@@ -48,7 +53,7 @@ class _SecretaryHomeTabState extends State<SecretaryHomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_isLoading && _appointments.isEmpty && _settings == null) {
       return const Center(child: CircularProgressIndicator(color: AppColors.royal));
     }
 
@@ -67,32 +72,38 @@ class _SecretaryHomeTabState extends State<SecretaryHomeTab> {
     final isClosedToday = bookingSettings['isClosedToday'] == true;
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: () => _loadData(forceRefresh: true),
       color: AppColors.royal,
       child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status Banner
+            // Status Banner Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isClosedToday
-                      ? [const Color(0xFFE11D48), const Color(0xFFBE123C)]
-                      : [AppColors.royal, AppColors.medical],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
+                color: isClosedToday ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isClosedToday ? const Color(0xFFFCA5A5) : const Color(0xFF86EFAC),
                 ),
-                borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    isClosedToday ? Icons.event_busy : Icons.check_circle_outline,
-                    color: Colors.white,
-                    size: 26,
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isClosedToday ? Colors.red.shade100 : Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      isClosedToday ? Icons.lock : Icons.check_circle,
+                      color: isClosedToday ? Colors.red.shade700 : Colors.green.shade700,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -100,37 +111,26 @@ class _SecretaryHomeTabState extends State<SecretaryHomeTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isClosedToday ? 'حجوزات اليوم مغلقة' : 'الحجز مفتوح اليوم',
-                          style: const TextStyle(
+                          isClosedToday ? 'حجوزات اليوم مغلقة' : 'العيادة تستقبل الحجوزات اليوم',
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: isClosedToday ? Colors.red.shade900 : Colors.green.shade900,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           isClosedToday
-                              ? 'لا يتم استقبال مواعيد جديدة لليوم'
-                              : 'يمكن للمرضى حجز المواعيد المتاحة',
-                          style: const TextStyle(fontSize: 11, color: Colors.white70),
+                              ? (bookingSettings['closedTodayReason']?.isNotEmpty == true
+                                  ? bookingSettings['closedTodayReason']
+                                  : 'تم إيقاف حجز الكشوفات الجديدة لليوم')
+                              : 'المواعيد الشاغرة متاحة للحجز بالموقع',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isClosedToday ? Colors.red.shade700 : Colors.green.shade700,
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      await SupabaseService.toggleCloseToday(!isClosedToday);
-                      _loadData();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor:
-                          isClosedToday ? Colors.red.shade700 : AppColors.royal,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      minimumSize: const Size(0, 34),
-                    ),
-                    child: Text(
-                      isClosedToday ? 'فتح الحجز' : 'إغلاق اليوم',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -138,23 +138,24 @@ class _SecretaryHomeTabState extends State<SecretaryHomeTab> {
             ),
             const SizedBox(height: 20),
 
-            // Today Stats
+            // Statistics Header
             const Text(
-              'حجوزات اليوم',
+              'حجوزات اليوم بالعيادة',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: AppColors.dark,
               ),
             ),
             const SizedBox(height: 12),
 
+            // Grid of Stat Cards
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
               crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
               childAspectRatio: 1.5,
               children: [
                 StatCard(
@@ -166,33 +167,33 @@ class _SecretaryHomeTabState extends State<SecretaryHomeTab> {
                 StatCard(
                   title: 'بانتظار التأكيد',
                   value: pendingToday.toString(),
-                  icon: Icons.access_time,
-                  color: AppColors.statusPending,
+                  icon: Icons.hourglass_top,
+                  color: const Color(0xFFD97706),
                 ),
                 StatCard(
-                  title: 'مؤكدة',
+                  title: 'تم تأكيدها',
                   value: confirmedToday.toString(),
-                  icon: Icons.done_all,
-                  color: AppColors.statusConfirmed,
+                  icon: Icons.check_circle_outline,
+                  color: const Color(0xFF059669),
                 ),
                 StatCard(
                   title: 'تم الكشف',
                   value: completedToday.toString(),
-                  icon: Icons.task_alt,
-                  color: AppColors.statusCompleted,
+                  icon: Icons.done_all,
+                  color: const Color(0xFF2563EB),
                 ),
               ],
             ),
             const SizedBox(height: 24),
 
-            // Next Appointments Section
+            // Today's Appointments Section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'مواعيد اليوم القادمة',
-                  style: TextStyle(
-                    fontSize: 14,
+                Text(
+                  'مواعيد اليوم (${todayAppointments.length})',
+                  style: const TextStyle(
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: AppColors.dark,
                   ),
@@ -200,7 +201,7 @@ class _SecretaryHomeTabState extends State<SecretaryHomeTab> {
                 if (widget.onNavigateToBookings != null)
                   TextButton(
                     onPressed: widget.onNavigateToBookings,
-                    child: const Text('عرض الكل', style: TextStyle(fontSize: 12, color: AppColors.royal)),
+                    child: const Text('عرض الكل'),
                   ),
               ],
             ),
@@ -209,26 +210,43 @@ class _SecretaryHomeTabState extends State<SecretaryHomeTab> {
             if (todayAppointments.isEmpty)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: const Text(
-                  'لا توجد حجوزات لليوم حتى الآن',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: AppColors.muted),
+                child: Column(
+                  children: const [
+                    Icon(Icons.event_available, size: 48, color: AppColors.muted),
+                    SizedBox(height: 8),
+                    Text(
+                      'لا توجد حجوزات مجدولة لهذا اليوم',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               )
             else
-              ...todayAppointments.map((appt) => BookingCard(
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: todayAppointments.take(5).length,
+                itemBuilder: (context, index) {
+                  final appt = todayAppointments[index];
+                  return BookingCard(
                     appointment: appt,
-                    onStatusChange: (status) async {
-                      await SupabaseService.updateAppointmentStatus(appt.id, status);
+                    onStatusChange: (newStatus) async {
+                      await SupabaseService.updateAppointmentStatus(appt.id, newStatus);
                       _loadData();
                     },
-                  )),
+                  );
+                },
+              ),
           ],
         ),
       ),

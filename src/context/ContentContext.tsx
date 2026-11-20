@@ -54,7 +54,13 @@ interface ContentContextType {
   addSecretaryAccount: (account: Omit<SecretaryAccount, 'id' | 'createdAt'>) => void;
   updateSecretaryAccount: (id: string, update: Partial<SecretaryAccount>) => void;
   deleteSecretaryAccount: (id: string) => void;
-  // Notifications
+  // Notifications & Announcements Broadcast
+  publishBroadcastNotification: (
+    title: string,
+    message: string,
+    type?: 'info' | 'warning' | 'alert' | 'special_offer',
+    pinToBanner?: boolean
+  ) => Promise<boolean>;
   registerDeviceToken: (token: string, role: 'admin' | 'secretary', platform?: 'web' | 'android') => void;
   resetToDefault: () => void;
 }
@@ -264,6 +270,35 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, []);
 
+  const syncUpdatedState = (
+    updater: AppContentState | ((prev: AppContentState) => AppContentState)
+  ) => {
+    setData((prev) => {
+      const updated = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage save error:', e);
+      }
+      if (isSupabaseConfigured && supabase) {
+        supabase
+          .from('clinic_settings')
+          .upsert(
+            { key: 'main_settings', content: updated, updated_at: new Date().toISOString() },
+            { onConflict: 'key' }
+          )
+          .then(({ error }) => {
+            if (error) {
+              console.error('Supabase sync error:', error.message);
+            } else {
+              setIsBackendSynced(true);
+            }
+          });
+      }
+      return updated;
+    });
+  };
+
   const saveToSupabase = async (contentToSave?: AppContentState): Promise<{ success: boolean; error?: string }> => {
     if (!isSupabaseConfigured || !supabase) {
       return { success: false, error: 'Supabase غير مهيأ' };
@@ -272,76 +307,114 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsSaving(true);
       const payload = contentToSave || data;
 
-      // Update existing main_settings row
-      const { data: updateData, error: updateError } = await supabase
+      const { error } = await supabase
         .from('clinic_settings')
-        .update({ content: payload, updated_at: new Date().toISOString() })
-        .eq('key', 'main_settings')
-        .select();
+        .upsert(
+          { key: 'main_settings', content: payload, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
 
-      if (updateError || !updateData || updateData.length === 0) {
-        // If row does not exist, insert it
-        const { error: insertError } = await supabase
-          .from('clinic_settings')
-          .insert({ key: 'main_settings', content: payload, updated_at: new Date().toISOString() });
-
-        if (insertError) {
-          console.error('Supabase save error:', insertError);
-          setIsBackendSynced(false);
-          setIsSaving(false);
-          return { success: false, error: insertError.message };
-        }
+      setIsSaving(false);
+      if (error) {
+        console.error('Supabase save error:', error);
+        setIsBackendSynced(false);
+        return { success: false, error: error.message };
       }
       setIsBackendSynced(true);
-      setIsSaving(false);
       return { success: true };
     } catch (err: any) {
+      setIsSaving(false);
       console.error('Supabase save exception:', err);
       setIsBackendSynced(false);
-      setIsSaving(false);
       return { success: false, error: err.message || 'حدث خطأ أثناء الحفظ' };
     }
   };
 
-  // Debounced auto-save to Supabase when data changes after initial load
-  useEffect(() => {
-    if (!initialRemoteFetchDone || !isSupabaseConfigured || !supabase) return;
+  const publishBroadcastNotification = async (
+    title: string,
+    message: string,
+    type: 'info' | 'warning' | 'alert' | 'special_offer' = 'info',
+    pinToBanner: boolean = true
+  ): Promise<boolean> => {
+    try {
+      // 1. Play chime and show local alert
+      triggerLocalNotification({
+        title,
+        body: message,
+        type: 'announcement',
+      });
 
-    const timeout = setTimeout(() => {
-      saveToSupabase(data);
-    }, 1500);
+      // 2. Broadcast to all active clients via Supabase Realtime channel
+      if (isSupabaseConfigured && supabase) {
+        const broadcastChannel = supabase.channel('realtime_clinic_settings');
+        await broadcastChannel.send({
+          type: 'broadcast',
+          event: 'new_announcement',
+          payload: { title, message, type },
+        });
+      }
 
-    return () => clearTimeout(timeout);
-  }, [data, initialRemoteFetchDone]);
+      // 3. If pinToBanner, add to announcements in bookingSettings so it renders on top
+      if (pinToBanner) {
+        const newAnnouncement: ClinicAnnouncement = {
+          id: `ann-${Date.now()}`,
+          title,
+          content: message,
+          type: type === 'special_offer' ? 'info' : type,
+          isActive: true,
+          createdBy: 'admin',
+          createdAt: new Date().toISOString(),
+        };
+
+        const existingList = data.bookingSettings.announcements || [];
+        const nextList = [newAnnouncement, ...existingList.filter((a) => a.title !== title)];
+
+        const updatedState: AppContentState = {
+          ...data,
+          bookingSettings: {
+            ...data.bookingSettings,
+            announcements: nextList,
+          },
+        };
+
+        syncUpdatedState(updatedState);
+      }
+
+      return true;
+    } catch (e) {
+      console.error('Error publishing broadcast notification:', e);
+      return false;
+    }
+  };
 
   const updateDoctor = (doctorUpdate: Partial<DoctorInfo>) => {
-    setData((prev) => ({
+    syncUpdatedState((prev) => ({
       ...prev,
       doctor: { ...prev.doctor, ...doctorUpdate },
     }));
   };
 
   const updateClinic = (clinicUpdate: Partial<ClinicInfo>) => {
-    setData((prev) => ({
+    syncUpdatedState((prev) => ({
       ...prev,
       clinic: { ...prev.clinic, ...clinicUpdate },
     }));
   };
 
   const updateServices = (services: MedicalService[]) => {
-    setData((prev) => ({ ...prev, services }));
+    syncUpdatedState((prev) => ({ ...prev, services }));
   };
 
   const updateEquipment = (equipment: MedicalEquipment[]) => {
-    setData((prev) => ({ ...prev, equipment }));
+    syncUpdatedState((prev) => ({ ...prev, equipment }));
   };
 
   const updateFAQ = (faq: FAQItem[]) => {
-    setData((prev) => ({ ...prev, faq }));
+    syncUpdatedState((prev) => ({ ...prev, faq }));
   };
 
   const updateSocial = (socialUpdate: Partial<SocialLinks>) => {
-    setData((prev) => ({
+    syncUpdatedState((prev) => ({
       ...prev,
       social: { ...prev.social, ...socialUpdate },
     }));
@@ -351,53 +424,32 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     bookingUpdate: Partial<FutureBookingSettings>,
     clinicUpdate?: Partial<ClinicInfo>
   ) => {
-    setData((prev) => {
-      const updated: AppContentState = {
-        ...prev,
-        bookingSettings: { ...prev.bookingSettings, ...bookingUpdate },
-        clinic: clinicUpdate ? { ...prev.clinic, ...clinicUpdate } : prev.clinic,
-      };
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to update localStorage:', e);
-      }
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      bookingSettings: { ...prev.bookingSettings, ...bookingUpdate },
+      clinic: clinicUpdate ? { ...prev.clinic, ...clinicUpdate } : prev.clinic,
+    }));
   };
 
   const updateVisibility = (visibilityUpdate: Partial<WebsiteVisibilitySettings>) => {
-    setData((prev) => {
-      const updated = {
-        ...prev,
-        visibility: { ...prev.visibility, ...visibilityUpdate },
-      };
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      visibility: { ...prev.visibility, ...visibilityUpdate },
+    }));
   };
 
   const updateGoogleApiSettings = (apiKey: string, placeId: string) => {
-    setData((prev) => {
-      const updated = {
-        ...prev,
-        googlePlacesApiKey: apiKey,
-        googlePlaceId: placeId,
-      };
-      saveToSupabase(updated);
-      return updated;
+    syncUpdatedState({
+      ...data,
+      googlePlacesApiKey: apiKey,
+      googlePlaceId: placeId,
     });
   };
 
   const updateSocialReviewImages = (images: SocialReviewImage[]) => {
-    setData((prev) => {
-      const updated = {
-        ...prev,
-        socialReviewImages: images,
-      };
-      saveToSupabase(updated);
-      return updated;
+    syncUpdatedState({
+      ...data,
+      socialReviewImages: images,
     });
   };
 
@@ -406,24 +458,16 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...image,
       id: `rev-img-${Date.now()}`,
     };
-    setData((prev) => {
-      const updated = {
-        ...prev,
-        socialReviewImages: [newImage, ...(prev.socialReviewImages || [])],
-      };
-      saveToSupabase(updated);
-      return updated;
+    syncUpdatedState({
+      ...data,
+      socialReviewImages: [newImage, ...(data.socialReviewImages || [])],
     });
   };
 
   const deleteSocialReviewImage = (id: string) => {
-    setData((prev) => {
-      const updated = {
-        ...prev,
-        socialReviewImages: (prev.socialReviewImages || []).filter((img) => img.id !== id),
-      };
-      saveToSupabase(updated);
-      return updated;
+    syncUpdatedState({
+      ...data,
+      socialReviewImages: (data.socialReviewImages || []).filter((img) => img.id !== id),
     });
   };
 
@@ -489,35 +533,29 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const toggleCloseToday = (isClosed: boolean, reason?: string) => {
-    setData((prev) => {
-      const updated: AppContentState = {
-        ...prev,
-        bookingSettings: {
-          ...prev.bookingSettings,
-          isClosedToday: isClosed,
-          closedTodayReason: reason !== undefined ? reason : prev.bookingSettings.closedTodayReason || '',
-        },
-      };
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      bookingSettings: {
+        ...prev.bookingSettings,
+        isClosedToday: isClosed,
+        closedTodayReason: reason !== undefined ? reason : prev.bookingSettings.closedTodayReason || '',
+      },
+    }));
   };
 
   const toggleCloseDate = (dateStr: string, isClosed: boolean) => {
-    setData((prev) => {
+    syncUpdatedState((prev) => {
       const currentClosedDates = prev.bookingSettings.closedDates || [];
       const updatedClosedDates = isClosed
         ? Array.from(new Set([...currentClosedDates, dateStr]))
         : currentClosedDates.filter((d) => d !== dateStr);
-      const updated: AppContentState = {
+      return {
         ...prev,
         bookingSettings: {
           ...prev.bookingSettings,
           closedDates: updatedClosedDates,
         },
       };
-      saveToSupabase(updated);
-      return updated;
     });
   };
 
@@ -527,48 +565,38 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `hol-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
-    setData((prev) => {
-      const updated: AppContentState = {
-        ...prev,
-        bookingSettings: {
-          ...prev.bookingSettings,
-          holidays: [newHoliday, ...(prev.bookingSettings.holidays || [])],
-        },
-      };
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      bookingSettings: {
+        ...prev.bookingSettings,
+        holidays: [newHoliday, ...(prev.bookingSettings.holidays || [])],
+      },
+    }));
   };
 
   const updateHoliday = (id: string, update: Partial<ClinicHoliday>) => {
-    setData((prev) => {
+    syncUpdatedState((prev) => {
       const updatedHolidays = (prev.bookingSettings.holidays || []).map((h) =>
         h.id === id ? { ...h, ...update } : h
       );
-      const updated: AppContentState = {
+      return {
         ...prev,
         bookingSettings: {
           ...prev.bookingSettings,
           holidays: updatedHolidays,
         },
       };
-      saveToSupabase(updated);
-      return updated;
     });
   };
 
   const deleteHoliday = (id: string) => {
-    setData((prev) => {
-      const updated: AppContentState = {
-        ...prev,
-        bookingSettings: {
-          ...prev.bookingSettings,
-          holidays: (prev.bookingSettings.holidays || []).filter((h) => h.id !== id),
-        },
-      };
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      bookingSettings: {
+        ...prev.bookingSettings,
+        holidays: (prev.bookingSettings.holidays || []).filter((h) => h.id !== id),
+      },
+    }));
   };
 
   const addAnnouncement = (announcement: Omit<ClinicAnnouncement, 'id' | 'createdAt'>) => {
@@ -577,48 +605,38 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `ann-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
-    setData((prev) => {
-      const updated: AppContentState = {
-        ...prev,
-        bookingSettings: {
-          ...prev.bookingSettings,
-          announcements: [newAnnouncement, ...(prev.bookingSettings.announcements || [])],
-        },
-      };
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      bookingSettings: {
+        ...prev.bookingSettings,
+        announcements: [newAnnouncement, ...(prev.bookingSettings.announcements || [])],
+      },
+    }));
   };
 
   const updateAnnouncement = (id: string, update: Partial<ClinicAnnouncement>) => {
-    setData((prev) => {
+    syncUpdatedState((prev) => {
       const updatedList = (prev.bookingSettings.announcements || []).map((a) =>
         a.id === id ? { ...a, ...update } : a
       );
-      const updated: AppContentState = {
+      return {
         ...prev,
         bookingSettings: {
           ...prev.bookingSettings,
           announcements: updatedList,
         },
       };
-      saveToSupabase(updated);
-      return updated;
     });
   };
 
   const deleteAnnouncement = (id: string) => {
-    setData((prev) => {
-      const updated: AppContentState = {
-        ...prev,
-        bookingSettings: {
-          ...prev.bookingSettings,
-          announcements: (prev.bookingSettings.announcements || []).filter((a) => a.id !== id),
-        },
-      };
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      bookingSettings: {
+        ...prev.bookingSettings,
+        announcements: (prev.bookingSettings.announcements || []).filter((a) => a.id !== id),
+      },
+    }));
   };
 
   const addSecretaryAccount = (account: Omit<SecretaryAccount, 'id' | 'createdAt'>) => {
@@ -627,43 +645,33 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `sec-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
-    setData((prev) => {
-      const updated: AppContentState = {
-        ...prev,
-        secretaryAccounts: [newAccount, ...(prev.secretaryAccounts || [])],
-      };
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      secretaryAccounts: [newAccount, ...(prev.secretaryAccounts || [])],
+    }));
   };
 
   const updateSecretaryAccount = (id: string, update: Partial<SecretaryAccount>) => {
-    setData((prev) => {
+    syncUpdatedState((prev) => {
       const updatedList = (prev.secretaryAccounts || []).map((sec) =>
         sec.id === id ? { ...sec, ...update } : sec
       );
-      const updated: AppContentState = {
+      return {
         ...prev,
         secretaryAccounts: updatedList,
       };
-      saveToSupabase(updated);
-      return updated;
     });
   };
 
   const deleteSecretaryAccount = (id: string) => {
-    setData((prev) => {
-      const updated: AppContentState = {
-        ...prev,
-        secretaryAccounts: (prev.secretaryAccounts || []).filter((sec) => sec.id !== id),
-      };
-      saveToSupabase(updated);
-      return updated;
-    });
+    syncUpdatedState((prev) => ({
+      ...prev,
+      secretaryAccounts: (prev.secretaryAccounts || []).filter((sec) => sec.id !== id),
+    }));
   };
 
   const registerDeviceToken = (token: string, role: 'admin' | 'secretary', platform: 'web' | 'android' = 'web') => {
-    setData((prev) => {
+    syncUpdatedState((prev) => {
       const existing = prev.deviceTokens || [];
       const updatedTokens = [
         {
@@ -676,12 +684,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         },
         ...existing.filter((t) => t.token !== token),
       ];
-      const updated: AppContentState = {
+      return {
         ...prev,
         deviceTokens: updatedTokens,
       };
-      saveToSupabase(updated);
-      return updated;
     });
   };
 
@@ -724,6 +730,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateSecretaryAccount,
         deleteSecretaryAccount,
         registerDeviceToken,
+        publishBroadcastNotification,
         resetToDefault,
       }}
     >

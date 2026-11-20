@@ -42,6 +42,7 @@ dependencies:
   supabase_flutter: ^2.5.6
   firebase_core: ^5.2.0
   firebase_messaging: ^17.1.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -53,4 +54,5 @@ flutter:
 
   assets:
     - assets/images/clinic_logo.png
+    - assets/images/doctor_photo.jpg
 

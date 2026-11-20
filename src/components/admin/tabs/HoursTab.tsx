@@ -18,6 +18,13 @@ export const HoursTab: React.FC = () => {
     setSlotDuration(bookingSettings.slotDurationMinutes || 60);
   }, [bookingSettings.slotDurationMinutes]);
 
+  const handleSlotSelect = (minutes: number) => {
+    setSlotDuration(minutes);
+    updateBookingSettings({ slotDurationMinutes: minutes });
+    setSavedNotice(true);
+    setTimeout(() => setSavedNotice(false), 3000);
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateClinic(form);
@@ -80,11 +87,11 @@ export const HoursTab: React.FC = () => {
               <button
                 key={opt.minutes}
                 type="button"
-                onClick={() => setSlotDuration(opt.minutes)}
-                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
+                onClick={() => handleSlotSelect(opt.minutes)}
+                className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
                   isSelected
-                    ? 'bg-purple-600/30 border-purple-400 text-white shadow-md shadow-purple-500/20 ring-1 ring-purple-400'
-                    : 'bg-slate-900/90 border-slate-700/70 text-slate-300 hover:border-slate-600 hover:bg-slate-900'
+                    ? 'bg-purple-600/30 border-purple-400 text-white shadow-md shadow-purple-500/20 ring-1 ring-purple-400 scale-[1.02]'
+                    : 'bg-slate-900/90 border-slate-700/70 text-slate-300 hover:border-purple-400/50 hover:bg-slate-900'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -97,9 +104,18 @@ export const HoursTab: React.FC = () => {
                     {opt.badge}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[10px] text-slate-400 mb-1">
                   {opt.sub}
                 </span>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[9px]">
+                  {isSelected ? (
+                    <span className="text-emerald-400 font-bold flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5" /> مفعل ومحفوظ
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">اضغط للاختيار</span>
+                  )}
+                </div>
               </button>
             );
           })}

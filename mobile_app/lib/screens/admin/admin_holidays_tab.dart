@@ -15,18 +15,21 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
   Map<String, dynamic>? _settings;
   bool _isLoading = true;
 
-  // Future date picker controller
   DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    _settings = SupabaseService.cachedSettings;
+    _isLoading = _settings == null;
     _loadSettings();
   }
 
-  Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
-    final settings = await SupabaseService.getClinicSettings();
+  Future<void> _loadSettings({bool forceRefresh = false}) async {
+    if (_settings == null) {
+      setState(() => _isLoading = true);
+    }
+    final settings = await SupabaseService.getClinicSettings(forceRefresh: forceRefresh);
     if (!mounted) return;
     setState(() {
       _settings = settings;
@@ -132,8 +135,18 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                   reason: reasonController.text.trim().isEmpty ? null : reasonController.text.trim(),
                   createdAt: DateTime.now().toIso8601String(),
                 );
-                await SupabaseService.addHoliday(holiday);
                 if (ctx.mounted) Navigator.pop(ctx);
+                
+                // Optimistic UI update
+                setState(() {
+                  final bSettings = Map<String, dynamic>.from(_settings?['bookingSettings'] ?? {});
+                  final currentHols = List<dynamic>.from(bSettings['holidays'] ?? []);
+                  currentHols.insert(0, holiday.toJson());
+                  bSettings['holidays'] = currentHols;
+                  _settings?['bookingSettings'] = bSettings;
+                });
+                
+                await SupabaseService.addHoliday(holiday);
                 _loadSettings();
               },
               child: const Text('حفظ الإجازة'),
@@ -154,7 +167,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('نشر تنبيه أو إعلان بالموقع', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          title: const Text('نشر تنبيه أو إعلان للمرضى', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -206,8 +219,18 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                   type: type,
                   createdAt: DateTime.now().toIso8601String(),
                 );
-                await SupabaseService.addAnnouncement(announcement);
                 if (ctx.mounted) Navigator.pop(ctx);
+                
+                // Optimistic UI update
+                setState(() {
+                  final bSettings = Map<String, dynamic>.from(_settings?['bookingSettings'] ?? {});
+                  final currentAnns = List<dynamic>.from(bSettings['announcements'] ?? []);
+                  currentAnns.insert(0, announcement.toJson());
+                  bSettings['announcements'] = currentAnns;
+                  _settings?['bookingSettings'] = bSettings;
+                });
+
+                await SupabaseService.addAnnouncement(announcement);
                 _loadSettings();
               },
               child: const Text('نشر الإعلان'),
@@ -220,23 +243,24 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_isLoading && _settings == null) {
       return const Center(child: CircularProgressIndicator(color: AppColors.royal));
     }
 
     final bookingSettings = Map<String, dynamic>.from(_settings?['bookingSettings'] ?? {});
     final isClosedToday = bookingSettings['isClosedToday'] == true;
-    final List<dynamic> closedDates = bookingSettings['closedDates'] ?? [];
-    final List<dynamic> holidays = bookingSettings['holidays'] ?? [];
-    final List<dynamic> announcements = bookingSettings['announcements'] ?? [];
+    final List<dynamic> closedDates = List.from(bookingSettings['closedDates'] ?? []);
+    final List<dynamic> holidays = List.from(bookingSettings['holidays'] ?? []);
+    final List<dynamic> announcements = List.from(bookingSettings['announcements'] ?? []);
 
     final selectedDateStr = _formatDate(_selectedDate);
     final isDateCurrentlyClosed = closedDates.contains(selectedDateStr);
 
     return RefreshIndicator(
-      onRefresh: _loadSettings,
+      onRefresh: () => _loadSettings(forceRefresh: true),
       color: AppColors.royal,
       child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +271,17 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(
+                  color: isClosedToday ? Colors.red.shade200 : AppColors.border,
+                  width: isClosedToday ? 1.5 : 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (isClosedToday ? Colors.red : AppColors.royal).withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,7 +289,10 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('إغلاق الحجوزات اليوم فوراً', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                      const Text(
+                        'إغلاق الحجوزات اليوم فوراً',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark),
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -264,14 +301,20 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                         ),
                         child: Text(
                           isClosedToday ? 'مغلق اليوم' : 'مفتوح',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isClosedToday ? Colors.red.shade700 : const Color(0xFF047857)),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isClosedToday ? Colors.red.shade700 : const Color(0xFF047857),
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    isClosedToday ? 'المرضى لا يستطيعون حجز مواعيد جديدة لليوم' : 'المرضى يمكنهم حجز المواعيد المتاحة لليوم بشكل طبيعي',
+                    isClosedToday
+                        ? 'المرضى لا يستطيعون حجز مواعيد جديدة لليوم من الموقع.'
+                        : 'المرضى يمكنهم حجز المواعيد المتاحة لليوم بشكل طبيعي.',
                     style: const TextStyle(fontSize: 11, color: AppColors.muted),
                   ),
                   const SizedBox(height: 12),
@@ -279,13 +322,22 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        await SupabaseService.toggleCloseToday(!isClosedToday);
+                        final newClosed = !isClosedToday;
+                        // Instant optimistic state change
+                        setState(() {
+                          bookingSettings['isClosedToday'] = newClosed;
+                          _settings?['bookingSettings'] = bookingSettings;
+                        });
+                        await SupabaseService.toggleCloseToday(newClosed);
                         _loadSettings();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isClosedToday ? const Color(0xFF059669) : Colors.red.shade600,
                       ),
-                      child: Text(isClosedToday ? 'إعادة فتح حجوزات اليوم بالموقع' : 'إغلاق حجوزات اليوم فوراً بالموقع'),
+                      child: Text(
+                        isClosedToday ? 'إعادة فتح حجوزات اليوم بالموقع' : 'إغلاق حجوزات اليوم فوراً بالموقع',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -328,7 +380,18 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                       const SizedBox(width: 10),
                       ElevatedButton(
                         onPressed: () async {
-                          await SupabaseService.toggleCloseDate(selectedDateStr, !isDateCurrentlyClosed);
+                          final newStatus = !isDateCurrentlyClosed;
+                          // Optimistic update
+                          setState(() {
+                            if (newStatus) {
+                              if (!closedDates.contains(selectedDateStr)) closedDates.add(selectedDateStr);
+                            } else {
+                              closedDates.remove(selectedDateStr);
+                            }
+                            bookingSettings['closedDates'] = closedDates;
+                            _settings?['bookingSettings'] = bookingSettings;
+                          });
+                          await SupabaseService.toggleCloseDate(selectedDateStr, newStatus);
                           _loadSettings();
                         },
                         style: ElevatedButton.styleFrom(
@@ -340,19 +403,28 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                   ),
                   if (closedDates.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    const Text('الأيام المغلقة حالياً:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
+                    const Text('الأيام المغلقة يدوياً:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.dark)),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: closedDates.map((date) => Chip(
-                        label: Text(date.toString(), style: const TextStyle(fontSize: 11)),
-                        deleteIcon: const Icon(Icons.close, size: 14),
-                        onDeleted: () async {
-                          await SupabaseService.toggleCloseDate(date.toString(), false);
-                          _loadSettings();
-                        },
-                      )).toList(),
+                      children: closedDates.map((d) {
+                        return Chip(
+                          label: Text(d.toString(), style: const TextStyle(fontSize: 11)),
+                          deleteIcon: const Icon(Icons.close, size: 14),
+                          onDeleted: () async {
+                            setState(() {
+                              closedDates.remove(d);
+                              bookingSettings['closedDates'] = closedDates;
+                              _settings?['bookingSettings'] = bookingSettings;
+                            });
+                            await SupabaseService.toggleCloseDate(d.toString(), false);
+                            _loadSettings();
+                          },
+                          backgroundColor: Colors.red.shade50,
+                          labelStyle: TextStyle(color: Colors.red.shade800),
+                        );
+                      }).toList(),
                     ),
                   ],
                 ],
@@ -374,7 +446,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('الإجازات والعطلات المجدولة', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                      Text('الإجازات المجدولة (${holidays.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
                       IconButton(
                         onPressed: _showAddHolidayDialog,
                         icon: const Icon(Icons.add_circle, color: AppColors.royal),
@@ -382,30 +454,62 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  const Text('الفترات التي تكون العيادة مغلقة فيها رسمياً.', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                  const SizedBox(height: 10),
+
                   if (holidays.isEmpty)
                     const Text('لا توجد إجازات مجدولة حالياً', style: TextStyle(fontSize: 11, color: AppColors.muted))
                   else
                     ...holidays.map((h) => Container(
-                          margin: const EdgeInsets.only(top: 8),
+                          margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: AppColors.background,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
                           ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(h['title'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                  Text('${h['startDate']} إلى ${h['endDate']}', style: const TextStyle(fontSize: 10, color: AppColors.royal)),
-                                ],
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(Icons.beach_access, size: 18, color: Colors.orange.shade700),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      h['title'] ?? 'إجازة',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark),
+                                    ),
+                                    Text(
+                                      'من ${h['startDate']} إلى ${h['endDate']}',
+                                      style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                    ),
+                                    if (h['reason'] != null && (h['reason'] as String).isNotEmpty)
+                                      Text(
+                                        h['reason'],
+                                        style: const TextStyle(fontSize: 10, color: AppColors.medical),
+                                      ),
+                                  ],
+                                ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
                                 onPressed: () async {
-                                  await SupabaseService.deleteHoliday(h['id']);
+                                  final hid = h['id'];
+                                  setState(() {
+                                    holidays.removeWhere((item) => item['id'] == hid);
+                                    bookingSettings['holidays'] = holidays;
+                                    _settings?['bookingSettings'] = bookingSettings;
+                                  });
+                                  await SupabaseService.deleteHoliday(hid);
                                   _loadSettings();
                                 },
                               ),
@@ -417,7 +521,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
             ),
             const SizedBox(height: 16),
 
-            // Card 4: Announcements
+            // Card 4: Public Announcements
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -431,40 +535,65 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('إعلانات وتنبيهات الموقع', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                      Text('تنبيهات وإعلانات الموقع (${announcements.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
                       IconButton(
                         onPressed: _showAddAnnouncementDialog,
-                        icon: const Icon(Icons.add_alert, color: AppColors.cyan),
-                        tooltip: 'نشر تنبيه',
+                        icon: const Icon(Icons.add_circle, color: AppColors.royal),
+                        tooltip: 'إضافة تنبيه',
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  const Text('رسائل تظهر في شريط إعلاني أعلى الموقع لجميع الزوار.', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                  const SizedBox(height: 10),
+
                   if (announcements.isEmpty)
-                    const Text('لا توجد إعلانات منشورة حالياً', style: TextStyle(fontSize: 11, color: AppColors.muted))
+                    const Text('لا توجد إعلانات نشطة حالياً', style: TextStyle(fontSize: 11, color: AppColors.muted))
                   else
                     ...announcements.map((a) => Container(
-                          margin: const EdgeInsets.only(top: 8),
+                          margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: AppColors.background,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
                           ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.royal.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.campaign, size: 18, color: AppColors.royal),
+                              ),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(a['title'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                    Text(a['content'] ?? '', style: const TextStyle(fontSize: 10, color: AppColors.muted)),
+                                    Text(
+                                      a['title'] ?? 'تنبيه',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark),
+                                    ),
+                                    Text(
+                                      a['content'] ?? '',
+                                      style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                    ),
                                   ],
                                 ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
                                 onPressed: () async {
-                                  await SupabaseService.deleteAnnouncement(a['id']);
+                                  final aid = a['id'];
+                                  setState(() {
+                                    announcements.removeWhere((item) => item['id'] == aid);
+                                    bookingSettings['announcements'] = announcements;
+                                    _settings?['bookingSettings'] = bookingSettings;
+                                  });
+                                  await SupabaseService.deleteAnnouncement(aid);
                                   _loadSettings();
                                 },
                               ),

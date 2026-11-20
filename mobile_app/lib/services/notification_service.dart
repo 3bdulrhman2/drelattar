@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -7,8 +8,20 @@ import 'supabase_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  debugPrint('Handling FCM background message: ${message.messageId}');
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {}
+  debugPrint('FCM background message received: ${message.messageId}');
+
+  final notification = message.notification;
+  final title = notification?.title ?? message.data['title'] ?? 'حجز كشف جديد بالعيادة! 🔔';
+  final body = notification?.body ?? message.data['body'] ?? 'لديك حجز جديد في جدول العيادة';
+
+  await NotificationService.showBookingAlert(
+    title: title,
+    body: body,
+    payload: message.data['bookingId']?.toString(),
+  );
 }
 
 class NotificationService {
@@ -21,8 +34,10 @@ class NotificationService {
       'إشعارات وتنبيهات فورية عند وصول حجز كشف جديد بالعيادة';
 
   static RealtimeChannel? _realtimeChannel;
+  static Timer? _syncTimer;
   static bool _isInitialized = false;
   static String? fcmToken;
+  static final Set<String> _knownAppointmentIds = {};
 
   static Future<void> initialize() async {
     if (_isInitialized) return;
@@ -51,6 +66,7 @@ class NotificationService {
         importance: Importance.max,
         playSound: true,
         enableVibration: true,
+        showBadge: true,
       );
 
       final androidPlugin = _notificationsPlugin
@@ -72,18 +88,20 @@ class NotificationService {
       final fcm = FirebaseMessaging.instance;
 
       // Request permission on iOS / Android 13+
-      final settings = await fcm.requestPermission(
+      await fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         provisional: false,
       );
-      debugPrint('FCM Authorization status: ${settings.authorizationStatus}');
 
       // Subscribe to clinic bookings topic for instant broadcast
-      await fcm.subscribeToTopic('clinic_bookings');
-      await fcm.subscribeToTopic('all_staff');
-      debugPrint('Subscribed to FCM topic: clinic_bookings');
+      try {
+        await fcm.subscribeToTopic('clinic_bookings');
+        await fcm.subscribeToTopic('all_staff');
+      } catch (e) {
+        debugPrint('FCM topic subscribe notice: $e');
+      }
 
       // Get FCM device registration token
       // ignore: deprecated_member_use
@@ -123,6 +141,7 @@ class NotificationService {
     }
 
     _isInitialized = true;
+    _startPeriodicSync();
     debugPrint('NotificationService full initialization completed');
   }
 
@@ -178,6 +197,11 @@ class NotificationService {
             table: 'appointments',
             callback: (payload) {
               final newRecord = payload.newRecord;
+              final recId = newRecord['id']?.toString() ?? '';
+              if (recId.isNotEmpty) {
+                _knownAppointmentIds.add(recId);
+              }
+
               final patientName =
                   newRecord['patient_name']?.toString() ?? 'مريض جديد';
               final date = newRecord['appointment_date']?.toString() ?? '';
@@ -198,8 +222,11 @@ class NotificationService {
               showBookingAlert(
                 title: 'حجز كشف جديد بالعيادة! 🔔',
                 body: 'المريض: $patientName\n${details.join('\n')}',
-                payload: newRecord['id']?.toString(),
+                payload: recId,
               );
+
+              // Silent refresh of cached appointments
+              SupabaseService.getAppointments(forceRefresh: true);
             },
           )
           .subscribe();
@@ -210,12 +237,47 @@ class NotificationService {
     }
   }
 
+  static void _startPeriodicSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 25), (timer) async {
+      try {
+        final appointments = await SupabaseService.getAppointments(forceRefresh: true);
+        if (_knownAppointmentIds.isEmpty) {
+          for (final a in appointments) {
+            _knownAppointmentIds.add(a.id);
+          }
+          return;
+        }
+
+        // Check for newly added pending appointments
+        for (final a in appointments) {
+          if (!_knownAppointmentIds.contains(a.id)) {
+            _knownAppointmentIds.add(a.id);
+            if (a.status == 'pending') {
+              showBookingAlert(
+                title: 'حجز كشف جديد بالعيادة! 🔔',
+                body: 'المريض: ${a.patientName}\nالموعد: ${a.appointmentDate} (${a.appointmentTime})',
+                payload: a.id,
+              );
+            }
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
   static Future<void> showBookingAlert({
     required String title,
     required String body,
     String? payload,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    final Int64List vibrationPattern = Int64List(4);
+    vibrationPattern[0] = 0;
+    vibrationPattern[1] = 400;
+    vibrationPattern[2] = 200;
+    vibrationPattern[3] = 400;
+
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       _channelId,
       _channelName,
       channelDescription: _channelDescription,
@@ -224,10 +286,13 @@ class NotificationService {
       icon: '@mipmap/ic_launcher',
       playSound: true,
       enableVibration: true,
-      styleInformation: BigTextStyleInformation(''),
+      vibrationPattern: vibrationPattern,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      styleInformation: BigTextStyleInformation(body),
     );
 
-    const NotificationDetails details =
+    final NotificationDetails details =
         NotificationDetails(android: androidDetails);
 
     try {
@@ -246,7 +311,7 @@ class NotificationService {
   static Future<void> testNotification() async {
     await showBookingAlert(
       title: 'تجربة الإشعارات والتنبيه الفوري 🔔',
-      body: 'تم تفعيل التنبيهات السحابية بنجاح! ستصلك التنبيهات حتى والتطبيق مغلق.',
+      body: 'تم تفعيل التنبيهات بنجاح! ستصلك التنبيهات الفورية حتى والتطبيق مغلق.',
       payload: 'test_notification',
     );
   }

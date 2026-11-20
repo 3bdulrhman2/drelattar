@@ -20,6 +20,7 @@ import { DoctorCard } from './components/card/DoctorCard';
 import { SecretaryLogin } from './components/secretary/SecretaryLogin';
 import { SecretaryDashboard } from './components/secretary/SecretaryDashboard';
 import { ClinicNoticeBanner } from './components/layout/ClinicNoticeBanner';
+import { NotificationPromptModal } from './components/layout/NotificationPromptModal';
 import type { SecretaryAccount } from './types';
 import { Bell } from 'lucide-react';
 
@@ -197,6 +198,9 @@ export const AppContent: React.FC = () => {
 
       {/* Floating Quick Action Bar for Mobile */}
       <QuickCallFloating />
+
+      {/* Polite Initial Visitor Notification Activation Prompt */}
+      <NotificationPromptModal />
 
     </div>
   );

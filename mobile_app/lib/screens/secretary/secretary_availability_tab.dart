@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/clinic_holiday.dart';
-import '../../services/auth_service.dart';
-import '../../services/notification_service.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
-import '../login_screen.dart';
 
 class SecretaryAvailabilityTab extends StatefulWidget {
   const SecretaryAvailabilityTab({super.key});
@@ -21,12 +18,16 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
   @override
   void initState() {
     super.initState();
+    _settings = SupabaseService.cachedSettings;
+    _isLoading = _settings == null;
     _loadSettings();
   }
 
-  Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
-    final settings = await SupabaseService.getClinicSettings();
+  Future<void> _loadSettings({bool forceRefresh = false}) async {
+    if (_settings == null) {
+      setState(() => _isLoading = true);
+    }
+    final settings = await SupabaseService.getClinicSettings(forceRefresh: forceRefresh);
     if (!mounted) return;
     setState(() {
       _settings = settings;
@@ -130,11 +131,20 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                   startDate: _formatDate(start),
                   endDate: _formatDate(end),
                   reason: reasonController.text.trim().isEmpty ? null : reasonController.text.trim(),
-                  createdBy: 'secretary',
                   createdAt: DateTime.now().toIso8601String(),
                 );
-                await SupabaseService.addHoliday(holiday);
                 if (ctx.mounted) Navigator.pop(ctx);
+
+                // Optimistic UI update
+                setState(() {
+                  final bSettings = Map<String, dynamic>.from(_settings?['bookingSettings'] ?? {});
+                  final currentHols = List<dynamic>.from(bSettings['holidays'] ?? []);
+                  currentHols.insert(0, holiday.toJson());
+                  bSettings['holidays'] = currentHols;
+                  _settings?['bookingSettings'] = bSettings;
+                });
+
+                await SupabaseService.addHoliday(holiday);
                 _loadSettings();
               },
               child: const Text('حفظ الإجازة'),
@@ -147,22 +157,23 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_isLoading && _settings == null) {
       return const Center(child: CircularProgressIndicator(color: AppColors.royal));
     }
 
     final bookingSettings = Map<String, dynamic>.from(_settings?['bookingSettings'] ?? {});
     final isClosedToday = bookingSettings['isClosedToday'] == true;
-    final List<dynamic> closedDates = bookingSettings['closedDates'] ?? [];
-    final List<dynamic> holidays = bookingSettings['holidays'] ?? [];
+    final List<dynamic> closedDates = List.from(bookingSettings['closedDates'] ?? []);
+    final List<dynamic> holidays = List.from(bookingSettings['holidays'] ?? []);
 
     final selectedDateStr = _formatDate(_selectedDate);
     final isDateCurrentlyClosed = closedDates.contains(selectedDateStr);
 
     return RefreshIndicator(
-      onRefresh: _loadSettings,
+      onRefresh: () => _loadSettings(forceRefresh: true),
       color: AppColors.royal,
       child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,7 +184,17 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(
+                  color: isClosedToday ? Colors.red.shade200 : AppColors.border,
+                  width: isClosedToday ? 1.5 : 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (isClosedToday ? Colors.red : AppColors.royal).withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,7 +202,7 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('إغلاق الحجوزات اليوم', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                      const Text('إغلاق الحجوزات اليوم فوراً', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -202,8 +223,8 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                   const SizedBox(height: 6),
                   Text(
                     isClosedToday
-                        ? 'الحجز مغلق حالياً لليوم بالموقع. انقر لإعادة الفتح.'
-                        : 'انقر لإغلاق استقبال مواعيد جديدة لليوم مع بقاء الحجوزات السابقة مسجلة.',
+                        ? 'المرضى لا يستطيعون حجز مواعيد جديدة لليوم من الموقع.'
+                        : 'المرضى يمكنهم حجز المواعيد المتاحة لليوم بشكل طبيعي.',
                     style: const TextStyle(fontSize: 11, color: AppColors.muted),
                   ),
                   const SizedBox(height: 12),
@@ -211,13 +232,21 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        await SupabaseService.toggleCloseToday(!isClosedToday);
+                        final newClosed = !isClosedToday;
+                        setState(() {
+                          bookingSettings['isClosedToday'] = newClosed;
+                          _settings?['bookingSettings'] = bookingSettings;
+                        });
+                        await SupabaseService.toggleCloseToday(newClosed);
                         _loadSettings();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isClosedToday ? const Color(0xFF059669) : Colors.red.shade600,
                       ),
-                      child: Text(isClosedToday ? 'إعادة فتح حجوزات اليوم بالموقع' : 'إغلاق حجوزات اليوم فوراً بالموقع'),
+                      child: Text(
+                        isClosedToday ? 'إعادة فتح حجوزات اليوم بالموقع' : 'إغلاق حجوزات اليوم فوراً بالموقع',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -236,9 +265,9 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('إغلاق موعد أو يوم محدد', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                  const Text('إغلاق يوم محدد مستقبلاً', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
                   const SizedBox(height: 4),
-                  const Text('اختر يوماً لإيقاف استقبال الحجوزات فيه على الموقع:', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                  const Text('اختر تاريخاً لإيقاف حجز المواعيد فيه تلقائياً بالموقع:', style: TextStyle(fontSize: 11, color: AppColors.muted)),
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -260,7 +289,17 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                       const SizedBox(width: 10),
                       ElevatedButton(
                         onPressed: () async {
-                          await SupabaseService.toggleCloseDate(selectedDateStr, !isDateCurrentlyClosed);
+                          final newStatus = !isDateCurrentlyClosed;
+                          setState(() {
+                            if (newStatus) {
+                              if (!closedDates.contains(selectedDateStr)) closedDates.add(selectedDateStr);
+                            } else {
+                              closedDates.remove(selectedDateStr);
+                            }
+                            bookingSettings['closedDates'] = closedDates;
+                            _settings?['bookingSettings'] = bookingSettings;
+                          });
+                          await SupabaseService.toggleCloseDate(selectedDateStr, newStatus);
                           _loadSettings();
                         },
                         style: ElevatedButton.styleFrom(
@@ -272,19 +311,28 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                   ),
                   if (closedDates.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    const Text('الأيام المغلقة حالياً:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
+                    const Text('الأيام المغلقة يدوياً:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.dark)),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: closedDates.map((date) => Chip(
-                        label: Text(date.toString(), style: const TextStyle(fontSize: 11)),
-                        deleteIcon: const Icon(Icons.close, size: 14),
-                        onDeleted: () async {
-                          await SupabaseService.toggleCloseDate(date.toString(), false);
-                          _loadSettings();
-                        },
-                      )).toList(),
+                      children: closedDates.map((d) {
+                        return Chip(
+                          label: Text(d.toString(), style: const TextStyle(fontSize: 11)),
+                          deleteIcon: const Icon(Icons.close, size: 14),
+                          onDeleted: () async {
+                            setState(() {
+                              closedDates.remove(d);
+                              bookingSettings['closedDates'] = closedDates;
+                              _settings?['bookingSettings'] = bookingSettings;
+                            });
+                            await SupabaseService.toggleCloseDate(d.toString(), false);
+                            _loadSettings();
+                          },
+                          backgroundColor: Colors.red.shade50,
+                          labelStyle: TextStyle(color: Colors.red.shade800),
+                        );
+                      }).toList(),
                     ),
                   ],
                 ],
@@ -292,7 +340,7 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
             ),
             const SizedBox(height: 16),
 
-            // Card 3: Holidays
+            // Card 3: Scheduled Holidays
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -306,7 +354,7 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('جدولة عطلة رسمية', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
+                      Text('الإجازات المجدولة (${holidays.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
                       IconButton(
                         onPressed: _showAddHolidayDialog,
                         icon: const Icon(Icons.add_circle, color: AppColors.royal),
@@ -314,30 +362,62 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  const Text('الفترات التي تكون العيادة مغلقة فيها رسمياً.', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                  const SizedBox(height: 10),
+
                   if (holidays.isEmpty)
-                    const Text('لا توجد إجازات مجدولة مسجلة', style: TextStyle(fontSize: 11, color: AppColors.muted))
+                    const Text('لا توجد إجازات مجدولة حالياً', style: TextStyle(fontSize: 11, color: AppColors.muted))
                   else
                     ...holidays.map((h) => Container(
-                          margin: const EdgeInsets.only(top: 8),
+                          margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: AppColors.background,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
                           ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(h['title'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                  Text('${h['startDate']} إلى ${h['endDate']}', style: const TextStyle(fontSize: 10, color: AppColors.royal)),
-                                ],
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(Icons.beach_access, size: 18, color: Colors.orange.shade700),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      h['title'] ?? 'إجازة',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.dark),
+                                    ),
+                                    Text(
+                                      'من ${h['startDate']} إلى ${h['endDate']}',
+                                      style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                    ),
+                                    if (h['reason'] != null && (h['reason'] as String).isNotEmpty)
+                                      Text(
+                                        h['reason'],
+                                        style: const TextStyle(fontSize: 10, color: AppColors.medical),
+                                      ),
+                                  ],
+                                ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
                                 onPressed: () async {
-                                  await SupabaseService.deleteHoliday(h['id']);
+                                  final hid = h['id'];
+                                  setState(() {
+                                    holidays.removeWhere((item) => item['id'] == hid);
+                                    bookingSettings['holidays'] = holidays;
+                                    _settings?['bookingSettings'] = bookingSettings;
+                                  });
+                                  await SupabaseService.deleteHoliday(hid);
                                   _loadSettings();
                                 },
                               ),
@@ -345,143 +425,6 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
                           ),
                         )),
                 ],
-              ),
-            ),
-            // Notification Settings Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.royal.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.notifications_active, color: AppColors.royal, size: 20),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('إشعارات وتنبيهات الحجوزات الفورية',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                            Text('تنبيه صوتي وإشعار فوري عند حجز أي مريض جديد',
-                                style: TextStyle(fontSize: 11, color: AppColors.muted)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Color(0xFF10B981), size: 16),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'قناة الإشعارات الفورية نشطة ومتصلة بسيرفر العيادة',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            await NotificationService.testNotification();
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('تم إرسال إشعار تجريبي وتنبيه صوتي بنجاح 🔔'),
-                                backgroundColor: AppColors.royal,
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.volume_up, size: 16),
-                          label: const Text('تجربة الإشعار والصوت'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.royal,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final granted = await NotificationService.requestPermission();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(granted
-                                  ? 'إذن الإشعارات مفعّل بنجاح ✓'
-                                  : 'يرجى تفعيل الإذن من إعدادات الهاتف'),
-                              backgroundColor: granted ? const Color(0xFF10B981) : Colors.orange,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.security, size: 16),
-                        label: const Text('فحص الإذن'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            // Logout Button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  await AuthService.logout();
-                  if (!context.mounted) return;
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
-                },
-                icon: const Icon(Icons.logout, size: 18),
-                label: const Text('تسجيل الخروج من الحساب'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade600,
-                  side: BorderSide(color: Colors.red.shade200),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
               ),
             ),
           ],
