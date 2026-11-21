@@ -121,21 +121,20 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const { data: remoteData, error } = await client
           .from('clinic_settings')
           .select('*')
-          .single();
+          .eq('key', 'main_settings')
+          .maybeSingle();
 
         if (error) {
-          // If table is empty (PGRST116), seed it with initial clinic content
-          if (error.code === 'PGRST116') {
-            await client.from('clinic_settings').insert({
-              key: 'main_settings',
-              content: data,
-              updated_at: new Date().toISOString()
-            });
-            setIsBackendSynced(true);
-          } else {
-            console.warn('Supabase fetch notice (table may need schema):', error.message);
-            setIsBackendSynced(false);
-          }
+          console.warn('Supabase fetch notice:', error.message);
+          setIsBackendSynced(false);
+        } else if (!remoteData) {
+          // If record does not exist yet, seed it with initial clinic content
+          await client.from('clinic_settings').insert({
+            key: 'main_settings',
+            content: data,
+            updated_at: new Date().toISOString()
+          });
+          setIsBackendSynced(true);
         } else if (remoteData && remoteData.content) {
           const remote = remoteData.content;
           setData((prev) => ({
@@ -281,15 +280,20 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.warn('LocalStorage save error:', e);
       }
       if (isSupabaseConfigured && supabase) {
-        supabase
+        const client = supabase;
+        client
           .from('clinic_settings')
-          .upsert(
-            { key: 'main_settings', content: updated, updated_at: new Date().toISOString() },
-            { onConflict: 'key' }
-          )
+          .update({ content: updated, updated_at: new Date().toISOString() })
+          .eq('key', 'main_settings')
           .then(({ error }) => {
             if (error) {
-              console.error('Supabase sync error:', error.message);
+              // Fallback to upsert only if update fails
+              client
+                .from('clinic_settings')
+                .upsert(
+                  { key: 'main_settings', content: updated, updated_at: new Date().toISOString() },
+                  { onConflict: 'key' }
+                );
             } else {
               setIsBackendSynced(true);
             }
@@ -307,12 +311,22 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsSaving(true);
       const payload = contentToSave || data;
 
-      const { error } = await supabase
+      // 1. Instant targeted update on existing record
+      let { error } = await supabase
         .from('clinic_settings')
-        .upsert(
-          { key: 'main_settings', content: payload, updated_at: new Date().toISOString() },
-          { onConflict: 'key' }
-        );
+        .update({ content: payload, updated_at: new Date().toISOString() })
+        .eq('key', 'main_settings');
+
+      // 2. Fallback to upsert if record did not exist
+      if (error) {
+        const upsertRes = await supabase
+          .from('clinic_settings')
+          .upsert(
+            { key: 'main_settings', content: payload, updated_at: new Date().toISOString() },
+            { onConflict: 'key' }
+          );
+        error = upsertRes.error;
+      }
 
       setIsSaving(false);
       if (error) {
