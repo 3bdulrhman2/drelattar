@@ -430,7 +430,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
             ...prev.bookingSettings,
             announcements: nextList,
           },
-        }));
+        }), true);
       }
 
       // 2. Play chime and show local alert
@@ -502,7 +502,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...prev,
       bookingSettings: { ...prev.bookingSettings, ...bookingUpdate },
       clinic: clinicUpdate ? { ...prev.clinic, ...clinicUpdate } : prev.clinic,
-    }));
+    }), true);
   };
 
   const updateVisibility = (visibilityUpdate: Partial<WebsiteVisibilitySettings>) => {
@@ -614,7 +614,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isClosedToday: isClosed,
         closedTodayReason: reason !== undefined ? reason : prev.bookingSettings.closedTodayReason || '',
       },
-    }));
+    }), true);
   };
 
   const toggleCloseDate = (dateStr: string, isClosed: boolean) => {
@@ -630,7 +630,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           closedDates: updatedClosedDates,
         },
       };
-    });
+    }, true);
   };
 
   const addHoliday = (holiday: Omit<ClinicHoliday, 'id' | 'createdAt'>) => {
@@ -645,7 +645,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...prev.bookingSettings,
         holidays: [newHoliday, ...(prev.bookingSettings.holidays || [])],
       },
-    }));
+    }), true);
   };
 
   const updateHoliday = (id: string, update: Partial<ClinicHoliday>) => {
@@ -660,7 +660,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           holidays: updatedHolidays,
         },
       };
-    });
+    }, true);
   };
 
   const deleteHoliday = (id: string) => {
@@ -670,7 +670,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...prev.bookingSettings,
         holidays: (prev.bookingSettings.holidays || []).filter((h) => h.id !== id),
       },
-    }));
+    }), true);
   };
 
   const addAnnouncement = (announcement: Omit<ClinicAnnouncement, 'id' | 'createdAt'>) => {
@@ -685,7 +685,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...prev.bookingSettings,
         announcements: [newAnnouncement, ...(prev.bookingSettings.announcements || [])],
       },
-    }));
+    }), true);
   };
 
   const updateAnnouncement = (id: string, update: Partial<ClinicAnnouncement>) => {
@@ -700,7 +700,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           announcements: updatedList,
         },
       };
-    });
+    }, true);
   };
 
   const deleteAnnouncement = (id: string) => {
@@ -710,7 +710,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...prev.bookingSettings,
         announcements: (prev.bookingSettings.announcements || []).filter((a) => a.id !== id),
       },
-    }));
+    }), true);
   };
 
   const addSecretaryAccount = (account: Omit<SecretaryAccount, 'id' | 'createdAt'>) => {

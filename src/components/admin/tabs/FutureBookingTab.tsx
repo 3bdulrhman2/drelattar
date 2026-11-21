@@ -137,10 +137,10 @@ export const FutureBookingTab: React.FC = () => {
 
         <button
           onClick={handleSaveSettings}
-          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0 cursor-pointer"
         >
-          <Check className="w-4 h-4" />
-          <span>تأكيد الحفظ ✓</span>
+          <Save className="w-4 h-4" />
+          <span>حفظ إعدادات الحجز</span>
         </button>
       </div>
 

@@ -21,27 +21,23 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onSelectTab }) => {
   return (
     <div className="space-y-8 text-right">
       
-      {/* Top Banner: Content Sync State */}
-      <div className={`p-5 sm:p-6 rounded-3xl border transition-all ${
-        isBackendSynced
-          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-          : 'bg-slate-800/80 border-slate-700/60 text-slate-300'
-      }`}>
+      {/* Top Banner */}
+      <div className="p-5 sm:p-6 rounded-3xl border bg-slate-800/80 border-slate-700/60 text-slate-300">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 font-bold text-sm sm:text-base">
-              <CheckCircle2 className={`w-5 h-5 ${isBackendSynced ? 'text-emerald-400' : 'text-brand-cyan'} shrink-0`} />
-              <span>نظام إدارة محتوى العيادة الآمن (Admin Console)</span>
+              <CheckCircle2 className="w-5 h-5 text-brand-cyan shrink-0" />
+              <span>نظام إدارة محتوى العيادة (Admin Console)</span>
             </div>
             <p className="text-xs sm:text-sm opacity-90 leading-relaxed max-w-2xl">
-              كافة التعديلات التي تجريها على بيانات الطبيب، مواعيد العمل، الخدمات الطبية، والآراء، تُحفظ تلقائياً وتنعكس فورياً للزوار عبر جميع الأجهزة.
+              كافة التعديلات التي تجريها على بيانات الطبيب، مواعيد العمل، الخدمات الطبية، والآراء، تُحفظ وتنعكس للزوار عبر جميع الأجهزة.
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-bold px-3.5 py-1.5 rounded-full bg-white/10 text-slate-200 flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${isBackendSynced ? 'bg-emerald-400 animate-pulse' : 'bg-brand-cyan'}`} />
-              <span>{isBackendSynced ? 'سحابي متزامن' : 'نظام نشط'}</span>
+            <span className="text-xs font-bold px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>لوحة الإدارة نشطة</span>
             </span>
           </div>
         </div>

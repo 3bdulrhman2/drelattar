@@ -58,20 +58,15 @@ export const DoctorInfoTab: React.FC = () => {
     <form onSubmit={handleSave} className="space-y-6 text-right max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <span>بيانات الطبيب والسيرة المهنية</span>
-            <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
-              يُحفظ تلقائياً ✓
-            </span>
-          </h3>
+          <h3 className="text-lg font-bold text-white">بيانات الطبيب والسيرة المهنية</h3>
           <p className="text-xs text-slate-400">تعديل الاسم واللقب المهني والمؤهلات والخبرات</p>
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 bg-brand-royal hover:bg-brand-medical text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer"
         >
-          <Check className="w-4 h-4" />
-          <span>تأكيد الحفظ ✓</span>
+          <Save className="w-4 h-4" />
+          <span>حفظ التعديلات</span>
         </button>
       </div>
 

@@ -181,32 +181,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             <span className="hidden sm:inline">نشر إشعار للجميع 📢</span>
           </button>
 
-          {/* 2. Auto-Save Active Indicator & Sync Trigger */}
+          {/* 2. Save Changes Button */}
           <button
             onClick={handleManualSave}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
+            disabled={isSaving}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${
               saveSuccess
-                ? 'bg-emerald-600 text-white border border-emerald-500 scale-105'
-                : isSaving
-                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
+                ? 'bg-emerald-600 text-white border border-emerald-500'
+                : 'bg-brand-royal hover:bg-brand-medical text-white border border-brand-cyan/40 hover:scale-105 active:scale-95'
             }`}
-            title="جميع التعديلات يتم حفظها تلقائياً وفورياً. انقر لإجراء مزامنة يدوية وتأكيد الحفظ"
+            title="حفظ جميع تعديلات الموقع"
           >
             {saveSuccess ? (
               <>
                 <Check className="w-3.5 h-3.5 text-white" />
-                <span>تمت المزامنة بنجاح ✓</span>
-              </>
-            ) : isSaving ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-                <span>جاري الحفظ تلقائياً...</span>
+                <span>تم الحفظ بنجاح ✓</span>
               </>
             ) : (
               <>
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span>الحفظ التلقائي مفعّل ✓</span>
+                <Save className="w-3.5 h-3.5 text-brand-cyan" />
+                <span>{isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات 💾'}</span>
               </>
             )}
           </button>
