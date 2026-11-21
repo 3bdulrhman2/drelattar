@@ -2,19 +2,25 @@
 // Dr. Mohammed Elsayed Elattar Clinic
 // Firebase Cloud Messaging Service Worker for Web Push
 // ========================================================
+// NOTE: Firebase config values are injected at build time
+// by the Vite plugin (inject-firebase-sw-config) in vite.config.ts.
+// The __VITE_FIREBASE_*__ placeholders below are replaced with
+// the actual Vercel Environment Variable values during `vite build`.
+// Never put real API keys here — this file is committed to GitHub.
+// ========================================================
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-// Official Firebase config for Dr. Elattar Clinic project
+// Firebase config — values injected at build time from Vercel env vars
 const firebaseConfig = {
-  apiKey: "AIzaSyB0CX4kNXIu_yKgcpQGcSVyNR4rfXWMhus",
-  authDomain: "drelattarclinic.firebaseapp.com",
-  projectId: "drelattarclinic",
-  storageBucket: "drelattarclinic.firebasestorage.app",
-  messagingSenderId: "75146239883",
-  appId: "1:75146239883:web:9fb39ec1d616370d6bd98e",
-  measurementId: "G-ST5XMXMVBT"
+  apiKey:            "__VITE_FIREBASE_API_KEY__",
+  authDomain:        "__VITE_FIREBASE_AUTH_DOMAIN__",
+  projectId:         "__VITE_FIREBASE_PROJECT_ID__",
+  storageBucket:     "__VITE_FIREBASE_STORAGE_BUCKET__",
+  messagingSenderId: "__VITE_FIREBASE_MESSAGING_SENDER_ID__",
+  appId:             "__VITE_FIREBASE_APP_ID__",
+  measurementId:     "__VITE_FIREBASE_MEASUREMENT_ID__",
 };
 
 try {
