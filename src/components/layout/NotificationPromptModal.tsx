@@ -4,6 +4,7 @@ import {
   requestWebNotificationPermission,
   triggerLocalNotification,
   registerWebPushServiceWorker,
+  saveDeviceTokenToSupabase,
 } from '../../lib/pushNotifications';
 
 const PROMPT_DISMISSED_KEY = 'drelattar_notification_prompt_dismissed_until';
@@ -34,10 +35,10 @@ export const NotificationPromptModal: React.FC = () => {
       // Ignore storage error
     }
 
-    // Show after a gentle 1.8s delay upon entering the site
+    // Show after a quick 500ms delay upon entering the site
     const timer = setTimeout(() => {
       setIsVisible(true);
-    }, 1800);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -45,9 +46,9 @@ export const NotificationPromptModal: React.FC = () => {
   const handleDismiss = () => {
     setIsVisible(false);
     try {
-      // Dismiss for 7 days
-      const sevenDays = Date.now() + 7 * 24 * 60 * 60 * 1000;
-      localStorage.setItem(PROMPT_DISMISSED_KEY, sevenDays.toString());
+      // Dismiss for 3 days
+      const threeDays = Date.now() + 3 * 24 * 60 * 60 * 1000;
+      localStorage.setItem(PROMPT_DISMISSED_KEY, threeDays.toString());
     } catch {
       // Ignore storage error
     }
@@ -60,6 +61,9 @@ export const NotificationPromptModal: React.FC = () => {
       if (permission === 'granted') {
         setActivatedSuccess(true);
         registerWebPushServiceWorker();
+        // Record subscriber web device token for clinic broadcast
+        const webSubId = `web-sub-${Date.now()}`;
+        saveDeviceTokenToSupabase(webSubId, 'all', 'web');
         triggerLocalNotification({
           title: 'مرحباً بك! تم تفعيل الإشعارات بنجاح 🔔',
           body: 'ستصلك تنبيهات فورية بمواعيد وتأكيدات الحجوزات وأحدث التنويهات من عيادة د. محمد السيد العطار.',

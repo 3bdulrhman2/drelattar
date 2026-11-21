@@ -24,49 +24,59 @@ const DEFAULT_ADMIN_EMAIL = 'admin@drelattar.com';
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Synchronously initialize user from localStorage so there is ZERO logout flicker on page refresh
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      } catch (e) {
+        console.warn('Session read error:', e);
+      }
+    }
+    return null;
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     // Check initial auth state
     if (isSupabaseConfigured && supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
-          setUser({
+          const authUser: AuthUser = {
             email: session.user.email || DEFAULT_ADMIN_EMAIL,
             role: 'admin',
             name: 'الدكتور محمد السيد العطار (إدارة)',
-          });
+          };
+          setUser(authUser);
+          try {
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+          } catch (e) {}
         }
         setIsLoading(false);
       });
 
       const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user) {
-          setUser({
+          const authUser: AuthUser = {
             email: session.user.email || DEFAULT_ADMIN_EMAIL,
             role: 'admin',
             name: 'الدكتور محمد السيد العطار (إدارة)',
-          });
-        } else {
-          setUser(null);
+          };
+          setUser(authUser);
+          try {
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+          } catch (e) {}
         }
+        // NOTE: If session is null, DO NOT clear user if local admin session exists in localStorage
       });
 
       return () => {
         authListener.subscription.unsubscribe();
       };
-    } else {
-      // Local session check
-      try {
-        const stored = sessionStorage.getItem(AUTH_STORAGE_KEY);
-        if (stored) {
-          setUser(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.warn('Session read error:', e);
-      }
-      setIsLoading(false);
     }
   }, []);
 
@@ -87,6 +97,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: 'الدكتور محمد السيد العطار',
           };
           setUser(authUser);
+          try {
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+          } catch (e) {}
           setIsLoading(false);
           return { success: true };
         }
@@ -104,9 +117,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setUser(authUser);
       try {
-        sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
       } catch (e) {
-        console.warn('Could not save session to sessionStorage', e);
+        console.warn('Could not save session to localStorage', e);
       }
       setIsLoading(false);
       return { success: true };
@@ -118,10 +131,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
     }
     setUser(null);
     try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
       sessionStorage.removeItem(AUTH_STORAGE_KEY);
     } catch (e) {
       console.warn('Session remove error:', e);

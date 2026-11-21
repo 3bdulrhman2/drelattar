@@ -311,6 +311,79 @@ export const FutureBookingTab: React.FC = () => {
           </div>
         </div>
 
+        {/* Max Advance Booking Days Horizon */}
+        <div className="bg-slate-900/80 p-5 rounded-2xl border border-purple-500/40 space-y-3.5 shadow-inner">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <span className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-purple-400 shrink-0" />
+              <span>فترة فتح المواعيد مقدماً (أفق الحجز المتاح بالموقع):</span>
+            </span>
+            <span className="text-[11px] text-brand-lime font-bold bg-purple-950/60 border border-purple-500/30 px-3 py-1 rounded-xl">
+              المفعل تلقائياً: {
+                (settings.maxAdvanceDays || 14) === 7 ? '7 أيام (أسبوع مقدماً)' :
+                (settings.maxAdvanceDays || 14) === 21 ? '21 يوماً (3 أسابيع)' :
+                (settings.maxAdvanceDays || 14) === 30 ? '30 يوماً (شهر كامل)' :
+                '14 يوماً (أسبوعان)'
+              }
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-300">
+            حدد عدد الأيام المستقبلية التي يسمح للمرضى بحجز مواعيد فيها على الموقع. <strong>تسمع بالموقع فورياً وتلقائياً:</strong>
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {[
+              { days: 7, label: 'أسبوع مقدماً', badge: '7 أيام', sub: 'حجز قريب المدى' },
+              { days: 14, label: 'أسبوعان', badge: '14 يوماً', sub: 'الوضع الافتراضي الأنسب' },
+              { days: 21, label: '3 أسابيع', badge: '21 يوماً', sub: 'حجز متوسط المدى' },
+              { days: 30, label: 'شهر كامل', badge: '30 يوماً', sub: 'حجز مسبق طويل' },
+            ].map(opt => {
+              const isSelected = (settings.maxAdvanceDays || 14) === opt.days;
+              return (
+                <button
+                  key={opt.days}
+                  type="button"
+                  onClick={() => {
+                    setSettings(prev => ({ ...prev, maxAdvanceDays: opt.days }));
+                    updateBookingSettings({ maxAdvanceDays: opt.days });
+                    setSavedNotice(true);
+                    setTimeout(() => setSavedNotice(false), 3000);
+                  }}
+                  className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
+                    isSelected
+                      ? 'bg-purple-600/30 border-purple-400 text-white shadow-md shadow-purple-500/20 ring-2 ring-purple-400 scale-[1.02]'
+                      : 'bg-slate-800/80 border-slate-700/70 text-slate-300 hover:border-purple-400/50 hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                      {opt.label}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                      isSelected ? 'bg-purple-500 text-white font-bold' : 'bg-slate-700 text-slate-400'
+                    }`}>
+                      {opt.badge}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-300 mb-1">
+                    {opt.sub}
+                  </span>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-700/50 text-[10px]">
+                    {isSelected ? (
+                      <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        <Check className="w-3 h-3" /> تم التفعيل
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">اضغط للاختيار</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Operating Hours Configuration (Regular & Friday) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           

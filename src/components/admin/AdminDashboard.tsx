@@ -76,9 +76,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   });
 
   const handleManualSave = async () => {
-    setSaveSuccess(true);
-    saveToSupabase();
-    setTimeout(() => setSaveSuccess(false), 2500);
+    const res = await saveToSupabase();
+    if (res.success) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    }
   };
 
   const handleToggleNotifications = async () => {

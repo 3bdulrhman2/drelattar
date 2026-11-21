@@ -151,6 +151,7 @@ export interface FutureBookingSettings {
   startTimeFriday?: string; // "16:00"
   endTimeFriday?: string; // "22:00"
   slotDurationMinutes: number; // 60 for 1 slot per hour
+  maxAdvanceDays?: number; // e.g. 7, 14, 21, 30 days open ahead for booking
   maxDailyBookings: number;
   instructionText: string;
   // Holiday and Closure Settings

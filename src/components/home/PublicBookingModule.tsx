@@ -36,7 +36,8 @@ export const PublicBookingModule: React.FC = () => {
   }
 
   const { cairoTodayStr, formattedDateArabic } = getCairoDateTime();
-  const upcomingDays = useMemo(() => getUpcomingCairoDays(14), [cairoTodayStr]);
+  const advanceDaysCount = Number(bookingSettings.maxAdvanceDays) > 0 ? Number(bookingSettings.maxAdvanceDays) : 14;
+  const upcomingDays = useMemo(() => getUpcomingCairoDays(advanceDaysCount), [cairoTodayStr, advanceDaysCount]);
 
   // Form State
   const [selectedDate, setSelectedDate] = useState<string>(upcomingDays[0]?.dateStr || cairoTodayStr);

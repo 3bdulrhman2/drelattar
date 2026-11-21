@@ -54,7 +54,7 @@ export const getCairoDateTime = (): CairoDateTimeInfo => {
 };
 
 /**
- * Formats a 24h time string like "20:00" into friendly Arabic 12h: "08:00 م"
+ * Formats a 24h time string like "20:00" into friendly Arabic 12h: "08:00 مساءً"
  */
 export const formatTimeArabic = (time24: string): string => {
   const [hStr, mStr] = time24.split(':');
@@ -62,10 +62,10 @@ export const formatTimeArabic = (time24: string): string => {
   const m = parseInt(mStr || '0', 10);
   const minutePadded = m.toString().padStart(2, '0');
 
-  if (h === 0) return `12:${minutePadded} ص`;
-  if (h < 12) return `${h.toString().padStart(2, '0')}:${minutePadded} ص`;
-  if (h === 12) return `12:${minutePadded} م`;
-  return `${(h - 12).toString().padStart(2, '0')}:${minutePadded} م`;
+  if (h === 0) return `12:${minutePadded} صباحاً`;
+  if (h < 12) return `${h.toString().padStart(2, '0')}:${minutePadded} صباحاً`;
+  if (h === 12) return `12:${minutePadded} ظهراً`;
+  return `${(h - 12).toString().padStart(2, '0')}:${minutePadded} مساءً`;
 };
 
 /**

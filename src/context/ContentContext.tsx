@@ -137,22 +137,32 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setIsBackendSynced(true);
         } else if (remoteData && remoteData.content) {
           const remote = remoteData.content;
-          setData((prev) => ({
-            ...initialClinicData,
-            ...remote,
-            doctor: { ...initialClinicData.doctor, ...(remote.doctor || {}) },
-            clinic: { ...initialClinicData.clinic, ...(remote.clinic || {}) },
-            social: { ...initialClinicData.social, ...(remote.social || {}) },
-            bookingSettings: { ...initialClinicData.bookingSettings, ...(remote.bookingSettings || {}) },
-            visibility: { ...initialClinicData.visibility, ...(remote.visibility || {}) },
-            socialReviewImages: Array.isArray(remote.socialReviewImages)
-              ? remote.socialReviewImages
-              : initialClinicData.socialReviewImages,
-            bookings: Array.isArray(remote.bookings) && remote.bookings.length > 0
-              ? remote.bookings
-              : prev.bookings,
-          }));
-          setIsBackendSynced(true);
+          const localTimestampStr = typeof window !== 'undefined' ? localStorage.getItem('drelattar_last_updated_at') : null;
+          const localTime = localTimestampStr ? new Date(localTimestampStr).getTime() : 0;
+          const remoteTime = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0;
+
+          // If local edits are newer than remote database, push local to Supabase
+          if (localTime > remoteTime && localTime > 0) {
+            console.log('Local data is newer than remote; syncing up to Supabase...');
+            flushSyncToBackend(latestDataRef.current || data);
+          } else {
+            setData((prev) => ({
+              ...initialClinicData,
+              ...remote,
+              doctor: { ...initialClinicData.doctor, ...(remote.doctor || {}) },
+              clinic: { ...initialClinicData.clinic, ...(remote.clinic || {}) },
+              social: { ...initialClinicData.social, ...(remote.social || {}) },
+              bookingSettings: { ...initialClinicData.bookingSettings, ...(remote.bookingSettings || {}) },
+              visibility: { ...initialClinicData.visibility, ...(remote.visibility || {}) },
+              socialReviewImages: Array.isArray(remote.socialReviewImages)
+                ? remote.socialReviewImages
+                : initialClinicData.socialReviewImages,
+              bookings: Array.isArray(remote.bookings) && remote.bookings.length > 0
+                ? remote.bookings
+                : prev.bookings,
+            }));
+            setIsBackendSynced(true);
+          }
         }
 
         // Also fetch remote appointments from Supabase if table exists
@@ -262,6 +272,20 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         }
       )
+      .on(
+        'broadcast',
+        { event: 'new_announcement' },
+        (payload: any) => {
+          if (payload && payload.payload) {
+            const { title, message } = payload.payload;
+            triggerLocalNotification({
+              title: title || 'إعلان وتنبيه جديد من العيادة 🔔',
+              body: message || '',
+              type: 'announcement',
+            });
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -277,10 +301,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     latestDataRef.current = data;
   }, [data]);
 
-  // Non-blocking background flush with strict 3.5s timeout race
+  // Direct background flush to Supabase
   const flushSyncToBackend = async (stateToSave: AppContentState): Promise<boolean> => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+      localStorage.setItem('drelattar_last_updated_at', new Date().toISOString());
     } catch (e) {
       console.warn('LocalStorage save warning:', e);
     }
@@ -293,58 +318,79 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsSaving(true);
 
     try {
-      const updatePromise = client
+      const nowIso = new Date().toISOString();
+      const { error } = await client
         .from('clinic_settings')
-        .update({ content: stateToSave, updated_at: new Date().toISOString() })
+        .update({ content: stateToSave, updated_at: nowIso })
         .eq('key', 'main_settings');
 
-      const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
-        setTimeout(() => reject(new Error('Background sync timeout')), 3500)
-      );
-
-      const result = (await Promise.race([updatePromise, timeoutPromise])) as any;
-
-      if (result && result.error) {
-        // Fallback to upsert if row did not exist
+      if (error) {
+        console.warn('Direct update fallback to upsert:', error.message);
         await client
           .from('clinic_settings')
           .upsert(
-            { key: 'main_settings', content: stateToSave, updated_at: new Date().toISOString() },
+            { key: 'main_settings', content: stateToSave, updated_at: nowIso },
             { onConflict: 'key' }
           );
       }
       setIsBackendSynced(true);
       return true;
     } catch (err) {
-      console.warn('Non-blocking cloud sync notice (locally saved 100%):', err);
-      return true;
+      console.warn('Cloud sync error:', err);
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
+  // Ensure any pending debounce is flushed if user closes or reloads the tab
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        flushSyncToBackend(latestDataRef.current);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   const syncUpdatedState = (
-    updater: AppContentState | ((prev: AppContentState) => AppContentState)
+    updater: AppContentState | ((prev: AppContentState) => AppContentState),
+    immediateSync: boolean = false
   ) => {
     // 1. Instant synchronous UI and LocalStorage update (0ms lag)
+    let nextStateToSave: AppContentState | null = null;
     setData((prev) => {
       const nextState = typeof updater === 'function' ? updater(prev) : updater;
       latestDataRef.current = nextState;
+      nextStateToSave = nextState;
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextState));
+        localStorage.setItem('drelattar_last_updated_at', new Date().toISOString());
       } catch (e) {
         console.warn('LocalStorage save error:', e);
       }
       return nextState;
     });
 
-    // 2. Debounced background cloud sync (400ms debounce)
+    if (immediateSync && nextStateToSave) {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+      flushSyncToBackend(nextStateToSave);
+      return;
+    }
+
+    // 2. Debounced background cloud sync
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
     syncTimeoutRef.current = setTimeout(() => {
       flushSyncToBackend(latestDataRef.current);
-    }, 400);
+    }, 200);
   };
 
   const saveToSupabase = async (contentToSave?: AppContentState): Promise<{ success: boolean; error?: string }> => {
@@ -352,8 +398,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       clearTimeout(syncTimeoutRef.current);
     }
     const payload = contentToSave || latestDataRef.current || data;
-    await flushSyncToBackend(payload);
-    return { success: true };
+    const ok = await flushSyncToBackend(payload);
+    return { success: ok };
   };
 
   const publishBroadcastNotification = async (

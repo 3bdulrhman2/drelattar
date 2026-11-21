@@ -34,10 +34,6 @@ export const isSupabaseConfigured = Boolean(
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
       global: {
         headers: { 'x-client-info': 'drelattar-fast-web' },
       },

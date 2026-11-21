@@ -232,6 +232,7 @@ export const initialClinicData: AppContentState = {
     startTimeFriday: '16:00',
     endTimeFriday: '22:00',
     slotDurationMinutes: 60,
+    maxAdvanceDays: 14,
     maxDailyBookings: 25,
     instructionText: 'نظام الحجز الإلكتروني قيد التطوير والتفعيل المستقبلي من قِبل إدارة العيادة.',
     isClosedToday: false,
