@@ -17,8 +17,9 @@ interface AuthContextType {
 }
 
 const AUTH_STORAGE_KEY = 'drelattar_admin_session_v1';
-// Standard local admin passcode fallback (can also be configured via VITE_ADMIN_PASSWORD)
-const DEFAULT_LOCAL_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'DrElattar2026!';
+// Admin password is read exclusively from VITE_ADMIN_PASSWORD (Vercel Environment Variable).
+// No hardcoded fallback — if the env var is not set, local login will be disabled.
+const DEFAULT_LOCAL_PASSWORD: string = import.meta.env.VITE_ADMIN_PASSWORD ?? '';
 const DEFAULT_ADMIN_EMAIL = 'admin@drelattar.com';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -108,8 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Local admin authentication fallback (Always works with DrElattar2026!)
-    if (password === DEFAULT_LOCAL_PASSWORD) {
+    // Local admin authentication via VITE_ADMIN_PASSWORD (must be set in Vercel env vars)
+    if (DEFAULT_LOCAL_PASSWORD && password === DEFAULT_LOCAL_PASSWORD) {
       const authUser: AuthUser = {
         email,
         role: 'admin',

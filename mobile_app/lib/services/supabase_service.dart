@@ -9,9 +9,16 @@ import '../models/secretary_account.dart';
 import '../models/social_review.dart';
 
 class SupabaseService {
-  static const String supabaseUrl = 'https://jpamutyomblwobwntoky.supabase.co';
+  // Supabase credentials are injected at build time via --dart-define flags.
+  // Build command example:
+  //   flutter build apk \
+  //     --dart-define=SUPABASE_URL=https://your-project.supabase.co \
+  //     --dart-define=SUPABASE_ANON_KEY=your-anon-key
+  // No hardcoded values here — credentials must come from the build environment.
+  static const String supabaseUrl =
+      String.fromEnvironment('SUPABASE_URL', defaultValue: '');
   static const String anonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwYW11dHlvbWJsd29id250b2t5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNDgxNzIsImV4cCI6MjExMDYyNDE3Mn0.SKV19QKCDGZSbOK5HQExWqULwfakEXvzkzI8YJPOayw';
+      String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
 
   static Map<String, String> get _headers => {
         'apikey': anonKey,
