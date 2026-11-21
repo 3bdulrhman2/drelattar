@@ -68,7 +68,18 @@ export const FutureBookingTab: React.FC = () => {
       hoursFriday: `الجمعة: من ${formatTimeArabic(settings.startTimeFriday || '16:00')} حتى ${formatTimeArabic(settings.endTimeFriday || '22:00')}`,
     });
     setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 3000);
+    setTimeout(() => setSavedNotice(false), 2500);
+  };
+
+  const handleTimeChange = (field: keyof FutureBookingSettings, val: string) => {
+    const updated = { ...settings, [field]: val };
+    setSettings(updated);
+    updateBookingSettings(
+      { [field]: val },
+      field === 'startTime' || field === 'endTime'
+        ? { hoursRegular: `السبت إلى الخميس: من ${formatTimeArabic(updated.startTime || '13:00')} حتى ${formatTimeArabic(updated.endTime || '21:00')}` }
+        : { hoursFriday: `الجمعة: من ${formatTimeArabic(updated.startTimeFriday || '16:00')} حتى ${formatTimeArabic(updated.endTimeFriday || '22:00')}` }
+    );
   };
 
   const toggleDay = (dayId: string) => {
@@ -126,10 +137,10 @@ export const FutureBookingTab: React.FC = () => {
 
         <button
           onClick={handleSaveSettings}
-          className="inline-flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0"
+          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0 cursor-pointer"
         >
-          <Save className="w-4 h-4" />
-          <span>حفظ إعدادات الحجز</span>
+          <Check className="w-4 h-4" />
+          <span>تأكيد الحفظ ✓</span>
         </button>
       </div>
 
@@ -324,7 +335,7 @@ export const FutureBookingTab: React.FC = () => {
                 <input
                   type="time"
                   value={settings.startTime || '13:00'}
-                  onChange={(e) => setSettings(prev => ({ ...prev, startTime: e.target.value }))}
+                  onChange={(e) => handleTimeChange('startTime', e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-hidden focus:border-purple-400"
                 />
               </div>
@@ -334,7 +345,7 @@ export const FutureBookingTab: React.FC = () => {
                 <input
                   type="time"
                   value={settings.endTime || '21:00'}
-                  onChange={(e) => setSettings(prev => ({ ...prev, endTime: e.target.value }))}
+                  onChange={(e) => handleTimeChange('endTime', e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-hidden focus:border-purple-400"
                 />
               </div>
@@ -366,7 +377,7 @@ export const FutureBookingTab: React.FC = () => {
                 <input
                   type="time"
                   value={settings.startTimeFriday || '16:00'}
-                  onChange={(e) => setSettings(prev => ({ ...prev, startTimeFriday: e.target.value }))}
+                  onChange={(e) => handleTimeChange('startTimeFriday', e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-hidden focus:border-purple-400"
                 />
               </div>
@@ -376,7 +387,7 @@ export const FutureBookingTab: React.FC = () => {
                 <input
                   type="time"
                   value={settings.endTimeFriday || '22:00'}
-                  onChange={(e) => setSettings(prev => ({ ...prev, endTimeFriday: e.target.value }))}
+                  onChange={(e) => handleTimeChange('endTimeFriday', e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs focus:outline-hidden focus:border-purple-400"
                 />
               </div>

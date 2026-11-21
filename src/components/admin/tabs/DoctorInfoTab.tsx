@@ -19,37 +19,59 @@ export const DoctorInfoTab: React.FC = () => {
 
   const [savedNotice, setSavedNotice] = useState(false);
 
+  const handleChange = (field: keyof typeof form, value: any) => {
+    const nextForm = { ...form, [field]: value };
+    setForm(nextForm);
+    updateDoctor(nextForm);
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateDoctor(form);
     setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 3000);
+    setTimeout(() => setSavedNotice(false), 2500);
   };
 
   const handleAddSpecialty = () => {
-    setForm(prev => ({ ...prev, specialties: [...prev.specialties, 'تخصص جديد'] }));
+    const nextSpecialties = [...form.specialties, 'تخصص جديد'];
+    const nextForm = { ...form, specialties: nextSpecialties };
+    setForm(nextForm);
+    updateDoctor(nextForm);
   };
 
   const handleRemoveSpecialty = (index: number) => {
-    setForm(prev => ({
-      ...prev,
-      specialties: prev.specialties.filter((_, i) => i !== index),
-    }));
+    const nextSpecialties = form.specialties.filter((_, i) => i !== index);
+    const nextForm = { ...form, specialties: nextSpecialties };
+    setForm(nextForm);
+    updateDoctor(nextForm);
+  };
+
+  const handleSpecialtyChange = (index: number, val: string) => {
+    const next = [...form.specialties];
+    next[index] = val;
+    const nextForm = { ...form, specialties: next };
+    setForm(nextForm);
+    updateDoctor(nextForm);
   };
 
   return (
     <form onSubmit={handleSave} className="space-y-6 text-right max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-white">بيانات الطبيب والسيرة المهنية</h3>
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <span>بيانات الطبيب والسيرة المهنية</span>
+            <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              يُحفظ تلقائياً ✓
+            </span>
+          </h3>
           <p className="text-xs text-slate-400">تعديل الاسم واللقب المهني والمؤهلات والخبرات</p>
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 bg-brand-royal hover:bg-brand-medical text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all"
+          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer"
         >
-          <Save className="w-4 h-4" />
-          <span>حفظ التعديلات</span>
+          <Check className="w-4 h-4" />
+          <span>تأكيد الحفظ ✓</span>
         </button>
       </div>
 
@@ -67,7 +89,7 @@ export const DoctorInfoTab: React.FC = () => {
             <input
               type="text"
               value={form.nameAr}
-              onChange={(e) => setForm({ ...form, nameAr: e.target.value })}
+              onChange={(e) => handleChange('nameAr', e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
             />
           </div>
@@ -77,7 +99,7 @@ export const DoctorInfoTab: React.FC = () => {
             <input
               type="text"
               value={form.nameEn}
-              onChange={(e) => setForm({ ...form, nameEn: e.target.value })}
+              onChange={(e) => handleChange('nameEn', e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan text-left"
               dir="ltr"
             />
@@ -90,7 +112,7 @@ export const DoctorInfoTab: React.FC = () => {
             <input
               type="text"
               value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              onChange={(e) => handleChange('title', e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
             />
           </div>
@@ -100,7 +122,7 @@ export const DoctorInfoTab: React.FC = () => {
             <input
               type="text"
               value={form.education}
-              onChange={(e) => setForm({ ...form, education: e.target.value })}
+              onChange={(e) => handleChange('education', e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
             />
           </div>
@@ -111,7 +133,7 @@ export const DoctorInfoTab: React.FC = () => {
           <textarea
             rows={3}
             value={form.bio}
-            onChange={(e) => setForm({ ...form, bio: e.target.value })}
+            onChange={(e) => handleChange('bio', e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-cyan leading-relaxed"
           />
         </div>
@@ -122,7 +144,7 @@ export const DoctorInfoTab: React.FC = () => {
             <button
               type="button"
               onClick={handleAddSpecialty}
-              className="text-xs text-brand-cyan hover:underline flex items-center gap-1"
+              className="text-xs text-brand-cyan hover:underline flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>إضافة تخصص</span>
@@ -134,17 +156,13 @@ export const DoctorInfoTab: React.FC = () => {
                 <input
                   type="text"
                   value={spec}
-                  onChange={(e) => {
-                    const next = [...form.specialties];
-                    next[index] = e.target.value;
-                    setForm({ ...form, specialties: next });
-                  }}
+                  onChange={(e) => handleSpecialtyChange(index, e.target.value)}
                   className="bg-transparent border-0 text-white focus:outline-none w-28 sm:w-36 text-xs"
                 />
                 <button
                   type="button"
                   onClick={() => handleRemoveSpecialty(index)}
-                  className="text-rose-400 hover:text-rose-300 p-0.5"
+                  className="text-rose-400 hover:text-rose-300 p-0.5 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

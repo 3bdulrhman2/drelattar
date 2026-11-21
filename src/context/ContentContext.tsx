@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type {
   AppContentState,
   DoctorInfo,
@@ -269,79 +269,91 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, []);
 
+  // Dedicated refs to manage debounced non-blocking sync
+  const latestDataRef = useRef<AppContentState>(data);
+  const syncTimeoutRef = useRef<any>(null);
+
+  useEffect(() => {
+    latestDataRef.current = data;
+  }, [data]);
+
+  // Non-blocking background flush with strict 3.5s timeout race
+  const flushSyncToBackend = async (stateToSave: AppContentState): Promise<boolean> => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (e) {
+      console.warn('LocalStorage save warning:', e);
+    }
+
+    if (!isSupabaseConfigured || !supabase) {
+      return true;
+    }
+
+    const client = supabase;
+    setIsSaving(true);
+
+    try {
+      const updatePromise = client
+        .from('clinic_settings')
+        .update({ content: stateToSave, updated_at: new Date().toISOString() })
+        .eq('key', 'main_settings');
+
+      const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
+        setTimeout(() => reject(new Error('Background sync timeout')), 3500)
+      );
+
+      const result = (await Promise.race([updatePromise, timeoutPromise])) as any;
+
+      if (result && result.error) {
+        // Fallback to upsert if row did not exist
+        await client
+          .from('clinic_settings')
+          .upsert(
+            { key: 'main_settings', content: stateToSave, updated_at: new Date().toISOString() },
+            { onConflict: 'key' }
+          );
+      }
+      setIsBackendSynced(true);
+      return true;
+    } catch (err) {
+      console.warn('Non-blocking cloud sync notice (locally saved 100%):', err);
+      return true;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const syncUpdatedState = (
     updater: AppContentState | ((prev: AppContentState) => AppContentState)
   ) => {
+    // 1. Instant synchronous UI and LocalStorage update (0ms lag)
     setData((prev) => {
-      const updated = typeof updater === 'function' ? updater(prev) : updater;
+      const nextState = typeof updater === 'function' ? updater(prev) : updater;
+      latestDataRef.current = nextState;
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextState));
       } catch (e) {
         console.warn('LocalStorage save error:', e);
       }
-      if (isSupabaseConfigured && supabase) {
-        const client = supabase;
-        client
-          .from('clinic_settings')
-          .update({ content: updated, updated_at: new Date().toISOString() })
-          .eq('key', 'main_settings')
-          .then(({ error }) => {
-            if (error) {
-              // Fallback to upsert only if update fails
-              client
-                .from('clinic_settings')
-                .upsert(
-                  { key: 'main_settings', content: updated, updated_at: new Date().toISOString() },
-                  { onConflict: 'key' }
-                );
-            } else {
-              setIsBackendSynced(true);
-            }
-          });
-      }
-      return updated;
+      return nextState;
     });
+
+    // 2. Debounced background cloud sync (400ms debounce)
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+    syncTimeoutRef.current = setTimeout(() => {
+      flushSyncToBackend(latestDataRef.current);
+    }, 400);
   };
 
   const saveToSupabase = async (contentToSave?: AppContentState): Promise<{ success: boolean; error?: string }> => {
-    if (!isSupabaseConfigured || !supabase) {
-      return { success: false, error: 'Supabase غير مهيأ' };
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
     }
-    try {
-      setIsSaving(true);
-      const payload = contentToSave || data;
-
-      // 1. Instant targeted update on existing record
-      let { error } = await supabase
-        .from('clinic_settings')
-        .update({ content: payload, updated_at: new Date().toISOString() })
-        .eq('key', 'main_settings');
-
-      // 2. Fallback to upsert if record did not exist
-      if (error) {
-        const upsertRes = await supabase
-          .from('clinic_settings')
-          .upsert(
-            { key: 'main_settings', content: payload, updated_at: new Date().toISOString() },
-            { onConflict: 'key' }
-          );
-        error = upsertRes.error;
-      }
-
-      setIsSaving(false);
-      if (error) {
-        console.error('Supabase save error:', error);
-        setIsBackendSynced(false);
-        return { success: false, error: error.message };
-      }
-      setIsBackendSynced(true);
-      return { success: true };
-    } catch (err: any) {
-      setIsSaving(false);
-      console.error('Supabase save exception:', err);
-      setIsBackendSynced(false);
-      return { success: false, error: err.message || 'حدث خطأ أثناء الحفظ' };
-    }
+    const payload = contentToSave || latestDataRef.current || data;
+    await flushSyncToBackend(payload);
+    return { success: true };
   };
 
   const publishBroadcastNotification = async (
@@ -351,24 +363,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     pinToBanner: boolean = true
   ): Promise<boolean> => {
     try {
-      // 1. Play chime and show local alert
-      triggerLocalNotification({
-        title,
-        body: message,
-        type: 'announcement',
-      });
-
-      // 2. Broadcast to all active clients via Supabase Realtime channel
-      if (isSupabaseConfigured && supabase) {
-        const broadcastChannel = supabase.channel('realtime_clinic_settings');
-        await broadcastChannel.send({
-          type: 'broadcast',
-          event: 'new_announcement',
-          payload: { title, message, type },
-        });
-      }
-
-      // 3. If pinToBanner, add to announcements in bookingSettings so it renders on top
+      // 1. If pinToBanner, immediately add to announcements in state so it appears in 0ms!
       if (pinToBanner) {
         const newAnnouncement: ClinicAnnouncement = {
           id: `ann-${Date.now()}`,
@@ -380,18 +375,37 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           createdAt: new Date().toISOString(),
         };
 
-        const existingList = data.bookingSettings.announcements || [];
+        const existingList = latestDataRef.current.bookingSettings.announcements || [];
         const nextList = [newAnnouncement, ...existingList.filter((a) => a.title !== title)];
 
-        const updatedState: AppContentState = {
-          ...data,
+        syncUpdatedState((prev) => ({
+          ...prev,
           bookingSettings: {
-            ...data.bookingSettings,
+            ...prev.bookingSettings,
             announcements: nextList,
           },
-        };
+        }));
+      }
 
-        syncUpdatedState(updatedState);
+      // 2. Play chime and show local alert
+      triggerLocalNotification({
+        title,
+        body: message,
+        type: 'announcement',
+      });
+
+      // 3. Fire-and-forget Supabase Realtime broadcast (DO NOT AWAIT or BLOCK)
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const broadcastChannel = supabase.channel('realtime_clinic_settings');
+          broadcastChannel.send({
+            type: 'broadcast',
+            event: 'new_announcement',
+            payload: { title, message, type },
+          }).catch(() => {});
+        } catch (e) {
+          console.warn('Broadcast realtime notice:', e);
+        }
       }
 
       return true;

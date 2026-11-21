@@ -16,26 +16,37 @@ export const SocialMediaTab: React.FC = () => {
 
   const [savedNotice, setSavedNotice] = useState(false);
 
+  const handleChange = (field: keyof typeof form, val: string) => {
+    const nextForm = { ...form, [field]: val };
+    setForm(nextForm);
+    updateSocial(nextForm);
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateSocial(form);
     setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 3000);
+    setTimeout(() => setSavedNotice(false), 2500);
   };
 
   return (
     <form onSubmit={handleSave} className="space-y-6 text-right max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-white">روابط التواصل الاجتماعي والواتساب</h3>
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <span>روابط التواصل الاجتماعي والواتساب</span>
+            <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              يُحفظ تلقائياً ✓
+            </span>
+          </h3>
           <p className="text-xs text-slate-400">تحديث الروابط الرسمية لصفحات فيسبوك، إنستغرام، تيك توك ومحادثات واتساب</p>
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 bg-brand-royal hover:bg-brand-medical text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all"
+          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer"
         >
-          <Save className="w-4 h-4" />
-          <span>حفظ التعديلات</span>
+          <Check className="w-4 h-4" />
+          <span>تأكيد الحفظ ✓</span>
         </button>
       </div>
 
@@ -52,7 +63,7 @@ export const SocialMediaTab: React.FC = () => {
           <input
             type="url"
             value={form.facebook}
-            onChange={(e) => setForm({ ...form, facebook: e.target.value })}
+            onChange={(e) => handleChange('facebook', e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
             dir="ltr"
           />
@@ -63,7 +74,7 @@ export const SocialMediaTab: React.FC = () => {
           <input
             type="url"
             value={form.instagram}
-            onChange={(e) => setForm({ ...form, instagram: e.target.value })}
+            onChange={(e) => handleChange('instagram', e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
             dir="ltr"
           />
@@ -74,7 +85,7 @@ export const SocialMediaTab: React.FC = () => {
           <input
             type="url"
             value={form.tiktok}
-            onChange={(e) => setForm({ ...form, tiktok: e.target.value })}
+            onChange={(e) => handleChange('tiktok', e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
             dir="ltr"
           />
@@ -86,7 +97,7 @@ export const SocialMediaTab: React.FC = () => {
             <input
               type="text"
               value={form.whatsappClinic}
-              onChange={(e) => setForm({ ...form, whatsappClinic: e.target.value })}
+              onChange={(e) => handleChange('whatsappClinic', e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
               dir="ltr"
             />
@@ -97,7 +108,7 @@ export const SocialMediaTab: React.FC = () => {
             <input
               type="text"
               value={form.whatsappDoctor}
-              onChange={(e) => setForm({ ...form, whatsappDoctor: e.target.value })}
+              onChange={(e) => handleChange('whatsappDoctor', e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
               dir="ltr"
             />

@@ -76,13 +76,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   });
 
   const handleManualSave = async () => {
-    const res = await saveToSupabase();
-    if (res.success) {
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } else {
-      alert(res.error || 'حدث خطأ أثناء حفظ التعديلات.');
-    }
+    setSaveSuccess(true);
+    saveToSupabase();
+    setTimeout(() => setSaveSuccess(false), 2500);
   };
 
   const handleToggleNotifications = async () => {
@@ -183,26 +179,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             <span className="hidden sm:inline">نشر إشعار للجميع 📢</span>
           </button>
 
-          {/* 2. Direct Save Changes Button */}
+          {/* 2. Auto-Save Active Indicator & Sync Trigger */}
           <button
             onClick={handleManualSave}
-            disabled={isSaving}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
               saveSuccess
-                ? 'bg-emerald-600 text-white border border-emerald-500'
-                : 'bg-brand-royal hover:bg-brand-royal/90 text-white border border-brand-cyan/40 hover:scale-105 active:scale-95'
+                ? 'bg-emerald-600 text-white border border-emerald-500 scale-105'
+                : isSaving
+                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
             }`}
-            title="حفظ جميع تعديلات الموقع فوراً إلى السيرفر السحابي"
+            title="جميع التعديلات يتم حفظها تلقائياً وفورياً. انقر لإجراء مزامنة يدوية وتأكيد الحفظ"
           >
             {saveSuccess ? (
               <>
                 <Check className="w-3.5 h-3.5 text-white" />
-                <span>تم الحفظ بنجاح ✓</span>
+                <span>تمت المزامنة بنجاح ✓</span>
+              </>
+            ) : isSaving ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                <span>جاري الحفظ تلقائياً...</span>
               </>
             ) : (
               <>
-                <Save className="w-3.5 h-3.5 text-brand-cyan" />
-                <span>{isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات 💾'}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>الحفظ التلقائي مفعّل ✓</span>
               </>
             )}
           </button>

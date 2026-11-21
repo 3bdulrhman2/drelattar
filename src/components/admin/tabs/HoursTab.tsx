@@ -22,7 +22,13 @@ export const HoursTab: React.FC = () => {
     setSlotDuration(minutes);
     updateBookingSettings({ slotDurationMinutes: minutes });
     setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 3000);
+    setTimeout(() => setSavedNotice(false), 2500);
+  };
+
+  const handleHoursChange = (field: keyof typeof form, val: string) => {
+    const nextForm = { ...form, [field]: val };
+    setForm(nextForm);
+    updateClinic(nextForm);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -30,22 +36,27 @@ export const HoursTab: React.FC = () => {
     updateClinic(form);
     updateBookingSettings({ slotDurationMinutes: slotDuration });
     setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 3000);
+    setTimeout(() => setSavedNotice(false), 2500);
   };
 
   return (
     <form onSubmit={handleSave} className="space-y-6 text-right max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-white">مواعيد عمل العيادة وفترات الحجز</h3>
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <span>مواعيد عمل العيادة وفترات الحجز</span>
+            <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              يُحفظ تلقائياً ✓
+            </span>
+          </h3>
           <p className="text-xs text-slate-400">تحديث أوقات الاستقبال الأسبوعية وفترات الحجز المتاحة للمرضى</p>
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 bg-brand-royal hover:bg-brand-medical text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all"
+          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer"
         >
-          <Save className="w-4 h-4" />
-          <span>حفظ التعديلات</span>
+          <Check className="w-4 h-4" />
+          <span>تأكيد الحفظ ✓</span>
         </button>
       </div>
 
@@ -130,7 +141,7 @@ export const HoursTab: React.FC = () => {
           <input
             type="text"
             value={form.hoursRegular}
-            onChange={(e) => setForm({ ...form, hoursRegular: e.target.value })}
+            onChange={(e) => handleHoursChange('hoursRegular', e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
           />
         </div>
@@ -142,7 +153,7 @@ export const HoursTab: React.FC = () => {
           <input
             type="text"
             value={form.hoursFriday}
-            onChange={(e) => setForm({ ...form, hoursFriday: e.target.value })}
+            onChange={(e) => handleHoursChange('hoursFriday', e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-cyan"
           />
         </div>

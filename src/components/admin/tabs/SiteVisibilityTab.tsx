@@ -18,11 +18,26 @@ export const SiteVisibilityTab: React.FC = () => {
   const [savedNotice, setSavedNotice] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
 
+  const handleToggle = (field: keyof typeof form) => {
+    const nextVal = !form[field];
+    const nextForm = { ...form, [field]: nextVal };
+    setForm(nextForm);
+    updateVisibility(nextForm);
+    setSavedNotice(true);
+    setTimeout(() => setSavedNotice(false), 2500);
+  };
+
+  const handleTextChange = (field: keyof typeof form, val: string) => {
+    const nextForm = { ...form, [field]: val };
+    setForm(nextForm);
+    updateVisibility(nextForm);
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateVisibility(form);
     setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 3000);
+    setTimeout(() => setSavedNotice(false), 2500);
   };
 
   const handleFactoryReset = () => {
@@ -35,15 +50,20 @@ export const SiteVisibilityTab: React.FC = () => {
     <form onSubmit={handleSave} className="space-y-6 text-right max-w-3xl">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-white">إعدادات رؤية ومحتوى الموقع العام</h3>
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <span>إعدادات رؤية ومحتوى الموقع العام</span>
+            <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              يُحفظ تلقائياً ✓
+            </span>
+          </h3>
           <p className="text-xs text-slate-400">إظهار أو إخفاء أقسام معينة، والتنبيهات العاجلة</p>
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 bg-brand-royal hover:bg-brand-medical text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all"
+          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer"
         >
-          <Save className="w-4 h-4" />
-          <span>حفظ التعديلات</span>
+          <Check className="w-4 h-4" />
+          <span>تأكيد الحفظ ✓</span>
         </button>
       </div>
 
@@ -65,8 +85,8 @@ export const SiteVisibilityTab: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => setForm({ ...form, showReviewsSection: !form.showReviewsSection })}
-            className={`w-12 h-6 rounded-full transition-colors relative ${form.showReviewsSection ? 'bg-brand-cyan' : 'bg-slate-700'}`}
+            onClick={() => handleToggle('showReviewsSection')}
+            className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${form.showReviewsSection ? 'bg-brand-cyan' : 'bg-slate-700'}`}
           >
             <span className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${form.showReviewsSection ? 'right-1' : 'right-7'}`} />
           </button>
@@ -80,8 +100,8 @@ export const SiteVisibilityTab: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => setForm({ ...form, showEquipmentSection: !form.showEquipmentSection })}
-            className={`w-12 h-6 rounded-full transition-colors relative ${form.showEquipmentSection ? 'bg-brand-cyan' : 'bg-slate-700'}`}
+            onClick={() => handleToggle('showEquipmentSection')}
+            className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${form.showEquipmentSection ? 'bg-brand-cyan' : 'bg-slate-700'}`}
           >
             <span className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${form.showEquipmentSection ? 'right-1' : 'right-7'}`} />
           </button>
@@ -95,8 +115,8 @@ export const SiteVisibilityTab: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => setForm({ ...form, showFAQSection: !form.showFAQSection })}
-            className={`w-12 h-6 rounded-full transition-colors relative ${form.showFAQSection ? 'bg-brand-cyan' : 'bg-slate-700'}`}
+            onClick={() => handleToggle('showFAQSection')}
+            className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${form.showFAQSection ? 'bg-brand-cyan' : 'bg-slate-700'}`}
           >
             <span className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${form.showFAQSection ? 'right-1' : 'right-7'}`} />
           </button>
@@ -114,8 +134,8 @@ export const SiteVisibilityTab: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => setForm({ ...form, emergencyNoticeActive: !form.emergencyNoticeActive })}
-              className={`w-12 h-6 rounded-full transition-colors relative ${form.emergencyNoticeActive ? 'bg-amber-500' : 'bg-slate-700'}`}
+              onClick={() => handleToggle('emergencyNoticeActive')}
+              className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${form.emergencyNoticeActive ? 'bg-amber-500' : 'bg-slate-700'}`}
             >
               <span className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${form.emergencyNoticeActive ? 'right-1' : 'right-7'}`} />
             </button>
@@ -126,7 +146,7 @@ export const SiteVisibilityTab: React.FC = () => {
               <input
                 type="text"
                 value={form.emergencyNoticeText}
-                onChange={(e) => setForm({ ...form, emergencyNoticeText: e.target.value })}
+                onChange={(e) => handleTextChange('emergencyNoticeText', e.target.value)}
                 placeholder="مثال: تنويه: تعمل العيادة بكامل طاقتها خلال إجازة عيد الفطر المبارك من الساعة 2 ظهراً"
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
               />
@@ -152,14 +172,14 @@ export const SiteVisibilityTab: React.FC = () => {
               <button
                 type="button"
                 onClick={handleFactoryReset}
-                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold"
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold cursor-pointer"
               >
                 تأكيد الاستعادة
               </button>
               <button
                 type="button"
                 onClick={() => setResetConfirm(false)}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs"
+                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs cursor-pointer"
               >
                 تراجع
               </button>
@@ -168,7 +188,7 @@ export const SiteVisibilityTab: React.FC = () => {
             <button
               type="button"
               onClick={() => setResetConfirm(true)}
-              className="px-3 py-1.5 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 rounded-lg text-xs font-semibold flex items-center gap-1"
+              className="px-3 py-1.5 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>إعادة الضبط</span>
