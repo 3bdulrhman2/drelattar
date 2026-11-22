@@ -73,10 +73,10 @@ export const PublicBookingModule: React.FC = () => {
   const [submitError,setSubmitError]=useState('');
   const [isSubmitting,setIsSubmitting]=useState(false);
   const request=useRef<{fingerprint:string;id:string}|null>(null);
-  const refreshAvailability = async () => {
+  const refreshAvailability = async (preserveSubmitError = false) => {
     if(!supabase||!bookingSettings.isEnabled){setAvailabilityReady(false);return;}
     const {data:rows,error}=await supabase.rpc('get_booked_slots',{p_date:selectedDate});
-    if(error){setAvailabilityReady(false);setSubmitError('تعذر تحديث المواعيد. لم نتأكد من حالة الطلب؛ راجع العيادة قبل إرسال طلب مختلف.');return;}
+    if(error){setAvailabilityReady(false);if(!preserveSubmitError)setSubmitError('تعذر تحديث المواعيد. راجع العيادة قبل إرسال طلب مختلف.');return;}
     setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);
   };
   useEffect(()=>{
@@ -134,7 +134,7 @@ export const PublicBookingModule: React.FC = () => {
       request.current=null;
     } catch(error) {
       setSubmitError(error instanceof Error?error.message:'لم يتم حفظ الطلب.');
-      await refreshAvailability();
+      await refreshAvailability(true);
       return;
     } finally {setIsSubmitting(false);}
 
