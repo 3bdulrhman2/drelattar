@@ -3,6 +3,7 @@ import { Save, Check, Stethoscope, Plus, Trash2 } from 'lucide-react';
 import { useContent } from '../../../context/ContentContext';
 
 export const DoctorInfoTab: React.FC = () => {
+  const { isBackendSynced, isSaving } = useContent();
   const { data, updateDoctor } = useContent();
   const { doctor } = data;
 
@@ -70,7 +71,7 @@ export const DoctorInfoTab: React.FC = () => {
         </button>
       </div>
 
-      {savedNotice && (
+      {savedNotice && isBackendSynced && !isSaving && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
           <Check className="w-4 h-4" />
           <span>تم حفظ بيانات الطبيب بنجاح وتحديث الموقع فورياً.</span>

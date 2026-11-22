@@ -57,52 +57,7 @@ export const requestWebNotificationPermission = async (): Promise<NotificationPe
 /**
  * Records device token in Supabase for broadcast.
  */
-export const saveDeviceTokenToSupabase = async (
-  token: string,
-  role: 'admin' | 'secretary' | 'all' = 'admin',
-  platform: 'web' | 'android' = 'web'
-): Promise<boolean> => {
-  if (!isSupabaseConfigured || !supabase) return false;
-
-  try {
-    // 1. Fetch current settings
-    const { data: currentSettings } = await supabase
-      .from('clinic_settings')
-      .select('content')
-      .eq('key', 'main_settings')
-      .single();
-
-    if (currentSettings?.content) {
-      const content = currentSettings.content;
-      const existingTokens = content.deviceTokens || [];
-      const updatedTokens = [
-        {
-          id: `tok-${Date.now()}`,
-          token,
-          role,
-          devicePlatform: platform,
-          lastActive: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        },
-        ...existingTokens.filter((t: any) => t.token !== token),
-      ];
-
-      await supabase
-        .from('clinic_settings')
-        .update({
-          content: { ...content, deviceTokens: updatedTokens },
-          updated_at: new Date().toISOString(),
-        })
-        .eq('key', 'main_settings');
-
-      return true;
-    }
-  } catch (e) {
-    console.warn('Failed to save device token in Supabase:', e);
-  }
-
-  return false;
-};
+export const saveDeviceTokenToSupabase = async (..._args: unknown[]): Promise<boolean> => false;
 
 /**
  * Plays a soft, high-fidelity medical clinic notification chime using Web Audio API.

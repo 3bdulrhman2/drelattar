@@ -100,7 +100,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
             <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="font-medium text-[11px]">حجز مؤكد ومباشر مع العيادة</span>
+              <span className="font-medium text-[11px]">طلب حجز يخضع لتأكيد العيادة</span>
             </div>
           </div>
 

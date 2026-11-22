@@ -3,6 +3,7 @@ import { Save, Check, MapPin, Phone, Building } from 'lucide-react';
 import { useContent } from '../../../context/ContentContext';
 
 export const ClinicInfoTab: React.FC = () => {
+  const { isBackendSynced, isSaving } = useContent();
   const { data, updateClinic } = useContent();
   const { clinic } = data;
 
@@ -49,7 +50,7 @@ export const ClinicInfoTab: React.FC = () => {
         </button>
       </div>
 
-      {savedNotice && (
+      {savedNotice && isBackendSynced && !isSaving && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
           <Check className="w-4 h-4" />
           <span>تم حفظ بيانات العيادة بنجاح.</span>

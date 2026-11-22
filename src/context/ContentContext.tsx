@@ -18,7 +18,9 @@ import type {
 } from '../types';
 import { initialClinicData } from '../data/clinicData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { triggerLocalNotification } from '../lib/pushNotifications';
+import { useAuth } from './AuthContext';
+import { publicContent, persistBooking } from '../lib/clinicSecurity';
+import type { BookingReceipt } from '../lib/clinicSecurity';
 
 interface ContentContextType {
   data: AppContentState;
@@ -37,7 +39,7 @@ interface ContentContextType {
   updateSocialReviewImages: (images: SocialReviewImage[]) => void;
   addSocialReviewImage: (image: Omit<SocialReviewImage, 'id'>) => void;
   deleteSocialReviewImage: (id: string) => void;
-  addBookingAppointment: (appointment: Omit<BookingAppointment, 'id' | 'createdAt' | 'status'>) => boolean;
+  addBookingAppointment: (appointment: Omit<BookingAppointment, 'id' | 'createdAt' | 'status'>, requestId: string) => Promise<BookingReceipt>;
   updateBookingStatus: (id: string, status: BookingAppointment['status']) => void;
   deleteBookingAppointment: (id: string) => void;
   // Holiday and Closure Management
@@ -70,395 +72,109 @@ const LOCAL_STORAGE_KEY = 'drelattar_clinic_content_v2';
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
 export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [data, setData] = useState<AppContentState>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          ...initialClinicData,
-          ...parsed,
-          doctor: { ...initialClinicData.doctor, ...(parsed.doctor || {}) },
-          clinic: { ...initialClinicData.clinic, ...(parsed.clinic || {}) },
-          social: { ...initialClinicData.social, ...(parsed.social || {}) },
-          bookingSettings: { ...initialClinicData.bookingSettings, ...(parsed.bookingSettings || {}) },
-          visibility: { ...initialClinicData.visibility, ...(parsed.visibility || {}) },
-          socialReviewImages: Array.isArray(parsed.socialReviewImages) && parsed.socialReviewImages.length > 0
-            ? parsed.socialReviewImages
-            : initialClinicData.socialReviewImages,
-        };
-      }
-    } catch (e) {
-      console.warn('Could not load cached content from localStorage:', e);
-    }
-    return initialClinicData;
-  });
-
-  const [isBackendSynced, setIsBackendSynced] = useState<boolean>(isSupabaseConfigured);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [initialRemoteFetchDone, setInitialRemoteFetchDone] = useState<boolean>(false);
-
-  // Sync to localStorage
+  const {user} = useAuth();
+  const cleanInitial = (): AppContentState => ({...initialClinicData, bookings:[], secretaryAccounts:[], deviceTokens:[]});
+  const [data, setData] = useState<AppContentState>(cleanInitial);
+  const [isBackendSynced, setIsBackendSynced] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastError, setLastError] = useState('');
+  const latestDataRef = useRef(data);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const staffVersion = useRef(0);
+  const contentRevision = useRef(0);
+  const contentDirty = useRef(false);
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const pendingSaves = useRef(0);
+  const reloadBookings = async () => {
+    const version = staffVersion.current;
+    if (!supabase || !user) return;
+    const {data: rows, error} = await supabase.from('appointments')
+      .select('id,patient_name,patient_phone,appointment_date,appointment_time,status,created_at')
+      .order('created_at', {ascending:false});
+    if (version !== staffVersion.current) return;
+    if (error) {setLastError('تعذر تحميل الحجوزات المحمية.'); return;}
+    setData(prev=>({...prev,bookings:(rows||[]).map(a=>({id:a.id,patientName:a.patient_name,
+      patientPhone:a.patient_phone,appointmentDate:a.appointment_date,appointmentTime:a.appointment_time,
+      status:a.status,createdAt:a.created_at}))}));
+  };
   useEffect(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-      console.error('Failed to save to localStorage:', e);
-    }
-  }, [data]);
-
-  // If Supabase is configured, attempt to load remote settings
-  useEffect(() => {
-    const client = supabase;
-    if (!isSupabaseConfigured || !client) {
-      setIsBackendSynced(false);
-      setInitialRemoteFetchDone(true);
-      return;
-    }
-
-    const loadRemote = async () => {
-      try {
-        const { data: remoteData, error } = await client
-          .from('clinic_settings')
-          .select('*')
-          .eq('key', 'main_settings')
-          .maybeSingle();
-
-        if (error) {
-          console.warn('Supabase fetch notice:', error.message);
-          setIsBackendSynced(false);
-        } else if (!remoteData) {
-          // If record does not exist yet, seed it with initial clinic content
-          await client.from('clinic_settings').insert({
-            key: 'main_settings',
-            content: data,
-            updated_at: new Date().toISOString()
-          });
-          setIsBackendSynced(true);
-        } else if (remoteData && remoteData.content) {
-          const remote = remoteData.content;
-          const localTimestampStr = typeof window !== 'undefined' ? localStorage.getItem('drelattar_last_updated_at') : null;
-          const localTime = localTimestampStr ? new Date(localTimestampStr).getTime() : 0;
-          const remoteTime = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0;
-
-          // If local edits are newer than remote database, push local to Supabase
-          if (localTime > remoteTime && localTime > 0) {
-            console.log('Local data is newer than remote; syncing up to Supabase...');
-            flushSyncToBackend(latestDataRef.current || data);
-          } else {
-            setData((prev) => ({
-              ...initialClinicData,
-              ...remote,
-              doctor: { ...initialClinicData.doctor, ...(remote.doctor || {}) },
-              clinic: { ...initialClinicData.clinic, ...(remote.clinic || {}) },
-              social: { ...initialClinicData.social, ...(remote.social || {}) },
-              bookingSettings: { ...initialClinicData.bookingSettings, ...(remote.bookingSettings || {}) },
-              visibility: { ...initialClinicData.visibility, ...(remote.visibility || {}) },
-              socialReviewImages: Array.isArray(remote.socialReviewImages)
-                ? remote.socialReviewImages
-                : initialClinicData.socialReviewImages,
-              bookings: Array.isArray(remote.bookings) && remote.bookings.length > 0
-                ? remote.bookings
-                : prev.bookings,
-            }));
-            setIsBackendSynced(true);
-          }
-        }
-
-        // Also fetch remote appointments from Supabase if table exists
-        try {
-          const { data: remoteAppointments, error: aptError } = await client
-            .from('appointments')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (!aptError && remoteAppointments && Array.isArray(remoteAppointments)) {
-            const mappedBookings: BookingAppointment[] = remoteAppointments.map((a: any) => ({
-              id: a.id,
-              patientName: a.patient_name,
-              patientPhone: a.patient_phone,
-              appointmentDate: a.appointment_date,
-              appointmentTime: a.appointment_time,
-              service: a.notes?.includes('الخدمة:') ? a.notes.split('|')[0].replace('الخدمة:', '').trim() : undefined,
-              notes: a.notes,
-              status: a.status || 'pending',
-              createdAt: a.created_at,
-            }));
-            setData((prev) => ({
-              ...prev,
-              bookings: mappedBookings,
-            }));
-          }
-        } catch (aptErr) {
-          console.warn('Could not load remote appointments:', aptErr);
-        }
-      } catch (err) {
-        console.warn('Could not connect to remote Supabase database:', err);
-        setIsBackendSynced(false);
-      } finally {
-        setInitialRemoteFetchDone(true);
-      }
-    };
-
-    loadRemote();
-
-    // Setup Supabase Realtime channel so all open devices sync instantly
-    const channel = client
-      .channel('realtime_clinic_settings')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'clinic_settings' },
-        (payload) => {
-          if (payload.new && (payload.new as any).content) {
-            const newContent = (payload.new as any).content;
-            setData((prev) => ({
-              ...prev,
-              ...newContent,
-              bookingSettings: { ...prev.bookingSettings, ...(newContent.bookingSettings || {}) },
-              socialReviewImages: Array.isArray(newContent.socialReviewImages)
-                ? newContent.socialReviewImages
-                : prev.socialReviewImages,
-              secretaryAccounts: Array.isArray(newContent.secretaryAccounts)
-                ? newContent.secretaryAccounts
-                : prev.secretaryAccounts,
-              deviceTokens: Array.isArray(newContent.deviceTokens)
-                ? newContent.deviceTokens
-                : prev.deviceTokens,
-            }));
-            setIsBackendSynced(true);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'appointments' },
-        async (payload: any) => {
-          // Play audio chime and trigger notification on new appointment
-          if (payload && payload.eventType === 'INSERT' && payload.new) {
-            const patientName = payload.new.patient_name || 'مريض جديد';
-            const apptDate = payload.new.appointment_date || '';
-            const apptTime = payload.new.appointment_time || '';
-            triggerLocalNotification({
-              title: 'حجز كشف جديد بالعيادة! 🔔',
-              body: `المريض: ${patientName} - الموعد: ${apptDate} (${apptTime})`,
-              patientName,
-              appointmentDate: apptDate,
-              appointmentTime: apptTime,
-              type: 'new_booking',
-            });
-          }
-
-          try {
-            const { data: updatedApts, error: err } = await client
-              .from('appointments')
-              .select('*')
-              .order('created_at', { ascending: false });
-            if (!err && updatedApts && Array.isArray(updatedApts)) {
-              const mapped: BookingAppointment[] = updatedApts.map((a: any) => ({
-                id: a.id,
-                patientName: a.patient_name,
-                patientPhone: a.patient_phone,
-                appointmentDate: a.appointment_date,
-                appointmentTime: a.appointment_time,
-                service: a.notes?.includes('الخدمة:') ? a.notes.split('|')[0].replace('الخدمة:', '').trim() : undefined,
-                notes: a.notes,
-                status: a.status || 'pending',
-                createdAt: a.created_at,
-              }));
-              setData((prev) => ({ ...prev, bookings: mapped }));
-            }
-          } catch (e) {
-            console.warn('Realtime appointments fetch error:', e);
-          }
-        }
-      )
-      .on(
-        'broadcast',
-        { event: 'new_announcement' },
-        (payload: any) => {
-          if (payload && payload.payload) {
-            const { title, message } = payload.payload;
-            triggerLocalNotification({
-              title: title || 'إعلان وتنبيه جديد من العيادة 🔔',
-              body: message || '',
-              type: 'announcement',
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      client.removeChannel(channel);
-    };
-  }, []);
-
-  // Dedicated refs to manage debounced non-blocking sync
-  const latestDataRef = useRef<AppContentState>(data);
-  const syncTimeoutRef = useRef<any>(null);
-
-  useEffect(() => {
-    latestDataRef.current = data;
-  }, [data]);
-
-  // Direct background flush to Supabase
-  const flushSyncToBackend = async (stateToSave: AppContentState): Promise<boolean> => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
-      localStorage.setItem('drelattar_last_updated_at', new Date().toISOString());
-    } catch (e) {
-      console.warn('LocalStorage save warning:', e);
-    }
-
-    if (!isSupabaseConfigured || !supabase) {
-      return true;
-    }
-
-    const client = supabase;
-    setIsSaving(true);
-
-    try {
-      const nowIso = new Date().toISOString();
-      const { error } = await client
-        .from('clinic_settings')
-        .update({ content: stateToSave, updated_at: nowIso })
-        .eq('key', 'main_settings');
-
-      if (error) {
-        console.warn('Direct update fallback to upsert:', error.message);
-        await client
-          .from('clinic_settings')
-          .upsert(
-            { key: 'main_settings', content: stateToSave, updated_at: nowIso },
-            { onConflict: 'key' }
-          );
-      }
+    const version = ++staffVersion.current;
+    ++contentRevision.current;contentDirty.current=false;
+    let active = true;
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    setData(prev=>({...prev,bookings:[],secretaryAccounts:[],deviceTokens:[]}));
+    const loadPublic = async () => {
+      if (!supabase) {setIsBackendSynced(false);return;}
+      const revision = contentRevision.current;
+      const {data: row,error} = await supabase.from('clinic_settings').select('content')
+        .eq('key','main_settings').maybeSingle();
+      if (!active || version !== staffVersion.current || contentDirty.current || revision !== contentRevision.current) return;
+      if (error || !row) {setIsBackendSynced(false);return;}
+      const safe = publicContent(row.content || {});
+      setData(prev=>({...cleanInitial(),...safe,
+        doctor:{...initialClinicData.doctor,...safe.doctor},clinic:{...initialClinicData.clinic,...safe.clinic},
+        social:{...initialClinicData.social,...safe.social},visibility:{...initialClinicData.visibility,...safe.visibility},
+        bookingSettings:{...initialClinicData.bookingSettings,...safe.bookingSettings},bookings:prev.bookings}));
       setIsBackendSynced(true);
-      return true;
-    } catch (err) {
-      console.warn('Cloud sync error:', err);
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Ensure any pending debounce is flushed if user closes or reloads the tab
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-        flushSyncToBackend(latestDataRef.current);
-      }
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, []);
-
-  const syncUpdatedState = (
-    updater: AppContentState | ((prev: AppContentState) => AppContentState),
-    immediateSync: boolean = false
-  ) => {
-    // 1. Instant synchronous UI and LocalStorage update (0ms lag)
-    let nextStateToSave: AppContentState | null = null;
-    setData((prev) => {
-      const nextState = typeof updater === 'function' ? updater(prev) : updater;
-      latestDataRef.current = nextState;
-      nextStateToSave = nextState;
+    void loadPublic();
+    if (!supabase) return () => {active=false;};
+    if (user) void reloadBookings();
+    const channel = supabase.channel('clinic-review-'+(user?.id||'public'))
+      .on('postgres_changes',{event:'*',schema:'public',table:'clinic_settings'},()=>{void loadPublic();});
+    if (user) channel.on('postgres_changes',{event:'*',schema:'public',table:'clinic_booking_sync'},()=>{void reloadBookings();});
+    let catchUp:ReturnType<typeof setTimeout>|undefined;
+    channel.subscribe(status=>{if(status==='SUBSCRIBED'){void loadPublic();if(user)void reloadBookings();if(catchUp)clearTimeout(catchUp);catchUp=setTimeout(()=>{void loadPublic();if(user)void reloadBookings();},1500);}});
+    const refreshVisible = () => {if(document.visibilityState==='visible'){void loadPublic();if(user)void reloadBookings();}};
+    window.addEventListener('focus',refreshVisible);document.addEventListener('visibilitychange',refreshVisible);
+    return () => {if(catchUp)clearTimeout(catchUp);window.removeEventListener('focus',refreshVisible);document.removeEventListener('visibilitychange',refreshVisible);active=false;++staffVersion.current;if(syncTimeoutRef.current)clearTimeout(syncTimeoutRef.current);void supabase?.removeChannel(channel);};
+  }, [user?.id,user?.role]);
+  useEffect(()=>{latestDataRef.current=data;},[data]);
+  const flushSyncToBackend = (next: AppContentState): Promise<boolean> => {
+    if (!supabase || user?.role!=='admin') {setLastError('لم يتم الحفظ: يلزم اتصال وحساب إدارة مخول.');return Promise.resolve(false);}
+    const client=supabase, revision=contentRevision.current, staff=staffVersion.current;
+    const content=publicContent(next);
+    ++pendingSaves.current;setIsSaving(true);
+    const operation=saveQueue.current.then(async()=>{
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextState));
-        localStorage.setItem('drelattar_last_updated_at', new Date().toISOString());
-      } catch (e) {
-        console.warn('LocalStorage save error:', e);
-      }
-      return nextState;
+        if(staff!==staffVersion.current)return false;
+        const {data:saved,error}=await client.from('clinic_settings')
+          .update({content,updated_at:new Date().toISOString()})
+          .eq('key','main_settings').select('key').single();
+        if(error||!saved)throw error||new Error('No saved row');
+        if(staff===staffVersion.current&&revision===contentRevision.current){contentDirty.current=false;setLastError('');setIsBackendSynced(true);}
+        return true;
+      } catch {
+        if(staff===staffVersion.current){setLastError('لم يتم حفظ التغييرات. لا تعتمد عليها قبل نجاح الحفظ.');setIsBackendSynced(false);}
+        return false;
+      } finally {if(--pendingSaves.current===0)setIsSaving(false);}
     });
-
-    if (immediateSync && nextStateToSave) {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-      flushSyncToBackend(nextStateToSave);
-      return;
-    }
-
-    // 2. Debounced background cloud sync
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-    }
-    syncTimeoutRef.current = setTimeout(() => {
-      flushSyncToBackend(latestDataRef.current);
-    }, 200);
+    saveQueue.current=operation;
+    return operation;
   };
-
-  const saveToSupabase = async (contentToSave?: AppContentState): Promise<{ success: boolean; error?: string }> => {
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-    }
-    const payload = contentToSave || latestDataRef.current || data;
-    const ok = await flushSyncToBackend(payload);
-    return { success: ok };
+  const syncUpdatedState = (updater: AppContentState | ((prev:AppContentState)=>AppContentState), immediate=false) => {
+    if (user?.role!=='admin') {setLastError('لا تملك صلاحية تعديل إعدادات الموقع.');return;}
+    const next=typeof updater==='function'?updater(latestDataRef.current):updater;
+    ++contentRevision.current;contentDirty.current=true;
+    latestDataRef.current=next;setData(next);setIsBackendSynced(false);
+    if(syncTimeoutRef.current)clearTimeout(syncTimeoutRef.current);
+    if(immediate)void flushSyncToBackend(next);
+    else syncTimeoutRef.current=setTimeout(()=>{void flushSyncToBackend(latestDataRef.current);},200);
   };
-
-  const publishBroadcastNotification = async (
-    title: string,
-    message: string,
-    type: 'info' | 'warning' | 'alert' | 'special_offer' = 'info',
-    pinToBanner: boolean = true
-  ): Promise<boolean> => {
-    try {
-      // 1. If pinToBanner, immediately add to announcements in state so it appears in 0ms!
-      if (pinToBanner) {
-        const newAnnouncement: ClinicAnnouncement = {
-          id: `ann-${Date.now()}`,
-          title,
-          content: message,
-          type: type === 'special_offer' ? 'info' : type,
-          isActive: true,
-          createdBy: 'admin',
-          createdAt: new Date().toISOString(),
-        };
-
-        const existingList = latestDataRef.current.bookingSettings.announcements || [];
-        const nextList = [newAnnouncement, ...existingList.filter((a) => a.title !== title)];
-
-        syncUpdatedState((prev) => ({
-          ...prev,
-          bookingSettings: {
-            ...prev.bookingSettings,
-            announcements: nextList,
-          },
-        }), true);
-      }
-
-      // 2. Play chime and show local alert
-      triggerLocalNotification({
-        title,
-        body: message,
-        type: 'announcement',
-      });
-
-      // 3. Fire-and-forget Supabase Realtime broadcast (DO NOT AWAIT or BLOCK)
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const broadcastChannel = supabase.channel('realtime_clinic_settings');
-          broadcastChannel.send({
-            type: 'broadcast',
-            event: 'new_announcement',
-            payload: { title, message, type },
-          }).catch(() => {});
-        } catch (e) {
-          console.warn('Broadcast realtime notice:', e);
-        }
-      }
-
-      return true;
-    } catch (e) {
-      console.error('Error publishing broadcast notification:', e);
-      return false;
-    }
+  const saveToSupabase = async (content?:AppContentState) => {
+    if(syncTimeoutRef.current)clearTimeout(syncTimeoutRef.current);
+    const success=await flushSyncToBackend(content||latestDataRef.current);
+    return {success,error:success?undefined:'لم يتم الحفظ'};
+  };
+  const publishBroadcastNotification = async (title:string,message:string,type:'info'|'warning'|'alert'|'special_offer'='info',pin=true) => {
+    if(user?.role!=='admin'||!pin)return false;
+    const prev=latestDataRef.current;
+    const next:AppContentState={...prev,bookingSettings:{...prev.bookingSettings,announcements:[{
+      id:crypto.randomUUID(),title,content:message,type:type==='special_offer'?'info':type,
+      isActive:true,createdBy:'admin',createdAt:new Date().toISOString(),
+    },...(prev.bookingSettings.announcements||[])]}};
+    const ok=await flushSyncToBackend(next);
+    if(ok){latestDataRef.current=next;setData(next);}return ok;
   };
 
   const updateDoctor = (doctorUpdate: Partial<DoctorInfo>) => {
@@ -545,65 +261,25 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
-  const addBookingAppointment = (
-    appointment: Omit<BookingAppointment, 'id' | 'createdAt' | 'status'>
-  ): boolean => {
-    const tempId = `booking-${Date.now()}`;
-    const newAppointment: BookingAppointment = {
-      ...appointment,
-      id: tempId,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-
-    setData((prev) => ({
-      ...prev,
-      bookings: [newAppointment, ...prev.bookings],
-    }));
-
-    // Insert into Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('appointments').insert({
-        patient_name: appointment.patientName,
-        patient_phone: appointment.patientPhone,
-        appointment_date: appointment.appointmentDate,
-        appointment_time: appointment.appointmentTime,
-        notes: appointment.service ? `الخدمة: ${appointment.service} | ${appointment.notes || ''}` : appointment.notes || '',
-        status: 'pending',
-      }).then(({ error }) => {
-        if (error) {
-          console.error('Failed to insert appointment into Supabase:', error.message);
-        }
-      });
-    }
-
-    return true;
+  const addBookingAppointment = async (
+    appointment: Omit<BookingAppointment,'id'|'createdAt'|'status'>, requestId:string
+  ):Promise<BookingReceipt> => {
+    // No optimistic patient record, localStorage write, or temporary booking reference.
+    const receipt=await persistBooking(supabase,appointment,requestId);
+    if(user)void reloadBookings();
+    return receipt;
   };
-
-  const updateBookingStatus = (id: string, status: BookingAppointment['status']) => {
-    setData((prev) => ({
-      ...prev,
-      bookings: prev.bookings.map((b) => (b.id === id ? { ...b, status } : b)),
-    }));
-
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('appointments').update({ status }).eq('id', id).then(({ error }) => {
-        if (error) console.error('Failed to update appointment in Supabase:', error);
-      });
-    }
+  const updateBookingStatus = async (id:string,status:BookingAppointment['status']) => {
+    if(!supabase||!user){setLastError('يلزم تسجيل دخول مخول.');return;}
+    const {data:saved,error}=await supabase.from('appointments').update({status}).eq('id',id).select('id').single();
+    if(error||!saved){setLastError('لم تتغير حالة الحجز. أعد المحاولة.');return;}
+    setLastError('');setData(prev=>({...prev,bookings:prev.bookings.map(b=>b.id===id?{...b,status}:b)}));
   };
-
-  const deleteBookingAppointment = (id: string) => {
-    setData((prev) => ({
-      ...prev,
-      bookings: prev.bookings.filter((b) => b.id !== id),
-    }));
-
-    if (isSupabaseConfigured && supabase) {
-      supabase.from('appointments').delete().eq('id', id).then(({ error }) => {
-        if (error) console.error('Failed to delete appointment in Supabase:', error);
-      });
-    }
+  const deleteBookingAppointment = async (id:string) => {
+    if(!supabase||user?.role!=='admin'){setLastError('يلزم حساب إدارة مخول.');return;}
+    const {data:saved,error}=await supabase.from('appointments').delete().eq('id',id).select('id').single();
+    if(error||!saved){setLastError('لم يتم حذف الحجز.');return;}
+    setLastError('');setData(prev=>({...prev,bookings:prev.bookings.filter(b=>b.id!==id)}));
   };
 
   const toggleCloseToday = (isClosed: boolean, reason?: string) => {
@@ -713,62 +389,12 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }), true);
   };
 
-  const addSecretaryAccount = (account: Omit<SecretaryAccount, 'id' | 'createdAt'>) => {
-    const newAccount: SecretaryAccount = {
-      ...account,
-      id: `sec-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    syncUpdatedState((prev) => ({
-      ...prev,
-      secretaryAccounts: [newAccount, ...(prev.secretaryAccounts || [])],
-    }));
-  };
-
-  const updateSecretaryAccount = (id: string, update: Partial<SecretaryAccount>) => {
-    syncUpdatedState((prev) => {
-      const updatedList = (prev.secretaryAccounts || []).map((sec) =>
-        sec.id === id ? { ...sec, ...update } : sec
-      );
-      return {
-        ...prev,
-        secretaryAccounts: updatedList,
-      };
-    });
-  };
-
-  const deleteSecretaryAccount = (id: string) => {
-    syncUpdatedState((prev) => ({
-      ...prev,
-      secretaryAccounts: (prev.secretaryAccounts || []).filter((sec) => sec.id !== id),
-    }));
-  };
-
-  const registerDeviceToken = (token: string, role: 'admin' | 'secretary', platform: 'web' | 'android' = 'web') => {
-    syncUpdatedState((prev) => {
-      const existing = prev.deviceTokens || [];
-      const updatedTokens = [
-        {
-          id: `tok-${Date.now()}`,
-          token,
-          role,
-          devicePlatform: platform,
-          lastActive: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        },
-        ...existing.filter((t) => t.token !== token),
-      ];
-      return {
-        ...prev,
-        deviceTokens: updatedTokens,
-      };
-    });
-  };
-
-  const resetToDefault = () => {
-    setData(initialClinicData);
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-  };
+  const privateManagementUnavailable = (..._args:unknown[]) => {setLastError('هذه العملية تحتاج مساراً محمياً منفصلاً. لم تُحفظ بيانات خاصة داخل محتوى الموقع.');};
+  const addSecretaryAccount=privateManagementUnavailable;
+  const updateSecretaryAccount=privateManagementUnavailable;
+  const deleteSecretaryAccount=privateManagementUnavailable;
+  const registerDeviceToken=privateManagementUnavailable;
+  const resetToDefault=()=>{syncUpdatedState(cleanInitial());};
 
   return (
     <ContentContext.Provider
@@ -808,6 +434,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         resetToDefault,
       }}
     >
+      {lastError && <div role="alert" dir="rtl" className="fixed top-0 inset-x-0 z-[100] bg-red-900 text-white p-3 text-center">{lastError}</div>}
+      {import.meta.env.MODE==='isolated' && <div role="note" dir="rtl" className="bg-amber-200 text-black p-2 text-center font-bold">نسخة اختبار محلية معزولة. بيانات وهمية فقط، لا رسائل ولا حجوزات حقيقية.</div>}
       {children}
     </ContentContext.Provider>
   );

@@ -1,187 +1,47 @@
-# عيادة الدكتور محمد السيد العطار | الموقع الطبي الرسمي
+# Clinic website
 
-الموقع الإلكتروني الرسمي عالي الجودة للدكتور **محمد السيد العطار** — أخصائي الباطنة العامة والعناية المركزة والحالات الحرجة.
+React and TypeScript clinic website with protected staff access and public clinic information.
 
-تم تصميم وتطوير هذا الموقع وفق أعلى معايير الوكالات الرقمية العالمية، مع الالتزام التام بالهوية البصرية الرسمية للعيادة، وتحسين الأداء، وتجربة المستخدم العربي (RTL)، ومحركات البحث الطبية المحلية (Medical SEO).
+## Security and persistence
 
----
+- Staff sign in through Supabase Auth. An active, server-owned `clinic_staff` membership determines access. Browser storage and frontend passwords never grant a role.
+- Public settings contain an allowlist of website information, not patient records, staff credentials or device tokens.
+- Patient rows are protected by RLS and are not published directly through Realtime. Authorized staff receive a patient-free change signal and reload protected rows.
+- Sanitized website settings are published for live content updates. Writes are serialized, and save indicators require a database acknowledgement. Reconnect and visibility checks recover missed updates without continuous polling.
+- Public booking, when separately enabled, waits for a stored server receipt. Retries on the same page use the same request ID. Clinical notes are not part of public intake.
+- Existing conflicting appointments can be preserved. A database trigger serializes new slot occupation and prevents new conflicts, including reactivation into an occupied slot.
 
-## 👨‍⚕️ بيانات الطبيب والعيادة المعتمدة
+## Configuration
 
-* **الاسم العربي:** الدكتور محمد السيد العطار
-* **الاسم الإنجليزي:** Dr. Mohammed Elsayed Elattar
-* **اللقب المهني والتخصص:** أخصائي الباطنة العامة والعناية المركزة والحالات الحرجة
-* **سنوات الخبرة:** 8 سنوات
-* **المؤهل الأكاديمي:** كلية الطب – جامعة الأزهر بالقاهرة
-* **المؤهلات والمناصب الرسمية:**
-  * زمالة الباطنة العامة والعناية المركزة والحالات الحرجة.
-  * نائب رئيس قسم الباطنة بمجمع الإسماعيلية الطبي – هيئة الرعاية الصحية.
-  * نائب مدير وحدة العناية المركزة بمستشفى حميات الإسماعيلية.
-* **عنوان العيادة:** كوبري واحد الصالحية – أمام موقف السيارات – بحر البقر – مركز الحسينية – محافظة الشرقية – مصر (فرع واحد مجهز).
-* **أرقام التواصل المباشرة:**
-  * هاتف العيادة: `01060918977`
-  * هاتف الطبيب: `01007347945`
-* **مواعيد العمل الرسمية الموثقة:**
-  * **السبت إلى الخميس:** من 1:00 ظهراً حتى 9:00 مساءً.
-  * **الجمعة:** من 4:00 عصراً حتى 10:00 مساءً.
+Copy `.env.example` and supply the public Supabase/Firebase configuration for the intended environment. Never put an admin password, service-role key or other private credential in a `VITE_` variable. Preview and Production can share a backend, so a deployment preview is not database isolation.
 
----
+## Validation
 
-## 🎨 الهوية البصرية ونظام التصميم (Design System)
-
-تم استلهام لوحة الألوان بدقة من الشعار الرسمي للعيادة دون أي تغيير في الخطوط أو الحروف العربية:
-
-| اللون | كود HEX | الاستخدام |
-| :--- | :--- | :--- |
-| **Royal Blue** | `#123E91` | اللون الأساسي، العناوين، الأزرار الرئيسية والهيدر |
-| **Medical Blue** | `#087DBA` | التدرجات الطبية، الأيقونات، وحالات التفاعل (Hover) |
-| **Cyan** | `#16B7D8` | لمسات الحيوية، شارات الاعتماد، والتوهج الناعم |
-| **Lime Green** | `#B5CB00` | شارات الخبرة، أيقونات الاتصال والتمييز الإيجابي |
-| **Dark Navy** | `#172B43` | النصوص وقراءة المقاطع بدقة تباين WCAG AAA |
-| **Muted Slate** | `#627D98` | النصوص الثانوية والملاحظات التوضيحية |
-| **Medical Background** | `#F5F8FC` | خلفية المنصة المريحة للعين |
-
-* **الخطوط الطباعية:** Alexandria و IBM Plex Sans Arabic المحسنة للغة العربية مع تحميل مسبق عالي السرعة (Google Fonts Preconnect).
-
----
-
-## 🚀 التقنيات المستخدمة (Tech Stack)
-
-* **React 19 + TypeScript**: بنية برمجية قوية ونوعية عالية الأمان.
-* **Vite**: سرعة بناء فائقة وحجم حزم محلي وخفيف.
-* **Tailwind CSS**: تصميم مخصص وتدرجات متناسقة مع دعم RTL كامل.
-* **Lucide Icons**: أيقونات طبية متناسقة وسريعة الاستجابة.
-* **Supabase** (اختياري/جاهز): دعم المصادقة السحابية وتخزين البيانات وحجوزات المستقبل.
-* **Vercel**: جاهزية كاملة للنشر بنقرة واحدة مع توجيه `vercel.json` وروابط SPA وتخزين مؤقت للعلامة التجارية.
-* **Google Places API (New)**: تكامل لجلب تقييمات Google الرسمية مع وضع احتياطي ذكي.
-
----
-
-## 📂 بنية المشروع (Project Architecture)
-
-```
-drelattar/
-├── public/
-│   ├── brand/
-│   │   ├── clinic-logo.png             # الشعار الرسمي الأصلي للعيادة
-│   │   ├── dr-elattar-medical.jpg      # صورة الطبيب بخلفية المستشفى
-│   │   └── dr-elattar-neutral.jpg      # صورة الطبيب بخلفية محايدة
-│   ├── robots.txt                      # ملف محركات البحث
-│   └── sitemap.xml                     # خريطة الموقع لمحركات البحث
-├── src/
-│   ├── components/
-│   │   ├── home/                       # أقسام الموقع الرئيسية
-│   │   │   ├── Hero.tsx                # الشاشة الأولى الرئيسية
-│   │   │   ├── TrustIndicators.tsx     # مؤشرات الثقة المعتمدة
-│   │   │   ├── AboutDoctor.tsx         # عن الطبيب والمؤهلات
-│   │   │   ├── Services.tsx            # 13 خدمة طبية متخصصة
-│   │   │   ├── Equipment.tsx           # 4 أجهزة تشخيصية معتمدة (دون جهاز الشفط)
-│   │   │   ├── Reviews.tsx             # آراء مرضى Google والتوثيق
-│   │   │   ├── FAQ.tsx                 # 8 أسئلة شائعة تفاعلية
-│   │   │   ├── ClinicLocation.tsx      # موقع العيادة والخريطة والاتجاهات
-│   │   │   ├── ContactSection.tsx      # الاتصال والواتساب والشبكات الاجتماعية
-│   │   │   ├── QuickCallFloating.tsx   # شريط اتصال عائم مخصص للهواتف
-│   │   │   └── PublicBookingModule.tsx # وحدة الحجز المستقبلي (معطلة افتراضياً)
-│   │   ├── layout/
-│   │   │   ├── Header.tsx              # شريط التنقل المتجاوب
-│   │   │   └── Footer.tsx              # تذييل الموقع الاحترافي
-│   │   └── admin/                      # لوحة التحكم والإدارة
-│   │       ├── AdminLogin.tsx          # تسجيل دخول الإدارة الآمن
-│   │       ├── AdminDashboard.tsx      # لوحة التحكم بالأقسام الـ 10
-│   │       └── tabs/                   # تبويبات الإدارة الـ 10
-│   ├── context/
-│   │   ├── AuthContext.tsx             # مصادقة المشرف (محلي أو Supabase)
-│   │   └── ContentContext.tsx          # إدارة البيانات والتخزين الحي
-│   ├── data/
-│   │   └── clinicData.ts               # البيانات المعتمدة الأصلية
-│   ├── lib/
-│   │   ├── googlePlaces.ts             # تكامل Google Places API
-│   │   └── supabase.ts                 # عميل Supabase المرن
-│   ├── types/
-│   │   └── index.ts                    # تعريفات TypeScript
-│   ├── App.tsx                         # التوجيه العام والتحكم بالمسارات
-│   ├── main.tsx                        # مدخل التطبيق
-│   └── index.css                       # قواعد التصميم والتمرير وTailwind
-├── supabase_schema.sql                 # كود إنشاء جداول وقواعد Supabase
-├── vercel.json                         # إعدادات نشر Vercel وإعادة التوجيه
-├── tailwind.config.js
-└── package.json
-```
-
----
-
-## 🛡️ لوحة التحكم والإدارة (Admin Dashboard)
-
-* **المسار:** `/admin`
-* **بيانات الدخول الافتراضية:**
-  * البريد الإلكتروني: `admin@drelattar.com`
-  * كلمة المرور: `DrElattar2026!` *(يمكن تخصيصها عبر `VITE_ADMIN_PASSWORD` في `.env`)*
-* **الأقسام الـ 10 المدعومة:**
-  1. **نظرة عامة (Overview):** إحصائيات سريعة، حالة التزامن السحابي/المحلي، وتنبيهات النظام.
-  2. **بيانات الطبيب:** تعديل الاسم، اللقب، التخصصات، والمؤهلات الأكاديمية.
-  3. **معلومات العيادة:** تعديل العنوان التفصيلي، العلامة المميزة، وأرقام الهواتف.
-  4. **الخدمات الطبية:** مراجعة وتحديث الـ 13 خدمة وأوصافها الإكلينيكية.
-  5. **التجهيزات الطبية:** إدارة الأجهزة التشخيصية المعتمدة (دون إدراج أجهزة غير متوفرة).
-  6. **مواعيد العمل:** ضبط أوقات السبت-الخميس ويوم الجمعة.
-  7. **التواصل الاجتماعي:** تحديث روابط فيسبوك، إنستغرام، تيك توك، وأرقام الواتساب.
-  8. **تكامل Google Reviews:** إدخال مفتاح Places API و Place ID لفحص وتحديث التقييمات.
-  9. **وحدة الحجز المستقبلي:** تفعيل/تعطيل الحجز العام، تحديد الأيام والساعات، وإدارة المواعيد بالاعتماد أو الرفض.
-  10. **الرؤية والإعدادات:** إخفاء أو إظهار أقسام معينة، تفعيل شريط الطوارئ/الإجازات، وإعادة ضبط المصنع للبيانات المعتمدة.
-
----
-
-## 🔒 وحدة الحجز المستقبلي (Future Booking Module)
-
-* **الحالة الافتراضية:** **معطلة تماماً (DISABLED)** عن الزوار والجمهور، ولا يظهر أي نموذج أو زر حجز في النسخة الأولية.
-* **الجاهزية المعمارية:** عند رغبة الطبيب أو إدارة العيادة مستقبلاً بتفعيل الحجز الإلكتروني، يتم ببساطة الدخول إلى لوحة الإدارة (`/admin`) ثم تبويب **"نظام الحجز المستقبلي"** وتفعيل المفتاح البرمجي. يظهر حينها زر ونموذج طلب الموعد للجمهور بسلاسة مع تسجيل الطلبات في لوحة الإدارة لاعتمادها أو رفضها.
-
----
-
-## 🛠️ التشغيل المحلي (Local Development)
-
-```bash
-# تثبيت الحزم
-npm install
-
-# تشغيل بيئة التطوير
-npm run dev
-
-# فحص الأخطاء والبناء للإنتاج
+```sh
+npm ci --ignore-scripts
+npm run test:security
 npm run build
-
-# معاينة حزمة الإنتاج
-npm run preview
 ```
 
----
+`review/LOCAL-VALIDATION.md` describes the disposable, loopback-only Supabase tests. The tests include Auth, RLS, concurrent booking requests, actual Realtime delivery, private-data preservation, admin edits propagating to an already-open public page, and mobile/desktop UI checks. Automated fixtures are synthetic. Runtime credentials, private backups and real environment files must remain outside this repository.
 
-## ☁️ خطوات النشر على Vercel و GitHub
+For the isolated mock-browser test:
 
-1. **الرفع على GitHub:**
-   ```bash
-   git remote add origin https://github.com/USERNAME/drelattar.git
-   git branch -M main
-   git push -u origin main
-   ```
-2. **النشر على Vercel:**
-   * افتح [vercel.com](https://vercel.com) واختر **Add New Project**.
-   * استورد مستودع GitHub `drelattar`.
-   * سيقوم Vercel باكتشاف إعدادات Vite تلقائياً مع ملف `vercel.json`.
-   * أضف متغيرات البيئة من ملف `.env.example` في لوحة تحكم Vercel عند الحاجة.
-   * اضغط **Deploy**.
+```sh
+VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_ANON_KEY=isolated-test-publishable-key-only npm run build:isolated
+npm run test:browser
+```
 
----
+Isolated builds reject non-loopback backends and disable external contact actions. Tests block external requests. The codebase still has lint warnings and a bundle-size warning.
 
-## 📋 المتغيرات البيئية (Environment Variables)
+## Database changes
 
-راجع ملف `.env.example`:
+`supabase_schema.sql` is intentionally disabled because the old schema granted public access. `review/clinic-security.sql` is the replacement migration template. Existing private arrays deliberately stop that template. For an existing clinic, `review/clinic-preservation-prefix.sql` prepares a protected checkpoint before stripping the public copy, and requires an independently exported, restore-verified content checksum. Compose both in one transaction and validate the exact target before execution.
 
-| المتغير | الوظيفة | القيمة الافتراضية |
-| :--- | :--- | :--- |
-| `VITE_ADMIN_PASSWORD` | كلمة مرور الإدارة المحلية | `DrElattar2026!` |
-| `VITE_SUPABASE_URL` | رابط مشروع Supabase (اختياري) | فارغ |
-| `VITE_SUPABASE_ANON_KEY` | مفتاح Anon لـ Supabase (اختياري) | فارغ |
-| `VITE_GOOGLE_PLACES_API_KEY` | مفتاح Google Places API (اختياري) | فارغ |
-| `VITE_GOOGLE_PLACE_ID` | معرّف العيادة بخرائط Google | فارغ |
-#   d r e l a t t a r - c l i n i c  
- 
+Preserve all original appointments and the full original settings document, including legacy versions and extra fields. Do not merge, cancel or delete conflicting records as a shortcut. Keep public intake closed during maintenance. Reopening requires a separate decision and abuse-control review. The protected in-project checkpoint is not an independent disaster-recovery backup.
+
+The old mobile client still uses the previous access model. It cannot be made compatible by weakening RLS. Staff provisioning must use a protected process; the web app cannot create roles. Staff sessions are memory-only and require sign-in after a reload.
+
+## Separate workflows
+
+This website does not send WhatsApp messages or schedule daily reports. Those need a separately authorized delivery route, audience and wording. A saved booking is pending clinic confirmation, not proof of a staff notification or a guaranteed appointment.

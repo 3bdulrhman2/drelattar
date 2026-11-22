@@ -1,170 +1,65 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-
-interface AuthUser {
-  email: string;
-  role: 'admin';
-  name: string;
-}
-
+export interface AuthUser { id: string; email: string; role: 'admin' | 'secretary'; name: string }
 interface AuthContextType {
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  isSupabaseAuth: boolean;
-  login: (password: string, email?: string) => Promise<{ success: boolean; error?: string }>;
+  user: AuthUser | null; isAuthenticated: boolean; isLoading: boolean; isSupabaseAuth: boolean;
+  login: (password: string, email?: string) => Promise<{success: boolean; error?: string}>;
   logout: () => Promise<void>;
 }
-
-const AUTH_STORAGE_KEY = 'drelattar_admin_session_v1';
-// Admin password is read exclusively from VITE_ADMIN_PASSWORD (Vercel Environment Variable).
-// No hardcoded fallback — if the env var is not set, local login will be disabled.
-const DEFAULT_LOCAL_PASSWORD: string = import.meta.env.VITE_ADMIN_PASSWORD ?? '';
-const DEFAULT_ADMIN_EMAIL = 'admin@drelattar.com';
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Synchronously initialize user from localStorage so there is ZERO logout flicker on page refresh
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-        if (stored) {
-          return JSON.parse(stored);
-        }
-      } catch (e) {
-        console.warn('Session read error:', e);
-      }
-    }
-    return null;
-  });
-
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-
+export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const epoch = useRef(0);
+  const currentUserId = useRef<string|null>(null);
+  currentUserId.current=user?.id||null;
+  const resolveStaff = async (session: any): Promise<AuthUser | null> => {
+    if (!supabase || !session?.user?.id) return null;
+    const {data, error} = await supabase.from('clinic_staff').select('user_id,role,name,is_active')
+      .eq('user_id', session.user.id).eq('is_active', true).maybeSingle();
+    if (error || !data || !['admin','secretary'].includes(data.role)) return null;
+    return {id: session.user.id, email: session.user.email || '', role: data.role, name: data.name};
+  };
   useEffect(() => {
-    // Check initial auth state
-    if (isSupabaseConfigured && supabase) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          const authUser: AuthUser = {
-            email: session.user.email || DEFAULT_ADMIN_EMAIL,
-            role: 'admin',
-            name: 'الدكتور محمد السيد العطار (إدارة)',
-          };
-          setUser(authUser);
-          try {
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
-          } catch (e) {}
-        }
-        setIsLoading(false);
-      });
-
-      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (session?.user) {
-          const authUser: AuthUser = {
-            email: session.user.email || DEFAULT_ADMIN_EMAIL,
-            role: 'admin',
-            name: 'الدكتور محمد السيد العطار (إدارة)',
-          };
-          setUser(authUser);
-          try {
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
-          } catch (e) {}
-        }
-        // NOTE: If session is null, DO NOT clear user if local admin session exists in localStorage
-      });
-
-      return () => {
-        authListener.subscription.unsubscribe();
-      };
+    // Retire UI-only sessions. They are never credentials and cannot restore access.
+    for (const key of ['drelattar_admin_session_v1','drelattar_secretary_session','drelattar_clinic_content_v2']) {
+      try {localStorage.removeItem(key); sessionStorage.removeItem(key);} catch {/* Storage may be disabled. */}
     }
+    let active = true;
+    if (!supabase) { setIsLoading(false); return; }
+    const {data: listener} = supabase.auth.onAuthStateChange((_event, session) => {
+      const version = ++epoch.current;
+      if(!session?.user?.id||session.user.id!==currentUserId.current){setUser(null);setIsLoading(true);}
+      // Keep same-user forms mounted during visibility/token callbacks.
+      // Do not call auth/database methods synchronously inside the Auth callback lock.
+      setTimeout(async () => {
+        const staff = await resolveStaff(session);
+        if (active && version === epoch.current) { setUser(staff); setIsLoading(false); }
+      }, 0);
+    });
+    supabase.auth.getSession().then(async ({data}) => {
+      const version = ++epoch.current;
+      const staff = await resolveStaff(data.session);
+      if (active && version === epoch.current) { setUser(staff); setIsLoading(false); }
+    });
+    return () => { active = false; ++epoch.current; listener.subscription.unsubscribe(); };
   }, []);
-
-  const login = async (password: string, email: string = DEFAULT_ADMIN_EMAIL): Promise<{ success: boolean; error?: string }> => {
-    setIsLoading(true);
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (!error && data.user) {
-          const authUser: AuthUser = {
-            email: data.user.email || email,
-            role: 'admin',
-            name: 'الدكتور محمد السيد العطار',
-          };
-          setUser(authUser);
-          try {
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
-          } catch (e) {}
-          setIsLoading(false);
-          return { success: true };
-        }
-      } catch (err: any) {
-        console.warn('Supabase auth attempt notice, falling back to master password:', err);
-      }
-    }
-
-    // Local admin authentication via VITE_ADMIN_PASSWORD (must be set in Vercel env vars)
-    if (DEFAULT_LOCAL_PASSWORD && password === DEFAULT_LOCAL_PASSWORD) {
-      const authUser: AuthUser = {
-        email,
-        role: 'admin',
-        name: 'مدير النظام (إدارة العيادة)',
-      };
-      setUser(authUser);
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
-      } catch (e) {
-        console.warn('Could not save session to localStorage', e);
-      }
-      setIsLoading(false);
-      return { success: true };
-    }
-
-    setIsLoading(false);
-    return { success: false, error: 'كلمة المرور غير صحيحة. يرجى إدخال كلمة مرور الإدارة المعتمدة.' };
-  };
-
-  const logout = async () => {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch (e) {}
-    }
-    setUser(null);
+  const login = async (password: string, email = '') => {
+    setUser(null); setIsLoading(true);
     try {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      sessionStorage.removeItem(AUTH_STORAGE_KEY);
-    } catch (e) {
-      console.warn('Session remove error:', e);
-    }
+      if (!supabase || !email.trim()) throw new Error('غير متصل');
+      const {data, error} = await supabase.auth.signInWithPassword({email: email.trim(), password});
+      if (error) throw error;
+      const staff = await resolveStaff(data.session);
+      if (!staff) { await supabase.auth.signOut(); throw new Error('غير مخول'); }
+      ++epoch.current; setUser(staff);
+      return {success: true};
+    } catch {
+      setUser(null);
+      return {success: false, error: 'تعذر تسجيل الدخول بحساب موظف مخول. لا توجد كلمة مرور محلية بديلة.'};
+    } finally { setIsLoading(false); }
   };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isLoading,
-        isSupabaseAuth: isSupabaseConfigured,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const logout = async () => { ++epoch.current; setUser(null); await supabase?.auth.signOut(); };
+  return <AuthContext.Provider value={{user,isAuthenticated:!!user,isLoading,isSupabaseAuth:isSupabaseConfigured,login,logout}}>{children}</AuthContext.Provider>;
 };
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const useAuth = () => { const c=useContext(AuthContext); if (!c) throw new Error('AuthProvider missing'); return c; };

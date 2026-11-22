@@ -47,7 +47,7 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) => {
   const { user, logout } = useAuth();
-  const { isSaving, saveToSupabase } = useContent();
+  const { isSaving, isBackendSynced, saveToSupabase } = useContent();
 
   // Tab persistence: remembers the active tab across page refreshes
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -186,13 +186,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             onClick={handleManualSave}
             disabled={isSaving}
             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${
-              saveSuccess
+              saveSuccess && isBackendSynced && !isSaving
                 ? 'bg-emerald-600 text-white border border-emerald-500'
                 : 'bg-brand-royal hover:bg-brand-medical text-white border border-brand-cyan/40 hover:scale-105 active:scale-95'
             }`}
             title="حفظ جميع تعديلات الموقع"
           >
-            {saveSuccess ? (
+            {saveSuccess && isBackendSynced && !isSaving ? (
               <>
                 <Check className="w-3.5 h-3.5 text-white" />
                 <span>تم الحفظ بنجاح ✓</span>
@@ -200,7 +200,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             ) : (
               <>
                 <Save className="w-3.5 h-3.5 text-brand-cyan" />
-                <span>{isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات 💾'}</span>
+                <span>{isSaving ? 'جاري الحفظ...' : isBackendSynced ? 'تم الحفظ من الخادم. حفظ مرة أخرى' : 'تغييرات غير مؤكدة. حفظ التعديلات'}</span>
               </>
             )}
           </button>

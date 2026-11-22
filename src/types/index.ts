@@ -124,7 +124,6 @@ export interface SecretaryPermissions {
 export interface SecretaryAccount {
   id: string;
   username: string;
-  passwordHash: string;
   name: string;
   phone?: string;
   isActive: boolean;

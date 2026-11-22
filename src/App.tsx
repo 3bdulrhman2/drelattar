@@ -57,20 +57,30 @@ const detectRoute = (): AppRoute => {
 };
 
 export const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { user, logout } = useAuth();
   const { data } = useContent();
 
   const [route, setRoute] = useState<AppRoute>(detectRoute);
 
-  // Secretary session state
-  const [secretaryUser, setSecretaryUser] = useState<SecretaryAccount | null>(() => {
-    try {
-      const stored = sessionStorage.getItem('drelattar_secretary_session');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+  useEffect(() => {
+    if (import.meta.env.MODE !== 'isolated') return;
+    const stopExternalContact = (event: MouseEvent) => {
+      const anchor = (event.target as Element | null)?.closest('a');
+      const href = anchor?.getAttribute('href');
+      if (!href) return;
+      const target = new URL(href, window.location.href);
+      if (target.origin !== window.location.origin || !['http:', 'https:'].includes(target.protocol)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    document.addEventListener('click', stopExternalContact, true);
+    document.addEventListener('auxclick', stopExternalContact, true);
+    return () => {
+      document.removeEventListener('click', stopExternalContact, true);
+      document.removeEventListener('auxclick', stopExternalContact, true);
+    };
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -105,12 +115,6 @@ export const AppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSecretaryLogout = () => {
-    sessionStorage.removeItem('drelattar_secretary_session');
-    setSecretaryUser(null);
-    navigateToPublic();
-  };
-
   // Route: Digital Smart Card (Direct link: /card or /pay)
   if (route === 'card') {
     return <DoctorCard />;
@@ -126,31 +130,21 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  // Route: Secretary Portal (Direct link: /secretary)
   if (route === 'secretary') {
-    if (secretaryUser) {
-      return (
-        <SecretaryDashboard
-          account={secretaryUser}
-          onLogout={handleSecretaryLogout}
-          onBackToSite={navigateToPublic}
-        />
-      );
+    // Keep the form mounted through Auth callbacks so a denied login keeps its error.
+    if (user) {
+      const admin = user.role === 'admin';
+      const account: SecretaryAccount = {id:user.id, username:user.email, name:user.name,
+        isActive:true, createdAt:'', permissions:{canManageBookings:true,canCloseToday:admin,
+        canCloseSpecificDates:admin,canScheduleHolidays:admin,canPostAnnouncements:admin}};
+      return <SecretaryDashboard account={account} onLogout={() => {void logout();}} onBackToSite={navigateToPublic}/>;
     }
-    return (
-      <SecretaryLogin
-        onBackToSite={navigateToPublic}
-        onLoginSuccess={(acc) => setSecretaryUser(acc)}
-      />
-    );
+    return <SecretaryLogin onBackToSite={navigateToPublic}/>;
   }
-
-  // Route: Admin Console (Direct link: /admin)
   if (route === 'admin') {
-    if (isAuthenticated) {
-      return <AdminDashboard onBackToSite={navigateToPublic} />;
-    }
-    return <AdminLogin onBackToSite={navigateToPublic} />;
+    if (user?.role === 'admin') return <AdminDashboard onBackToSite={navigateToPublic}/>;
+    if (user) return <p role="alert" dir="rtl">هذا الحساب غير مخول بدخول لوحة الإدارة. استخدم بوابة السكرتارية.</p>;
+    return <AdminLogin onBackToSite={navigateToPublic}/>;
   }
 
   // Public Clinic Website (Default)
@@ -200,7 +194,7 @@ export const AppContent: React.FC = () => {
       <QuickCallFloating />
 
       {/* Polite Initial Visitor Notification Activation Prompt */}
-      <NotificationPromptModal />
+      {/* Push enrollment stays disabled until a real protected token pipeline is reviewed. */}
 
     </div>
   );

@@ -4,6 +4,7 @@ import { useContent } from '../../../context/ContentContext';
 import { MedicalEquipment } from '../../../types';
 
 export const EquipmentTab: React.FC = () => {
+  const { isBackendSynced, isSaving } = useContent();
   const { data, updateEquipment } = useContent();
   const [equipmentList, setEquipmentList] = useState<MedicalEquipment[]>([...data.equipment]);
   const [savedNotice, setSavedNotice] = useState(false);
@@ -38,7 +39,7 @@ export const EquipmentTab: React.FC = () => {
         </button>
       </div>
 
-      {savedNotice && (
+      {savedNotice && isBackendSynced && !isSaving && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
           <Check className="w-4 h-4" />
           <span>تم حفظ تحديثات الأجهزة الطبية بنجاح.</span>

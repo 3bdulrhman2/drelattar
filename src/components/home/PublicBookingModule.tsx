@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -16,6 +16,7 @@ import {
   CalendarOff,
 } from 'lucide-react';
 import { useContent } from '../../context/ContentContext';
+import { supabase } from '../../lib/supabase';
 import {
   getCairoDateTime,
   generateDaySlots,
@@ -28,12 +29,7 @@ import {
 
 export const PublicBookingModule: React.FC = () => {
   const { data, addBookingAppointment } = useContent();
-  const { bookingSettings, bookings, clinic, doctor } = data;
-
-  // STRICT FEATURE FLAG: Controlled by Admin Dashboard
-  if (!bookingSettings.isEnabled) {
-    return null;
-  }
+  const { bookingSettings, clinic, doctor } = data;
 
   const { cairoTodayStr, formattedDateArabic } = getCairoDateTime();
   const advanceDaysCount = Number(bookingSettings.maxAdvanceDays) > 0 ? Number(bookingSettings.maxAdvanceDays) : 14;
@@ -72,16 +68,28 @@ export const PublicBookingModule: React.FC = () => {
     return 'كل ساعة';
   }, [bookingSettings.slotDurationMinutes]);
 
-  // Filter booked times for selected date ("الموعد اللي بيتحجز مينفعش حد تاني يحجز فيه")
-  const bookedTimesForSelectedDate = useMemo(() => {
-    return (bookings || [])
-      .filter(
-        (b) =>
-          b.appointmentDate === selectedDate &&
-          (b.status === 'pending' || b.status === 'confirmed')
-      )
-      .map((b) => b.appointmentTime);
-  }, [bookings, selectedDate]);
+  const [bookedTimesForSelectedDate,setBookedTimes]=useState<string[]>([]);
+  const [availabilityReady,setAvailabilityReady]=useState(false);
+  const [submitError,setSubmitError]=useState('');
+  const [isSubmitting,setIsSubmitting]=useState(false);
+  const request=useRef<{fingerprint:string;id:string}|null>(null);
+  const refreshAvailability = async () => {
+    if(!supabase||!bookingSettings.isEnabled){setAvailabilityReady(false);return;}
+    const {data:rows,error}=await supabase.rpc('get_booked_slots',{p_date:selectedDate});
+    if(error){setAvailabilityReady(false);setSubmitError('تعذر تحديث المواعيد. لم نتأكد من حالة الطلب؛ راجع العيادة قبل إرسال طلب مختلف.');return;}
+    setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);
+  };
+  useEffect(()=>{
+    let active=true;setAvailabilityReady(false);setSelectedTime('');setSubmitError('');
+    if(supabase&&bookingSettings.isEnabled){
+      supabase.rpc('get_booked_slots',{p_date:selectedDate}).then(({data:rows,error})=>{
+        if(!active)return;
+        if(error){setSubmitError('تعذر التحقق من المواعيد. لم يُرسل أي طلب.');return;}
+        setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);
+      });
+    }
+    return()=>{active=false;};
+  },[selectedDate,bookingSettings.isEnabled]);
 
   // Check if selected date is closed by admin, secretary or holiday
   const selectedDateClosure = useMemo(() => {
@@ -95,13 +103,15 @@ export const PublicBookingModule: React.FC = () => {
   // 4. Omission of already booked slots
   // 5. Total closure of day if clinic is closed
   const availableSlots = useMemo(() => {
-    if (selectedDateClosure.isClosed) return [];
+    if (!availabilityReady || selectedDateClosure.isClosed) return [];
     const allSlots = generateDaySlots(selectedDate, bookedTimesForSelectedDate, workingHoursConfig);
     return allSlots.filter((s) => s.isAvailable);
-  }, [selectedDate, bookedTimesForSelectedDate, workingHoursConfig, selectedDateClosure]);
+  }, [selectedDate, bookedTimesForSelectedDate, workingHoursConfig, selectedDateClosure, availabilityReady]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(isSubmitting||!availabilityReady)return;
+    setSubmitError('');
     if (selectedDateClosure.isClosed) {
       alert(`عذراً، هذا اليوم غير متاح للحجز (${selectedDateClosure.reason || 'العيادة مغلقة'}). يرجى اختيار يوم آخر.`);
       return;
@@ -111,32 +121,22 @@ export const PublicBookingModule: React.FC = () => {
       return;
     }
 
-    // Double check availability before submitting
-    if (bookedTimesForSelectedDate.includes(selectedTime)) {
-      alert('عذراً، تم حجز هذا الموعد للتو بواسطة مريض آخر. يرجى اختيار موعد آخر.');
-      setSelectedTime('');
+    // Availability is advisory. The server is authoritative, and a retry must
+    // be allowed to recover an already-saved receipt after a lost response.
+    const input={patientName:patientName.trim(),patientPhone:patientPhone.trim(),appointmentDate:selectedDate,appointmentTime:selectedTime};
+    const fingerprint=JSON.stringify(input);
+    if(request.current?.fingerprint!==fingerprint)request.current={fingerprint,id:crypto.randomUUID()};
+    setIsSubmitting(true);
+    try {
+      const receipt=await addBookingAppointment(input,request.current.id);
+      setSubmittedBooking({id:receipt.id,patientName:input.patientName,patientPhone:input.patientPhone,
+        date:selectedDate,time:selectedTime,service:'زيارة العيادة'});
+      request.current=null;
+    } catch(error) {
+      setSubmitError(error instanceof Error?error.message:'لم يتم حفظ الطلب.');
+      await refreshAvailability();
       return;
-    }
-
-    const bookingRefId = `EL-${Date.now().toString().slice(-6)}`;
-
-    addBookingAppointment({
-      patientName: patientName.trim(),
-      patientPhone: patientPhone.trim(),
-      appointmentDate: selectedDate,
-      appointmentTime: selectedTime,
-      service,
-      notes: notes.trim() || undefined,
-    });
-
-    setSubmittedBooking({
-      id: bookingRefId,
-      patientName: patientName.trim(),
-      patientPhone: patientPhone.trim(),
-      date: selectedDate,
-      time: selectedTime,
-      service,
-    });
+    } finally {setIsSubmitting(false);}
 
     // Reset fields
     setSelectedTime('');
@@ -156,6 +156,7 @@ export const PublicBookingModule: React.FC = () => {
     'استشارة طبية وفحص شامل',
   ];
 
+  if (!bookingSettings.isEnabled) return null;
   return (
     <section id="booking" className="py-16 lg:py-24 bg-gradient-to-b from-white via-purple-50/30 to-brand-bg relative overflow-hidden">
       
@@ -198,10 +199,10 @@ export const PublicBookingModule: React.FC = () => {
                 تم استلام طلب الحجز بنجاح
               </span>
               <h3 className="text-xl sm:text-2xl font-black text-brand-dark">
-                أهلاً بك يا {submittedBooking.patientName}، موعدك مسجل لدينا!
+                أهلاً بك يا {submittedBooking.patientName}، طلبك مسجل لدينا!
               </h3>
               <p className="text-xs sm:text-sm text-brand-muted max-w-md mx-auto">
-                تم تسجيل موعد الكشف بنجاح، ويمكنك الآن تأكيد بيانات الموعد مع إدارة العيادة عبر الواتساب مباشرة.
+                تم حفظ طلبك بحالة انتظار المراجعة. الموعد غير مؤكد نهائياً حتى تؤكده العيادة.
               </p>
             </div>
 
@@ -244,7 +245,7 @@ export const PublicBookingModule: React.FC = () => {
             {/* WhatsApp Confirmation Action with Exact User Template */}
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <a
-                href={`https://wa.me/201060918977?text=${encodeURIComponent(
+                href={import.meta.env.MODE === 'isolated' ? undefined : `https://wa.me/201060918977?text=${encodeURIComponent(
 `السلام عليكم، أرغب في تأكيد حجز موعد بالعيادة.
 
 اسم المريض: ${submittedBooking.patientName}
@@ -260,7 +261,7 @@ export const PublicBookingModule: React.FC = () => {
                 className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition-all shadow-md"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>إرسال تفاصيل الموعد عبر الواتساب لتأكيده فوراً</span>
+                <span>{import.meta.env.MODE === 'isolated' ? 'التواصل الخارجي معطل في النسخة التجريبية' : 'مراجعة طلب الموعد مع العيادة عبر الواتساب'}</span>
               </a>
 
               <button
@@ -278,6 +279,8 @@ export const PublicBookingModule: React.FC = () => {
             className="bg-white rounded-3xl p-6 sm:p-10 border border-brand-border/80 shadow-soft space-y-8 text-right"
           >
             
+            {submitError && <p role="alert" className="p-4 rounded-xl bg-red-50 text-red-800">{submitError}</p>}
+            {!availabilityReady && !submitError && <p role="status">جار التحقق من المواعيد...</p>}
             {/* STEP 1: SELECT DATE */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -285,7 +288,7 @@ export const PublicBookingModule: React.FC = () => {
                   <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">1</span>
                   <span>اختر يوم الكشف:</span>
                 </h3>
-                <span className="text-xs text-brand-muted">متاح لـ 14 يوماً قادمة</span>
+                <span className="text-xs text-brand-muted">متاح لـ {advanceDaysCount} يوماً قادمة</span>
               </div>
 
               {/* Day selection pills carousel */}
@@ -336,7 +339,7 @@ export const PublicBookingModule: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                • فاصل المواعيد: {slotIntervalLabel} لمنع التكدس • يشترط الحجز قبل الموعد بـ 3 ساعات على الأقل • الموعد المحجوز يختفي فوراً
+                • فاصل المواعيد: {slotIntervalLabel} لمنع التكدس • يشترط الحجز قبل الموعد بـ 3 ساعات على الأقل • الإتاحة النهائية تُراجع عند حفظ الطلب
               </p>
 
               {selectedDateClosure.isClosed ? (
@@ -431,37 +434,6 @@ export const PublicBookingModule: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Service Selection */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    سبب الكشف أو الخدمة المطلوبة
-                  </label>
-                  <select
-                    value={service}
-                    onChange={(e) => setService(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-brand-dark focus:outline-hidden focus:border-purple-600 focus:bg-white transition-colors"
-                  >
-                    {servicesList.map((srv, idx) => (
-                      <option key={idx} value={srv}>
-                        {srv}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Optional Notes */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    أعراض أو ملاحظات إضافية (اختياري)
-                  </label>
-                  <input
-                    type="text"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="مثال: متابعة دورية، قياس سكر وضغط"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-brand-dark placeholder-slate-400 focus:outline-hidden focus:border-purple-600 focus:bg-white transition-colors"
-                  />
-                </div>
 
               </div>
             </div>
@@ -469,18 +441,18 @@ export const PublicBookingModule: React.FC = () => {
             {/* SUBMIT BUTTON */}
             <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-xs text-brand-muted">
-                * بمجرد الحجز سيختفي هذا الموعد فوراً من الموقع لضمان عدم تكرار الحجز.
+                * تُراجع إتاحة الموعد عند الحفظ. الطلب ينتظر تأكيد العيادة.
               </div>
 
               <button
                 type="submit"
-                disabled={!selectedTime}
+                disabled={!selectedTime || isSubmitting || !availabilityReady}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-royal text-white font-bold text-xs sm:text-sm px-8 py-3.5 rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:pointer-events-none hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 <Calendar className="w-4 h-4 text-brand-lime" />
                 <span>
-                  {selectedTime
-                    ? `تأكيد الحجز (${formatTimeArabic(selectedTime)})`
+                  {isSubmitting ? 'جار حفظ الطلب...' : selectedTime
+                    ? `إرسال طلب الحجز (${formatTimeArabic(selectedTime)})`
                     : 'اختر التوقيت أولاً لتأكيد الحجز'}
                 </span>
               </button>

@@ -26,6 +26,7 @@ import { OFFICIAL_MAPS_LINK } from '../../../lib/googlePlaces';
 import type { SocialReviewImage } from '../../../types';
 
 export const GoogleReviewsTab: React.FC = () => {
+  const { isBackendSynced, isSaving } = useContent();
   const {
     data,
     updateSocialReviewImages,
@@ -278,14 +279,14 @@ export const GoogleReviewsTab: React.FC = () => {
         </div>
       </div>
 
-      {addNotice && (
+      {addNotice && isBackendSynced && !isSaving && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
           <Check className="w-4 h-4" />
           <span>تمت إضافة الصورة بنجاح إلى شريط آراء وسائل التواصل وحفظها سحابياً.</span>
         </div>
       )}
 
-      {editNotice && (
+      {editNotice && isBackendSynced && !isSaving && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
           <Check className="w-4 h-4" />
           <span>تم حفظ وتحديث بيانات الرأي بنجاح وتطبيق التعديلات في الموقع فورياً.</span>
@@ -630,7 +631,7 @@ export const GoogleReviewsTab: React.FC = () => {
           </a>
         </div>
 
-        {googleNotice && (
+        {googleNotice && isBackendSynced && !isSaving && (
           <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
             <Check className="w-3.5 h-3.5" />
             <span>تم حفظ إعدادات Google API بنجاح.</span>

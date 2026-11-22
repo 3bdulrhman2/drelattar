@@ -3,6 +3,7 @@ import { Save, Check, Clock, Calendar, Sparkles } from 'lucide-react';
 import { useContent } from '../../../context/ContentContext';
 
 export const HoursTab: React.FC = () => {
+  const { isBackendSynced, isSaving } = useContent();
   const { data, updateClinic, updateBookingSettings } = useContent();
   const { clinic, bookingSettings } = data;
 
@@ -55,7 +56,7 @@ export const HoursTab: React.FC = () => {
         </button>
       </div>
 
-      {savedNotice && (
+      {savedNotice && isBackendSynced && !isSaving && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
           <Check className="w-4 h-4" />
           <span>تم حفظ مواعيد العمل وفترات الحجز بنجاح.</span>

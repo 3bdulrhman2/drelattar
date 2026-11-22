@@ -22,6 +22,7 @@ import { FutureBookingSettings } from '../../../types';
 import { getCairoDateTime, formatTimeArabic } from '../../../lib/cairoTime';
 
 export const FutureBookingTab: React.FC = () => {
+  const { isBackendSynced, isSaving } = useContent();
   const {
     data,
     updateClinic,
@@ -98,18 +99,20 @@ export const FutureBookingTab: React.FC = () => {
     setTimeout(() => setSavedNotice(false), 3000);
   };
 
-  const handleCreateTestBooking = (e: React.FormEvent) => {
+  const handleCreateTestBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPatientName || !newPatientPhone) return;
+    if(import.meta.env.MODE!=='isolated'){alert('الحجز التجريبي متاح في النسخة المحلية المعزولة فقط.');return;}
+    try {
 
-    addBookingAppointment({
+    await addBookingAppointment({
       patientName: newPatientName.trim(),
       patientPhone: newPatientPhone.trim(),
       appointmentDate: newDate,
       appointmentTime: newTime,
       service: newService,
-      notes: 'حجز تجريبي من لوحة الإدارة',
-    });
+    }, crypto.randomUUID());
+    } catch {alert('لم يتم حفظ الحجز التجريبي.');return;}
 
     setNewPatientName('');
     setNewPatientPhone('');
@@ -144,7 +147,7 @@ export const FutureBookingTab: React.FC = () => {
         </button>
       </div>
 
-      {savedNotice && (
+      {savedNotice && isBackendSynced && !isSaving && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
           <Check className="w-4 h-4" />
           <span>تم حفظ وتحديث إعدادات الحجز بنجاح ومزامنتها سحابياً.</span>
