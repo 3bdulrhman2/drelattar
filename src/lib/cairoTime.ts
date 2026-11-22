@@ -125,13 +125,14 @@ export const getCairoTodayString = (): string => {
 export const isDateClosed = (
   dateStr: string,
   settings?: {
+    allowedDays?: string[];
     isClosedToday?: boolean;
     closedTodayReason?: string;
     closedDates?: string[];
     holidays?: { startDate: string; endDate: string; title: string; isActive: boolean; customMessage?: string }[];
   }
 ): { isClosed: boolean; reason?: string } => {
-  if (!settings) return { isClosed: false };
+  if (!settings) return { isClosed: true, reason: 'تعذر التحقق من أيام الحجز المتاحة' };
 
   const todayStr = getCairoTodayString();
 
@@ -162,6 +163,16 @@ export const isDateClosed = (
         reason: matchingHoliday.customMessage || `عطلة رسمية (${matchingHoliday.title})`,
       };
     }
+  }
+
+  // Match the server: an empty or missing weekday allowlist permits no dates.
+  const date = new Date(`${dateStr}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    return { isClosed: true, reason: 'تاريخ غير صالح للحجز' };
+  }
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Africa/Cairo' });
+  if (!Array.isArray(settings.allowedDays) || !settings.allowedDays.includes(weekday)) {
+    return { isClosed: true, reason: 'هذا اليوم غير مفعّل للحجز في العيادة' };
   }
 
   return { isClosed: false };
