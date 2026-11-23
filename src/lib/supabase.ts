@@ -8,6 +8,13 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey.lengt
   (supabaseUrl.startsWith('https://') || (import.meta.env.MODE === 'isolated' && isLoopback)));
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false },
+      // Keep the genuine Auth session across reloads in this tab only.
+      // Backend staff membership and RLS still decide access, never a UI flag.
+      auth: {
+        persistSession: true,
+        storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+      },
       global: { headers: { 'x-client-info': 'drelattar-secure-review' } },
     }) : null;
