@@ -70,22 +70,23 @@ export const PublicBookingModule: React.FC = () => {
 
   const [bookedTimesForSelectedDate,setBookedTimes]=useState<string[]>([]);
   const [availabilityReady,setAvailabilityReady]=useState(false);
+  const [availabilityError,setAvailabilityError]=useState(false);
   const [submitError,setSubmitError]=useState('');
   const [isSubmitting,setIsSubmitting]=useState(false);
   const request=useRef<{fingerprint:string;id:string}|null>(null);
   const refreshAvailability = async (preserveSubmitError = false) => {
-    if(!supabase||!bookingSettings.isEnabled){setAvailabilityReady(false);return;}
+    if(!supabase||!bookingSettings.isEnabled){setAvailabilityReady(false);setAvailabilityError(true);return;}
     const {data:rows,error}=await supabase.rpc('get_booked_slots',{p_date:selectedDate});
-    if(error){setAvailabilityReady(false);if(!preserveSubmitError)setSubmitError('تعذر تحديث المواعيد. راجع العيادة قبل إرسال طلب مختلف.');return;}
-    setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);
+    if(error){setAvailabilityReady(false);setAvailabilityError(true);if(!preserveSubmitError)setSubmitError('تعذر تحديث المواعيد. راجع العيادة قبل إرسال طلب مختلف.');return;}
+    setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);setAvailabilityError(false);
   };
   useEffect(()=>{
-    let active=true;setAvailabilityReady(false);setSelectedTime('');setSubmitError('');
+    let active=true;setAvailabilityReady(false);setAvailabilityError(false);setSelectedTime('');setSubmitError('');
     if(supabase&&bookingSettings.isEnabled){
       supabase.rpc('get_booked_slots',{p_date:selectedDate}).then(({data:rows,error})=>{
         if(!active)return;
-        if(error){setSubmitError('تعذر التحقق من المواعيد. لم يُرسل أي طلب.');return;}
-        setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);
+        if(error){setAvailabilityError(true);setSubmitError('تعذر التحقق من المواعيد. لم يُرسل أي طلب.');return;}
+        setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);setAvailabilityError(false);
       });
     }
     return()=>{active=false;};
@@ -335,7 +336,7 @@ export const PublicBookingModule: React.FC = () => {
                   <span>اختر التوقيت المتاح ({slotIntervalLabel}):</span>
                 </h3>
                 <span className="text-xs font-bold text-purple-700">
-                  {selectedDateClosure.isClosed ? 'مغلق' : `${availableSlots.length} مواعيد شاغرة متاحة`}
+                  {selectedDateClosure.isClosed ? 'مغلق' : !availabilityReady ? 'جاري تحميل المواعيد...' : `${availableSlots.length} مواعيد شاغرة متاحة`}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
@@ -348,6 +349,25 @@ export const PublicBookingModule: React.FC = () => {
                   <span>{selectedDateClosure.reason || 'نعتذر، العيادة مغلقة في هذا اليوم ولا يتم استقبال حجوزات جديدة.'}</span>
                   <span className="text-[11px] font-normal text-rose-600">يرجى اختيار يوم آخر متاح من الأيام الموضحة بالأعلى.</span>
                 </div>
+              ) : !availabilityReady ? (
+                availabilityError ? (
+                  <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-2">
+                    <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+                    <p className="text-xs sm:text-sm font-bold text-rose-900">
+                      تعذر تحميل مواعيد هذا اليوم حالياً
+                    </p>
+                    <p className="text-xs text-rose-700">
+                      يرجى إعادة اختيار اليوم مرة أخرى، أو الاتصال بالعيادة مباشرة إذا استمرت المشكلة.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2" aria-live="polite">
+                    <Clock className="w-8 h-8 text-slate-400 mx-auto animate-pulse" />
+                    <p className="text-xs sm:text-sm font-bold text-slate-600">
+                      جاري تحميل المواعيد المتاحة لهذا اليوم...
+                    </p>
+                  </div>
+                )
               ) : availableSlots.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-2.5">
                   {availableSlots.map((slot) => {
