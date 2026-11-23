@@ -46,7 +46,7 @@ try{
  await page.locator('form input[type=text]').fill(changed);
  await committed;
 
- await page.waitForFunction(()=>document.body.innerText.includes('تم الحفظ من الخادم'));
+ await page.waitForSelector('[title="تم الحفظ من الخادم"]');
 
  try{await publicPage.waitForFunction(value=>document.body.innerText.includes(value),{timeout:6000,polling:'mutation'},changed);}catch(e){console.log('PUBLIC_VALUES',changed,publicResponses);console.log('PUBLIC_DEBUG',await publicPage.evaluate(()=>({names:document.body.innerText.match(/طبيب اختبار مزامنة [0-9]+/g),head:document.body.innerText.slice(0,420),api:performance.getEntriesByType('resource').filter(r=>r.name.includes('clinic_settings')).map(r=>({url:r.name,ms:r.duration}))})));throw e;}
  console.log('PASS real admin edit is acknowledged by the database and propagates to an already-open public page');
@@ -81,10 +81,10 @@ try{
   banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;padding:12px;text-align:center;background:#fde68a;font-weight:bold';document.body.appendChild(banner);
  });
  await mkdir('review/screenshots',{recursive:true});await page.screenshot({path:'review/screenshots/native-auth-admin-desktop.png',fullPage:true});
- await page.reload({waitUntil:'networkidle0'});await page.waitForSelector('input[type=email]');
- assert.equal(await page.$('button[title="تسجيل الخروج"]'),null);
- console.log('PASS memory-only web session does not restore protected admin after reload');
- await page.type('input[type=email]',fixture.admin.email);await page.type('input[type=password]',fixture.admin.password);await page.click('form button[type=submit]');
+ await page.reload({waitUntil:'networkidle0'});
+ await page.waitForSelector('button[title="تسجيل الخروج"]');
+ assert.equal(await page.$('input[type=email]'),null);
+ console.log('PASS genuine Auth session survives same-tab reload with backend staff validation');
  await page.waitForSelector('button[title="تسجيل الخروج"]');await page.click('button[title="تسجيل الخروج"]');await page.waitForSelector('input[type=email]');
  assert.equal(await page.evaluate(()=>document.body.innerText.includes('مريض اصطناعي محلي')),false);
  console.log('PASS actual web logout removes protected dashboard and synthetic patient text');
