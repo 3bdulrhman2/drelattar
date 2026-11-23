@@ -18,8 +18,9 @@ import {
   ExternalLink,
   Bell,
   BellRing,
-  Save,
   Check,
+  LoaderCircle,
+  CircleAlert,
   Megaphone
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -66,7 +67,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const [notificationStatus, setNotificationStatus] = useState<string>(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -76,11 +76,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   });
 
   const handleManualSave = async () => {
-    const res = await saveToSupabase();
-    if (res.success) {
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2500);
-    }
+    await saveToSupabase();
   };
 
   const handleToggleNotifications = async () => {
@@ -163,9 +159,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             </div>
             <div>
               <h1 className="text-sm sm:text-base font-bold text-white leading-tight">
-                لوحة تحكم عيادة د. محمد السيد العطار
+                لوحة الطبيب
               </h1>
-              <span className="text-[11px] text-slate-400">نظام الإدارة الآمن (Admin Console)</span>
             </div>
           </div>
         </div>
@@ -186,22 +181,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             onClick={handleManualSave}
             disabled={isSaving}
             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${
-              saveSuccess && isBackendSynced && !isSaving
+              isBackendSynced && !isSaving
                 ? 'bg-emerald-600 text-white border border-emerald-500'
                 : 'bg-brand-royal hover:bg-brand-medical text-white border border-brand-cyan/40 hover:scale-105 active:scale-95'
             }`}
-            title="حفظ جميع تعديلات الموقع"
+            title={isSaving ? 'جاري الحفظ' : isBackendSynced ? 'تم الحفظ. حفظ مرة أخرى' : 'تغييرات غير مؤكدة. حفظ التعديلات'}
+            aria-label={isSaving ? 'جاري الحفظ' : isBackendSynced ? 'تم الحفظ. حفظ مرة أخرى' : 'تغييرات غير مؤكدة. حفظ التعديلات'}
+            aria-busy={isSaving}
           >
-            {saveSuccess && isBackendSynced && !isSaving ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-white" />
-                <span>تم الحفظ بنجاح ✓</span>
-              </>
+            {isSaving ? (
+              <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : isBackendSynced ? (
+              <Check className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <>
-                <Save className="w-3.5 h-3.5 text-brand-cyan" />
-                <span>{isSaving ? 'جاري الحفظ...' : isBackendSynced ? 'تم الحفظ من الخادم. حفظ مرة أخرى' : 'تغييرات غير مؤكدة. حفظ التعديلات'}</span>
-              </>
+              <CircleAlert className="w-4 h-4 text-amber-300" aria-hidden="true" />
             )}
           </button>
 
