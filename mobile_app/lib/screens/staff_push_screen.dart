@@ -18,10 +18,29 @@ class _StaffPushScreenState extends State<StaffPushScreen> {
   String? _result;
   String? _request;
   String? _attemptText;
-  static const _senderReady = bool.fromEnvironment(
-    'CLINIC_MANUAL_PUSH_READY',
-    defaultValue: false,
-  );
+  bool _senderReady = false;
+  @override
+  void initState() {
+    super.initState();
+    _loadReadiness();
+  }
+
+  Future<void> _loadReadiness() async {
+    try {
+      final r = await Supabase.instance.client.functions.invoke(
+        'staff-manual-push',
+        body: {'action': 'status'},
+      );
+      if (mounted)
+        setState(
+          () =>
+              _senderReady = r.status == 200 && r.data['sendingReady'] == true,
+        );
+    } catch (_) {
+      if (mounted) setState(() => _senderReady = false);
+    }
+  }
+
   @override
   void dispose() {
     _title.dispose();
@@ -124,7 +143,7 @@ class _StaffPushScreenState extends State<StaffPushScreen> {
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: _busy || !_senderReady ? null : _enable,
+            onPressed: _busy ? null : _enable,
             icon: const Icon(Icons.notifications_outlined),
             label: const Text('تفعيل الاستقبال على هذا الجهاز'),
           ),
@@ -132,7 +151,7 @@ class _StaffPushScreenState extends State<StaffPushScreen> {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Text(
-                'خدمة الإرسال لم تجهز بعد. لم يتم تسجيل هذا الجهاز أو إرسال إشعار.',
+                'الإرسال غير مفعّل حاليًا. يمكنك تفعيل استقبال الإشعارات على هذا الجهاز.',
               ),
             ),
           if (doctor) ...[
