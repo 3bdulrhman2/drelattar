@@ -88,10 +88,13 @@ class BookingCard extends StatelessWidget {
         const SizedBox(height: 12),
         Row(
           children: [
-            if (onStatusChange != null && appointment.status != 'confirmed')
+            if (onStatusChange != null &&
+                ['pending', 'confirmed'].contains(appointment.status))
               Expanded(
                 child: FilledButton(
-                  onPressed: () => onStatusChange!('confirmed'),
+                  onPressed: () => onStatusChange!(
+                    appointment.status == 'pending' ? 'confirmed' : 'arrived',
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: context.night
                         ? const Color(0xFF2A668A)
@@ -106,10 +109,12 @@ class BookingCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const FittedBox(
+                  child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'تأكيد الحجز',
+                      appointment.status == 'pending'
+                          ? 'تأكيد الكشف'
+                          : 'حضر العيادة',
                       maxLines: 1,
                       style: TextStyle(
                         fontSize: 11,
@@ -119,9 +124,11 @@ class BookingCard extends StatelessWidget {
                   ),
                 ),
               ),
-            if (appointment.status == 'confirmed') const Spacer(),
+            if (!['pending', 'confirmed'].contains(appointment.status))
+              const Spacer(),
             const SizedBox(width: 4),
-            if (onStatusChange != null && appointment.status != 'cancelled')
+            if (onStatusChange != null &&
+                ['pending', 'confirmed'].contains(appointment.status))
               TextButton(
                 onPressed: () => onStatusChange!('cancelled'),
                 style: TextButton.styleFrom(
@@ -186,23 +193,6 @@ class BookingCard extends StatelessWidget {
                     value: 'call',
                     child: Text('اتصال هاتفي'),
                   ),
-                  if (onStatusChange != null &&
-                      appointment.status != 'completed')
-                    const PopupMenuItem(
-                      value: 'completed',
-                      child: Text('تم الكشف'),
-                    ),
-                  if (onStatusChange != null && appointment.status != 'pending')
-                    const PopupMenuItem(
-                      value: 'pending',
-                      child: Text('إعادة للانتظار'),
-                    ),
-                  if (onStatusChange != null &&
-                      appointment.status == 'confirmed')
-                    const PopupMenuItem(
-                      value: 'confirmed',
-                      child: Text('مؤكد'),
-                    ),
                   if (onDelete != null)
                     const PopupMenuItem(
                       value: 'delete',
