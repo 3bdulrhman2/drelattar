@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 
@@ -13,7 +16,14 @@ import '../utils/shared_reception_queue.dart';
 
 class ReceptionTab extends StatefulWidget {
   final List<Appointment>? previewAppointments;
-  const ReceptionTab({super.key, this.previewAppointments});
+  final ReceptionSnapshot? previewSnapshot;
+  final Map<String, dynamic>? previewSettings;
+  const ReceptionTab({
+    super.key,
+    this.previewAppointments,
+    this.previewSnapshot,
+    this.previewSettings,
+  });
   @override
   State<ReceptionTab> createState() => _ReceptionTabState();
 }
@@ -30,8 +40,12 @@ class _ReceptionTabState extends State<ReceptionTab> {
   @override
   void initState() {
     super.initState();
+    tzdata.initializeTimeZones();
     if (widget.previewAppointments != null) {
       _bookings = widget.previewAppointments!;
+      _snapshot = widget.previewSnapshot;
+      _settings = widget.previewSettings;
+      _receivedAt = DateTime.now();
       _loading = false;
     } else {
       _load();
@@ -69,6 +83,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
   }
 
   Future<void> _load() async {
+    if (widget.previewAppointments != null) return;
     try {
       final r = await Future.wait([
         SupabaseService.getAppointments(forceRefresh: true),
@@ -94,6 +109,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
   }
 
   Future<void> _add() async {
+    if (widget.previewAppointments != null) return;
     final controller = TextEditingController();
     final request = ReceptionService.requestId();
     await showDialog(
@@ -145,7 +161,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
   }
 
   Future<void> _status(ReceptionItem item, String value) async {
-    if (_busy) return;
+    if (_busy || widget.previewAppointments != null) return;
     setState(() => _busy = true);
     try {
       if (item.source == 'website') {
@@ -222,22 +238,76 @@ class _ReceptionTabState extends State<ReceptionTab> {
             .toList(),
       );
     final items = schedule?.items ?? online;
+    final unplaced = schedule?.unplaced ?? <ReceptionItem>[];
+    final all = [...items, ...unplaced];
+    DateTime registeredAt(ReceptionItem item) {
+      if (item.source == 'website') {
+        final booking = _bookings.where((b) => b.id == item.id).firstOrNull;
+        final created = DateTime.tryParse(booking?.createdAt ?? '');
+        if (created == null) return item.time;
+        if (!created.isUtc) return created;
+        final wall = tz.TZDateTime.from(
+          created,
+          tz.getLocation('Africa/Cairo'),
+        );
+        return DateTime(
+          wall.year,
+          wall.month,
+          wall.day,
+          wall.hour,
+          wall.minute,
+          wall.second,
+        );
+      }
+      return _snapshot?.entries
+              .where((e) => e.id == item.id)
+              .firstOrNull
+              ?.arrivedAt ??
+          item.time;
+    }
+
+    final registered = [...all]
+      ..sort((a, b) {
+        final order = registeredAt(a).compareTo(registeredAt(b));
+        return order != 0 ? order : a.id.compareTo(b.id);
+      });
+    final current = all.where((i) => i.status == 'in_consultation').firstOrNull;
+    final waiting = all
+        .where((i) => !['completed', 'in_consultation'].contains(i.status))
+        .toList();
+    final completed = registered.where((i) => i.status == 'completed').toList();
+    final interactive = _snapshot != null && !_busy;
+    // Next call follows the existing calculated queue, not display numbering.
+    final next = all
+        .where((i) => !['completed', 'in_consultation'].contains(i.status))
+        .firstOrNull;
+    String number(ReceptionItem i) =>
+        _digits((registered.indexOf(i) + 1).toString().padLeft(2, '0'));
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
         children: [
           Text(
-            'الاستقبال',
+            'الدور والاستقبال',
             style: TextStyle(
-              fontSize: 25,
+              fontSize: 23,
               fontWeight: FontWeight.bold,
               color: context.ink,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FilledButton.icon(
+              onPressed: interactive && schedule != null ? _add : null,
+              icon: const Icon(Icons.person_add_alt, size: 18),
+              label: const Text('إضافة مريض'),
+            ),
+          ),
+          const SizedBox(height: 6),
           Text(
-            'دور اليوم · كل كشف ربع ساعة',
+            'الأرقام حسب التسجيل · العرض حسب موعد الكشف',
             style: TextStyle(fontSize: 11, color: context.secondaryInk),
           ),
           const SizedBox(height: 18),
@@ -246,45 +316,179 @@ class _ReceptionTabState extends State<ReceptionTab> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(_error!, style: const TextStyle(color: Colors.red)),
             ),
-          FilledButton.icon(
-            onPressed: _snapshot == null || _busy || schedule == null
-                ? null
-                : _add,
-            icon: const Icon(Icons.person_add_alt),
-            label: const Text('إضافة مريض بدون حجز'),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF173F94),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'الدور الحالي',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  current == null ? '—' : number(current),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 44,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  current?.name ?? 'لا يوجد مريض داخل الكشف',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (current != null) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.15),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: interactive
+                          ? () => _status(current, 'completed')
+                          : null,
+                      child: const Text('إنهاء الزيارة'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
+          ...all
+              .where((i) => i.status == 'in_consultation' && i != current)
+              .map(
+                (i) => _queueCard(context, i, number(i), false, interactive),
+              ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'قائمة الانتظار',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: context.ink,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: context.panel,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  '${_digits(waiting.length.toString())} متبقين',
+                  style: TextStyle(fontSize: 11, color: context.secondaryInk),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (waiting.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'لا يوجد مرضى في قائمة الانتظار',
+                style: TextStyle(color: context.secondaryInk),
+              ),
+            ),
+          ...waiting.map(
+            (i) => _queueCard(
+              context,
+              i,
+              number(i),
+              unplaced.contains(i),
+              interactive,
+            ),
+          ),
+          if (waiting.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed:
+                  interactive &&
+                      next?.source == 'walkin' &&
+                      next?.status == 'waiting'
+                  ? () => _status(next!, 'in_consultation')
+                  : null,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 17),
+              ),
+              child: const Text(
+                'استدعاء الدور التالي',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+          if (next?.source == 'website')
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                next?.status == 'pending'
+                    ? 'الحجز التالي في انتظار التأكيد من شاشة الحجوزات.'
+                    : 'الحجز التالي من الموقع. استخدم زر تم الكشف بعد انتهاء الزيارة.',
+                style: TextStyle(fontSize: 11, color: context.secondaryInk),
+              ),
+            ),
+          const SizedBox(height: 14),
           Text(
             'الأوقات تقديرية للاستقبال. حجوزات الموقع ثابتة، والحجز المنتظر للتأكيد يحتفظ بوقته.',
             style: TextStyle(fontSize: 11, color: context.secondaryInk),
           ),
           if (schedule == null)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.only(top: 12),
               child: Text(
                 'الدور المشترك غير جاهز أو مواعيد العمل غير متاحة. لا يتم حفظ أسماء محلياً.',
                 style: TextStyle(fontSize: 11, color: context.secondaryInk),
               ),
             ),
-          if (_loading)
-            const Center(child: CircularProgressIndicator())
-          else if (items.isEmpty && schedule?.unplaced.isNotEmpty != true)
-            Padding(
-              padding: const EdgeInsets.all(24),
+          if (unplaced.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
               child: Text(
-                'لا يوجد مرضى في دور اليوم',
-                style: TextStyle(color: context.secondaryInk),
+                'بعض المرضى بدون موعد متاح داخل وقت العمل',
+                style: TextStyle(fontSize: 11, color: Colors.red),
               ),
             ),
-          ...items.map((item) => _tile(context, item)),
-          if (schedule?.unplaced.isNotEmpty == true) ...[
-            const SizedBox(height: 12),
-            const Text(
-              'لا توجد مواعيد متبقية داخل وقت العمل',
-              style: TextStyle(color: Colors.red),
-            ),
-            ...schedule!.unplaced.map(
-              (i) => _tile(context, i, unscheduled: true),
+          if (completed.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            ExpansionTile(
+              key: const PageStorageKey('reception-completed'),
+              initiallyExpanded: false,
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              title: Text(
+                'تم الكشف (${_digits(completed.length.toString())})',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: context.ink,
+                ),
+              ),
+              children: completed
+                  .map((i) => _queueCard(context, i, number(i), false, false))
+                  .toList(),
             ),
           ],
         ],
@@ -292,84 +496,92 @@ class _ReceptionTabState extends State<ReceptionTab> {
     );
   }
 
-  Widget _tile(
+  String _digits(String value) {
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    return value.replaceAllMapped(
+      RegExp(r'[0-9]'),
+      (m) => arabic[int.parse(m[0]!)],
+    );
+  }
+
+  Widget _queueCard(
     BuildContext context,
-    ReceptionItem i, {
-    bool unscheduled = false,
-  }) => Container(
+    ReceptionItem i,
+    String number,
+    bool unscheduled,
+    bool interactive,
+  ) => Container(
     margin: const EdgeInsets.only(top: 10),
-    padding: const EdgeInsets.all(14),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
     decoration: BoxDecoration(
       color: context.panel,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(19),
     ),
-    child: Column(
+    child: Row(
       children: [
-        Row(
-          children: [
-            Icon(
-              i.source == 'website'
-                  ? Icons.language_outlined
-                  : Icons.person_outline,
-              color: context.accent,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    i.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: context.ink,
-                    ),
-                  ),
-                  Text(
-                    i.status == 'pending'
-                        ? 'في انتظار التأكيد'
-                        : i.status == 'completed'
-                        ? 'تم الكشف'
-                        : i.status == 'in_consultation'
-                        ? 'داخل الكشف'
-                        : i.source == 'website'
-                        ? 'حجز موقع'
-                        : 'بدون حجز',
-                    style: TextStyle(fontSize: 11, color: context.secondaryInk),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              unscheduled
-                  ? 'بدون موعد متاح'
-                  : clinicTime(
-                      '${i.time.hour.toString().padLeft(2, '0')}:${i.time.minute.toString().padLeft(2, '0')}',
-                    ),
-              style: TextStyle(
-                color: context.accent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        Text(
+          number,
+          style: TextStyle(
+            color: context.accent,
+            fontSize: 29,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        if (_snapshot != null && i.status != 'completed')
-          Wrap(
-            spacing: 8,
+        const SizedBox(width: 15),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (i.source == 'walkin' && i.status == 'waiting')
-                TextButton(
-                  onPressed: _busy ? null : () => _status(i, 'in_consultation'),
-                  child: const Text('بدء الكشف'),
+              Text(
+                i.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: context.ink,
                 ),
-              if (i.status == 'in_consultation' ||
-                  i.source == 'website' && i.status == 'confirmed')
-                TextButton(
-                  onPressed: _busy ? null : () => _status(i, 'completed'),
-                  child: const Text('تم الكشف'),
-                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${unscheduled ? 'بدون موعد متاح' : clinicTime('${i.time.hour.toString().padLeft(2, '0')}:${i.time.minute.toString().padLeft(2, '0')}')} · ${i.status == 'pending'
+                    ? 'في انتظار التأكيد'
+                    : i.status == 'completed'
+                    ? 'تم الكشف'
+                    : i.status == 'in_consultation'
+                    ? 'داخل الكشف'
+                    : i.source == 'website'
+                    ? 'مؤكد · حجز موقع'
+                    : 'وصل للعيادة'}',
+                style: TextStyle(fontSize: 10, color: context.secondaryInk),
+              ),
             ],
           ),
+        ),
+        if (i.status == 'in_consultation' ||
+            i.status == 'confirmed' && i.source == 'website' ||
+            i.status == 'waiting' && i.source == 'walkin')
+          PopupMenuButton<String>(
+            enabled: interactive,
+            icon: Icon(
+              Icons.chevron_left,
+              color: context.secondaryInk,
+              size: 19,
+            ),
+            onSelected: (value) => _status(i, value),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: i.source == 'website' || i.status == 'in_consultation'
+                    ? 'completed'
+                    : 'in_consultation',
+                child: Text(
+                  i.source == 'website' || i.status == 'in_consultation'
+                      ? 'تم الكشف'
+                      : 'بدء الكشف',
+                ),
+              ),
+            ],
+          )
+        else
+          Icon(Icons.chevron_left, color: context.secondaryInk, size: 19),
       ],
     ),
   );
