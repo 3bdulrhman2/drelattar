@@ -37,3 +37,7 @@ jobs:
             echo 'Verification build must be unsigned'; exit 1
           fi
           echo 'Unsigned notification-disabled package verified; not for installation.'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clinic-notification-disabled-unsigned
+          path: mobile_app/build/app/outputs/flutter-apk/*release*.apk
