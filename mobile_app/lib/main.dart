@@ -22,8 +22,8 @@ void main() async {
       // ignore: deprecated_member_use
       anonKey: SupabaseService.anonKey,
     );
-    // Start listening for real-time booking push alerts
-    NotificationService.startRealtimeListener();
+    // The real-time booking-alert listener starts after staff sign-in
+    // (see AuthService); the backend only streams to authorized staff.
   } catch (e) {
     debugPrint('Supabase initialization notice: $e');
   }
