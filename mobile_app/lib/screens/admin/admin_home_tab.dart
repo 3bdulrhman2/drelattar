@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../utils/clinic_time.dart';
+
 import '../../models/appointment.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
@@ -186,7 +188,9 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                 child: _stat(
                   context,
                   'الحجز القادم',
-                  upcoming.isEmpty ? 'لا يوجد' : upcoming.first.appointmentTime,
+                  upcoming.isEmpty
+                      ? 'لا يوجد'
+                      : clinicTime(upcoming.first.appointmentTime),
                   upcoming.isEmpty ? 'لاحقاً' : 'اليوم',
                   widget.onNavigateToBookings,
                 ),
