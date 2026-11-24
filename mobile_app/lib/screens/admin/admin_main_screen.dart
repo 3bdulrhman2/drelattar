@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../theme/app_theme.dart';
 import 'admin_home_tab.dart';
 import 'admin_bookings_tab.dart';
@@ -8,109 +9,93 @@ import 'admin_more_tab.dart';
 
 class AdminMainScreen extends StatefulWidget {
   const AdminMainScreen({super.key});
-
   @override
   State<AdminMainScreen> createState() => _AdminMainScreenState();
 }
 
 class _AdminMainScreenState extends State<AdminMainScreen> {
   int _currentIndex = 0;
-
-  late final List<Widget> _screens;
-
+  late final List<Widget> _screens = [
+    AdminHomeTab(
+      onNavigateToBookings: () => _go(1),
+      onNavigateToWebsite: () => _go(3),
+    ),
+    const AdminBookingsTab(),
+    AdminHolidaysTab(),
+    AdminWebsiteTab(),
+    AdminMoreTab(),
+  ];
+  void _go(int i) => setState(() => _currentIndex = i);
   @override
-  void initState() {
-    super.initState();
-    _screens = [
-      AdminHomeTab(onNavigateToBookings: () => setState(() => _currentIndex = 1)),
-      const AdminBookingsTab(),
-      const AdminHolidaysTab(),
-      const AdminWebsiteTab(),
-      const AdminMoreTab(),
-    ];
-  }
-
-  String get _appBarTitle {
-    switch (_currentIndex) {
-      case 0:
-        return 'لوحة إدارة العيادة';
-      case 1:
-        return 'إدارة حجوزات المرضى';
-      case 2:
-        return 'الإجازات وتنظيم المواعيد';
-      case 3:
-        return 'إدارة محتوى الموقع والآراء';
-      case 4:
-        return 'إدارة السكرتارية والمزيد';
-      default:
-        return 'عيادتي | My Clinic';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_appBarTitle),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(left: 14),
-            child: Hero(
-              tag: 'clinic_header_logo',
-              child: Material(
-                type: MaterialType.transparency,
-                child: Image.asset(
-                  'assets/images/clinic_logo.png',
-                  width: 38,
-                  height: 38,
-                  fit: BoxFit.contain,
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      toolbarHeight: 76,
+      titleSpacing: 18,
+      title: Row(
+        children: [
+          Image.asset('assets/images/clinic_logo.png', width: 44, height: 44),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'عيادة د. محمد السيد العطار',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: context.ink,
+                  ),
                 ),
-              ),
+                Text(
+                  'إدارة العيادة',
+                  style: TextStyle(fontSize: 10, color: context.secondaryInk),
+                ),
+              ],
             ),
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.royal,
-        unselectedItemColor: AppColors.muted,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'الرئيسية',
+      actions: [
+        IconButton(
+          onPressed: Appearance.toggle,
+          tooltip: context.night ? 'الوضع النهاري' : 'الوضع الليلي',
+          icon: Icon(
+            context.night
+                ? Icons.light_mode_outlined
+                : Icons.dark_mode_outlined,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month_outlined),
-            activeIcon: Icon(Icons.calendar_month),
-            label: 'الحجوزات',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event_busy_outlined),
-            activeIcon: Icon(Icons.event_busy),
-            label: 'الإجازات',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.language_outlined),
-            activeIcon: Icon(Icons.language),
-            label: 'الموقع',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz_outlined),
-            activeIcon: Icon(Icons.more_horiz),
-            label: 'المزيد',
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(width: 6),
+      ],
+    ),
+    body: IndexedStack(index: _currentIndex, children: _screens),
+    bottomNavigationBar: BottomNavigationBar(
+      currentIndex: _currentIndex,
+      onTap: _go,
+      type: BottomNavigationBarType.fixed,
+      selectedFontSize: 10,
+      unselectedFontSize: 10,
+      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          label: 'الرئيسية',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.calendar_month_outlined),
+          label: 'الحجوزات',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.event_busy_outlined),
+          label: 'الإجازات',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.language_outlined),
+          label: 'الموقع',
+        ),
+        BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'المزيد'),
+      ],
+    ),
+  );
 }
