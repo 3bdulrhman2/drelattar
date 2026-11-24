@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/appointment.dart';
 import '../theme/app_theme.dart';
+import '../utils/clinic_time.dart';
 import 'status_badge.dart';
 
 class BookingCard extends StatelessWidget {
@@ -23,7 +25,7 @@ class BookingCard extends StatelessWidget {
     final clean = appointment.patientPhone.replaceAll(RegExp(r'[^0-9]'), '');
     final phone = clean.startsWith('0') ? '2$clean' : clean;
     final message = Uri.encodeComponent(
-      'السلام عليكم أ / ${appointment.patientName}، بخصوص حجز سيادتكم في عيادة د. محمد السيد العطار ليوم ${appointment.appointmentDate} الساعة ${appointment.appointmentTime}.',
+      'السلام عليكم أ / ${appointment.patientName}، بخصوص حجز سيادتكم في عيادة د. محمد السيد العطار ليوم ${appointment.appointmentDate} الساعة ${clinicTime(appointment.appointmentTime)}.',
     );
     await launchUrl(
       Uri.parse('https://wa.me/$phone?text=$message'),
@@ -34,7 +36,7 @@ class BookingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(15),
+    padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
       color: context.panel,
       borderRadius: BorderRadius.circular(17),
@@ -71,7 +73,7 @@ class BookingCard extends StatelessWidget {
         ),
         const SizedBox(height: 7),
         Text(
-          '${appointment.appointmentDate}  |  ${appointment.appointmentTime}',
+          '${appointment.appointmentDate}  |  ${clinicTime(appointment.appointmentTime)}',
           textDirection: TextDirection.ltr,
           style: TextStyle(fontSize: 11, color: context.secondaryInk),
         ),
@@ -84,14 +86,10 @@ class BookingCard extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 5,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        Row(
           children: [
             if (onStatusChange != null && appointment.status != 'confirmed')
-              SizedBox(
-                width: 100,
+              Expanded(
                 child: FilledButton(
                   onPressed: () => onStatusChange!('confirmed'),
                   style: FilledButton.styleFrom(
@@ -100,108 +98,121 @@ class BookingCard extends StatelessWidget {
                         : AppColors.royal,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
+                      horizontal: 4,
                       vertical: 12,
                     ),
+                    minimumSize: const Size(0, 44),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'تأكيد الحجز',
-                    maxLines: 1,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'تأكيد الحجز',
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            if (onStatusChange != null && appointment.status != 'confirmed')
-              const SizedBox(width: 7),
+            if (appointment.status == 'confirmed') const Spacer(),
+            const SizedBox(width: 4),
             if (onStatusChange != null && appointment.status != 'cancelled')
               TextButton(
                 onPressed: () => onStatusChange!('cancelled'),
                 style: TextButton.styleFrom(
-                  backgroundColor: context.night
-                      ? const Color(0xFF3C2835)
-                      : const Color(0xFFFCEDED),
-                  foregroundColor: context.night
-                      ? const Color(0xFFFFB2B2)
-                      : const Color(0xFFAC3C3C),
-                  minimumSize: const Size(44, 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  backgroundColor: const Color(0xFFC83F43),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(38, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
                 child: const Text('رفض', style: TextStyle(fontSize: 11)),
               ),
-            const SizedBox(width: 7),
-            TextButton(
-              onPressed: _whatsapp,
-              style: TextButton.styleFrom(
-                backgroundColor: context.night
-                    ? const Color(0xFF234638)
-                    : const Color(0xFFE7F5EE),
-                foregroundColor: context.night
-                    ? const Color(0xFFA0E4BF)
-                    : const Color(0xFF167448),
-                minimumSize: const Size(56, 44),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              child: const Text('واتساب', style: TextStyle(fontSize: 11)),
-            ),
             const SizedBox(width: 3),
-            PopupMenuButton<String>(
+            IconButton(
+              onPressed: _whatsapp,
+              tooltip: 'واتساب',
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36),
-              style: IconButton.styleFrom(
-                minimumSize: const Size(36, 44),
-                padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 32, height: 44),
+              icon: const FaIcon(
+                FontAwesomeIcons.whatsapp,
+                size: 23,
+                color: Color(0xFF25A667),
               ),
-              tooltip: 'تفاصيل وإجراءات الحجز',
-              icon: Icon(Icons.more_vert, color: context.secondaryInk),
-              onSelected: (v) {
-                if (v == 'call') {
-                  _call();
-                } else if (v == 'delete') {
-                  onDelete?.call();
-                } else {
-                  onStatusChange?.call(v);
-                }
-              },
-              itemBuilder: (c) => [
-                PopupMenuItem(
-                  enabled: false,
-                  child: Text(
-                    'رقم الحجز: ${appointment.id}',
-                    style: const TextStyle(fontSize: 10),
-                  ),
+            ),
+            SizedBox(
+              width: 28,
+              child: PopupMenuButton<String>(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28),
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(28, 44),
+                  padding: EdgeInsets.zero,
                 ),
-                PopupMenuItem(
-                  enabled: false,
-                  child: Text(
-                    appointment.patientPhone,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-                const PopupMenuItem(value: 'call', child: Text('اتصال هاتفي')),
-                if (onStatusChange != null && appointment.status != 'completed')
-                  const PopupMenuItem(
-                    value: 'completed',
-                    child: Text('تم الكشف'),
-                  ),
-                if (onStatusChange != null && appointment.status != 'pending')
-                  const PopupMenuItem(
-                    value: 'pending',
-                    child: Text('إعادة للانتظار'),
-                  ),
-                if (onStatusChange != null && appointment.status == 'confirmed')
-                  const PopupMenuItem(value: 'confirmed', child: Text('مؤكد')),
-                if (onDelete != null)
-                  const PopupMenuItem(
-                    value: 'delete',
+                tooltip: 'تفاصيل وإجراءات الحجز',
+                icon: Icon(Icons.more_vert, color: context.secondaryInk),
+                onSelected: (v) {
+                  if (v == 'call') {
+                    _call();
+                  } else if (v == 'delete') {
+                    onDelete?.call();
+                  } else {
+                    onStatusChange?.call(v);
+                  }
+                },
+                itemBuilder: (c) => [
+                  PopupMenuItem(
+                    enabled: false,
                     child: Text(
-                      'حذف الحجز',
-                      style: TextStyle(color: Colors.red),
+                      'رقم الحجز: ${appointment.id}',
+                      style: const TextStyle(fontSize: 10),
                     ),
                   ),
-              ],
+                  PopupMenuItem(
+                    enabled: false,
+                    child: Text(
+                      appointment.patientPhone,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'call',
+                    child: Text('اتصال هاتفي'),
+                  ),
+                  if (onStatusChange != null &&
+                      appointment.status != 'completed')
+                    const PopupMenuItem(
+                      value: 'completed',
+                      child: Text('تم الكشف'),
+                    ),
+                  if (onStatusChange != null && appointment.status != 'pending')
+                    const PopupMenuItem(
+                      value: 'pending',
+                      child: Text('إعادة للانتظار'),
+                    ),
+                  if (onStatusChange != null &&
+                      appointment.status == 'confirmed')
+                    const PopupMenuItem(
+                      value: 'confirmed',
+                      child: Text('مؤكد'),
+                    ),
+                  if (onDelete != null)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        'حذف الحجز',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
