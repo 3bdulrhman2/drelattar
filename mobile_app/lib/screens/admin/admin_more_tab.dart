@@ -282,7 +282,9 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
                           children: [
                             Text(
                               'د. محمد السيد العطار',
@@ -359,8 +361,9 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       Text(
                         'مشرفي وسكرتارية الحجوزات (${_secretaries.length})',
@@ -668,7 +671,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                         ),
                       ),
                       Text(
-                        '1.0.0 (Native Edition)',
+                        '1.1.0 (Native Edition)',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
