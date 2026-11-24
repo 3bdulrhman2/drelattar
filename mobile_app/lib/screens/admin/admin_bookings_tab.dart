@@ -28,6 +28,8 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
   @override
   void initState() {
     super.initState();
+    if (widget.previewAppointments == null)
+      SupabaseService.appointmentChanges.addListener(_reloadAppointments);
     _all = widget.previewAppointments ?? SupabaseService.cachedAppointments;
     if (widget.previewAppointments != null) {
       _loading = false;
@@ -39,10 +41,15 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
   @override
   void dispose() {
     _search.dispose();
+    SupabaseService.appointmentChanges.removeListener(_reloadAppointments);
     super.dispose();
   }
 
   String _date(DateTime d) => DateFormat('yyyy-MM-dd', 'en').format(d);
+  void _reloadAppointments() {
+    if (mounted) _load();
+  }
+
   Future<void> _load() async {
     final all = await SupabaseService.getAppointments(forceRefresh: true);
     if (mounted)
@@ -69,6 +76,7 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
           };
           return search &&
               matchDate &&
+              a.status != 'pending' &&
               (_status == 'all' || a.status == _status);
         }).toList()..sort((a, b) {
           final d = a.appointmentDate.compareTo(b.appointmentDate);
@@ -295,7 +303,8 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
                 child: Row(
                   children: [
                     _chip('الكل', 'all', false),
-                    _chip('انتظار', 'pending', false),
+                    _chip('حضر', 'arrived', false),
+                    _chip('بدأ الكشف', 'in_consultation', false),
                     _chip('مؤكد', 'confirmed', false),
                     _chip('تم الكشف', 'completed', false),
                     _chip('ملغي', 'cancelled', false),
