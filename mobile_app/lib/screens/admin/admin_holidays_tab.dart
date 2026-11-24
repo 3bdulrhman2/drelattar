@@ -417,7 +417,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                       Container(
@@ -499,7 +499,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.dark,
+                      color: context.ink,
                     ),
                   ),
                   SizedBox(height: 4),
@@ -571,7 +571,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.dark,
+                        color: context.ink,
                       ),
                     ),
                     SizedBox(height: 6),
@@ -627,7 +627,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                       IconButton(
@@ -686,7 +686,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.dark,
+                                      color: context.ink,
                                     ),
                                   ),
                                   Text(
@@ -756,7 +756,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                       IconButton(
@@ -815,7 +815,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.dark,
+                                      color: context.ink,
                                     ),
                                   ),
                                   Text(
