@@ -51,10 +51,16 @@ void main() {
         ),
       );
       await t.pumpAndSettle();
-      expect(find.text('اسم تجريبي'), findsOneWidget);
-      expect(find.textContaining('في انتظار التأكيد'), findsNWidgets(2));
+      expect(find.text('اسم تجريبي'), findsNothing);
+      expect(find.textContaining('في انتظار التأكيد'), findsNothing);
       expect(
-        t.widget<FilledButton>(find.byType(FilledButton).first).onPressed,
+        t
+            .widget<IconButton>(
+              find.byWidgetPredicate(
+                (w) => w is IconButton && w.tooltip == 'إضافة مريض',
+              ),
+            )
+            .onPressed,
         isNull,
       );
       expect(t.takeException(), isNull);
