@@ -48,6 +48,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
       _receivedAt = DateTime.now();
       _loading = false;
     } else {
+      SupabaseService.appointmentChanges.addListener(_reloadBookings);
       _load();
       _clock = Timer.periodic(const Duration(minutes: 1), (_) {
         if (mounted) setState(() {});
@@ -71,8 +72,13 @@ class _ReceptionTabState extends State<ReceptionTab> {
     }
   }
 
+  void _reloadBookings() {
+    if (mounted) _load();
+  }
+
   @override
   void dispose() {
+    SupabaseService.appointmentChanges.removeListener(_reloadBookings);
     _refresh?.cancel();
     _clock?.cancel();
     final channel = _sync;
@@ -240,6 +246,13 @@ class _ReceptionTabState extends State<ReceptionTab> {
     final items = schedule?.items ?? online;
     final unplaced = schedule?.unplaced ?? <ReceptionItem>[];
     final all = [...items, ...unplaced];
+    final visible = all
+        .where(
+          (i) =>
+              i.source != 'website' ||
+              ['arrived', 'in_consultation', 'completed'].contains(i.status),
+        )
+        .toList();
     DateTime registeredAt(ReceptionItem item) {
       if (item.source == 'website') {
         final booking = _bookings.where((b) => b.id == item.id).firstOrNull;
@@ -266,19 +279,26 @@ class _ReceptionTabState extends State<ReceptionTab> {
           item.time;
     }
 
-    final registered = [...all]
-      ..sort((a, b) {
-        final order = registeredAt(a).compareTo(registeredAt(b));
-        return order != 0 ? order : a.id.compareTo(b.id);
-      });
-    final current = all.where((i) => i.status == 'in_consultation').firstOrNull;
-    final waiting = all
+    final registered =
+        all
+            .where(
+              (i) => i.source != 'website' || !['cancelled'].contains(i.status),
+            )
+            .toList()
+          ..sort((a, b) {
+            final order = registeredAt(a).compareTo(registeredAt(b));
+            return order != 0 ? order : a.id.compareTo(b.id);
+          });
+    final current = visible
+        .where((i) => i.status == 'in_consultation')
+        .firstOrNull;
+    final waiting = visible
         .where((i) => !['completed', 'in_consultation'].contains(i.status))
         .toList();
     final completed = registered.where((i) => i.status == 'completed').toList();
     final interactive = _snapshot != null && !_busy;
     // Next call follows the existing calculated queue, not display numbering.
-    final next = all
+    final next = visible
         .where((i) => !['completed', 'in_consultation'].contains(i.status))
         .firstOrNull;
     String number(ReceptionItem i) =>
@@ -294,15 +314,6 @@ class _ReceptionTabState extends State<ReceptionTab> {
               fontSize: 23,
               fontWeight: FontWeight.bold,
               color: context.ink,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: FilledButton.icon(
-              onPressed: interactive && schedule != null ? _add : null,
-              icon: const Icon(Icons.person_add_alt, size: 18),
-              label: const Text('إضافة مريض'),
             ),
           ),
           const SizedBox(height: 6),
@@ -367,7 +378,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
               ],
             ),
           ),
-          ...all
+          ...visible
               .where((i) => i.status == 'in_consultation' && i != current)
               .map(
                 (i) => _queueCard(context, i, number(i), false, interactive),
@@ -375,6 +386,24 @@ class _ReceptionTabState extends State<ReceptionTab> {
           const SizedBox(height: 22),
           Row(
             children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF173F94),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: interactive && schedule != null ? _add : null,
+                  tooltip: 'إضافة مريض',
+                  icon: const Icon(
+                    Icons.person_add_alt,
+                    color: Colors.white,
+                    size: 21,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
               Expanded(
                 child: Text(
                   'قائمة الانتظار',
@@ -428,9 +457,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
             const SizedBox(height: 16),
             FilledButton(
               onPressed:
-                  interactive &&
-                      next?.source == 'walkin' &&
-                      next?.status == 'waiting'
+                  interactive && ['waiting', 'arrived'].contains(next?.status)
                   ? () => _status(next!, 'in_consultation')
                   : null,
               style: FilledButton.styleFrom(
@@ -442,16 +469,6 @@ class _ReceptionTabState extends State<ReceptionTab> {
               ),
             ),
           ],
-          if (next?.source == 'website')
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(
-                next?.status == 'pending'
-                    ? 'الحجز التالي في انتظار التأكيد من شاشة الحجوزات.'
-                    : 'الحجز التالي من الموقع. استخدم زر تم الكشف بعد انتهاء الزيارة.',
-                style: TextStyle(fontSize: 11, color: context.secondaryInk),
-              ),
-            ),
           const SizedBox(height: 14),
           Text(
             'الأوقات تقديرية للاستقبال. حجوزات الموقع ثابتة، والحجز المنتظر للتأكيد يحتفظ بوقته.',
@@ -544,6 +561,8 @@ class _ReceptionTabState extends State<ReceptionTab> {
               Text(
                 '${unscheduled ? 'بدون موعد متاح' : clinicTime('${i.time.hour.toString().padLeft(2, '0')}:${i.time.minute.toString().padLeft(2, '0')}')} · ${i.status == 'pending'
                     ? 'في انتظار التأكيد'
+                    : i.status == 'arrived'
+                    ? 'حضر العيادة'
                     : i.status == 'completed'
                     ? 'تم الكشف'
                     : i.status == 'in_consultation'
@@ -557,7 +576,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
           ),
         ),
         if (i.status == 'in_consultation' ||
-            i.status == 'confirmed' && i.source == 'website' ||
+            i.status == 'arrived' ||
             i.status == 'waiting' && i.source == 'walkin')
           PopupMenuButton<String>(
             enabled: interactive,
@@ -569,13 +588,11 @@ class _ReceptionTabState extends State<ReceptionTab> {
             onSelected: (value) => _status(i, value),
             itemBuilder: (_) => [
               PopupMenuItem(
-                value: i.source == 'website' || i.status == 'in_consultation'
+                value: i.status == 'in_consultation'
                     ? 'completed'
                     : 'in_consultation',
                 child: Text(
-                  i.source == 'website' || i.status == 'in_consultation'
-                      ? 'تم الكشف'
-                      : 'بدء الكشف',
+                  i.status == 'in_consultation' ? 'تم الكشف' : 'بدء الكشف',
                 ),
               ),
             ],
