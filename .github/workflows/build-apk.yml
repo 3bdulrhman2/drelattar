@@ -21,11 +21,19 @@ jobs:
           curl -fsSL 'https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hOA-W1Q.ttf' -o assets/fonts/Arabic-Regular.ttf
           curl -fsSL 'https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hAc5W1Q.ttf' -o assets/fonts/Arabic-Bold.ttf
           flutter pub get
-          flutter test --update-goldens test/widget_test.dart test/integrated_test.dart
+          flutter test --update-goldens test/widget_test.dart test/integrated_test.dart test/notification_hold_test.dart
           flutter build apk --release --split-per-abi --target-platform android-arm64 \
             --dart-define=SUPABASE_URL=https://jpamutyomblwobwntoky.supabase.co \
             --dart-define=SUPABASE_ANON_KEY=sb_publishable_0WaaRxegFhmOhqRgrRQFXA_p39Y-RXQ
-      - uses: actions/upload-artifact@v4
-        with:
-          name: clinic-app-release-apk
-          path: mobile_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          manifest=$(find build/app/intermediates/merged_manifest/release -name AndroidManifest.xml | head -1)
+          test -n "$manifest"
+          if grep -Eq 'FirebaseInitProvider|FirebaseMessagingService|FirebaseInstanceIdReceiver' "$manifest"; then
+            echo 'Unexpected Firebase component remains'; exit 1
+          fi
+          apk=$(find build/app/outputs -name '*release*.apk' | head -1)
+          test -n "$apk"
+          signer=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
+          if "$signer" verify "$apk"; then
+            echo 'Verification build must be unsigned'; exit 1
+          fi
+          echo 'Unsigned notification-disabled package verified; not for installation.'
