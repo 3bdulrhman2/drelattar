@@ -347,7 +347,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.dark,
+                        color: context.ink,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -379,7 +379,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                   ),
                   child: Text(
                     rev.caption!,
-                    style: TextStyle(fontSize: 12, color: AppColors.dark),
+                    style: TextStyle(fontSize: 12, color: context.ink),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -906,7 +906,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.dark,
+                              color: context.ink,
                             ),
                           ),
                         ],
@@ -1023,7 +1023,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                     ],
@@ -1041,7 +1041,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.dark,
+                      color: context.ink,
                     ),
                   ),
                   SizedBox(height: 6),
@@ -1083,7 +1083,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.dark,
+                      color: context.ink,
                     ),
                   ),
                   SizedBox(height: 6),
@@ -1169,7 +1169,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                     ],
@@ -1187,7 +1187,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.dark,
+                      color: context.ink,
                     ),
                   ),
                   SizedBox(height: 4),
@@ -1220,7 +1220,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                         },
                         selectedColor: AppColors.royal,
                         labelStyle: TextStyle(
-                          color: isSelected ? context.panel : AppColors.dark,
+                          color: isSelected ? context.panel : context.ink,
                         ),
                       );
                     }).toList(),
@@ -1233,7 +1233,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.dark,
+                      color: context.ink,
                     ),
                   ),
                   SizedBox(height: 4),
@@ -1262,7 +1262,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                         },
                         selectedColor: AppColors.royal,
                         labelStyle: TextStyle(
-                          color: isSelected ? context.panel : AppColors.dark,
+                          color: isSelected ? context.panel : context.ink,
                         ),
                       );
                     }).toList(),
@@ -1275,7 +1275,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.dark,
+                      color: context.ink,
                     ),
                   ),
                   SizedBox(height: 4),
@@ -1385,7 +1385,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                       Container(
@@ -1440,7 +1440,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                       ElevatedButton.icon(
@@ -1535,7 +1535,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.dark,
+                                      color: context.ink,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
