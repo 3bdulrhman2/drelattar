@@ -12,6 +12,7 @@ import '../models/secretary_account.dart';
 import '../models/social_review.dart';
 
 class SupabaseService {
+  static final appointmentChanges = ValueNotifier<int>(0);
   // Supabase credentials are injected at build time via --dart-define flags.
   // Build command example:
   //   flutter build apk \
@@ -165,8 +166,18 @@ class SupabaseService {
         headers: _headers,
         body: jsonEncode({'status': status}),
       );
-      final ok = response.statusCode == 200 || response.statusCode == 204;
-      if (ok) await getAppointments(forceRefresh: true);
+      final rows = response.statusCode == 200
+          ? jsonDecode(response.body)
+          : null;
+      final ok =
+          rows is List &&
+          rows.length == 1 &&
+          rows.first['id'] == id &&
+          rows.first['status'] == status;
+      if (ok) {
+        await getAppointments(forceRefresh: true);
+        appointmentChanges.value++;
+      }
       return ok;
     } catch (e) {
       debugPrint('Error updating appointment status: $e');
