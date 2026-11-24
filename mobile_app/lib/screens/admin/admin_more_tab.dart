@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
+import '../staff_push_screen.dart';
 
 class AdminMoreTab extends StatefulWidget {
   AdminMoreTab({super.key});
@@ -44,7 +45,8 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _staffError = 'خدمة حسابات الفريق لم تُفعّل بعد أو تعذر الاتصال بها';
+        _staffError =
+            'تعذر تحميل حسابات الفريق. راجع اتصال الإنترنت وحاول التحديث';
       });
     }
   }
@@ -59,7 +61,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'لم تتم العملية. تأكد من الاتصال وتفعيل خدمة حسابات الفريق.',
+              'لم يتم تأكيد العملية. راجع الاتصال وحدّث القائمة قبل المحاولة مرة أخرى.',
             ),
           ),
         );
@@ -243,7 +245,19 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
     );
 
     if (confirm == true) {
-      await AuthService.logout();
+      try {
+        await AuthService.logout();
+      } catch (_) {
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'تعذر إيقاف إشعارات الجهاز. اتصل بالإنترنت وحاول تسجيل الخروج مرة أخرى',
+              ),
+            ),
+          );
+        return;
+      }
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => LoginScreen()),
@@ -462,7 +476,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                           Text(
                             _staffError == null
                                 ? 'اضغط زر "إضافة سكرتير" بالأعلى لإنشاء حساب جديد'
-                                : 'يلزم تفعيل خدمة حسابات الفريق والاتصال بها',
+                                : 'تعذر الاتصال بخدمة حسابات الفريق',
                             style: TextStyle(
                               fontSize: 10,
                               color: context.secondaryInk,
@@ -639,20 +653,25 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'الإشعارات متوقفة في هذه النسخة لحين تحديد المستلمين وإعداد التسجيل الآمن للأجهزة',
+                    'إشعارات يدوية للدكتور والسكرتارية، منفصلة عن إعلان الموقع',
                     style: TextStyle(fontSize: 11, color: context.secondaryInk),
                   ),
                   SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: null,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const StaffPushScreen(),
+                        ),
+                      ),
                       icon: Icon(
                         Icons.notifications_active,
                         size: 18,
                         color: AppColors.royal,
                       ),
-                      label: Text('الإشعارات غير مفعلة'),
+                      label: Text('إعدادات إشعارات الفريق'),
                     ),
                   ),
                 ],
@@ -681,7 +700,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                         ),
                       ),
                       Text(
-                        '1.1.2 (Native Edition)',
+                        '1.1.3 (Native Edition)',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
