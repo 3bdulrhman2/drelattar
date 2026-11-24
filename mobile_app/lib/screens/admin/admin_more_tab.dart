@@ -16,6 +16,7 @@ class AdminMoreTab extends StatefulWidget {
 class _AdminMoreTabState extends State<AdminMoreTab> {
   List<SecretaryAccount> _secretaries = [];
   bool _isLoading = true;
+  String? _staffError;
 
   @override
   void initState() {
@@ -29,14 +30,41 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
     if (_secretaries.isEmpty) {
       setState(() => _isLoading = true);
     }
-    final list = await SupabaseService.getSecretaryAccounts(
-      forceRefresh: forceRefresh,
-    );
-    if (!mounted) return;
-    setState(() {
-      _secretaries = list;
-      _isLoading = false;
-    });
+    try {
+      final list = await SupabaseService.getSecretaryAccounts(
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted) return;
+      setState(() {
+        _secretaries = list;
+        _staffError = null;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _staffError = 'خدمة حسابات الفريق لم تُفعّل بعد أو تعذر الاتصال بها';
+      });
+    }
+  }
+
+  Future<bool> _staffAction(Future<bool> Function() operation) async {
+    try {
+      await operation();
+      await _loadSecretaries(forceRefresh: true);
+      return true;
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'لم تتم العملية. تأكد من الاتصال وتفعيل خدمة حسابات الفريق.',
+            ),
+          ),
+        );
+      return false;
+    }
   }
 
   void _showAddSecretaryDialog() {
@@ -69,13 +97,14 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
               ),
               SizedBox(height: 10),
               Text(
-                'اسم المستخدم (Username):',
+                'البريد الإلكتروني للدخول:',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 6),
               TextField(
                 controller: userController,
-                decoration: InputDecoration(hintText: 'sara_sec'),
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(hintText: 'name@example.com'),
               ),
               SizedBox(height: 10),
               Text(
@@ -85,6 +114,9 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
               SizedBox(height: 6),
               TextField(
                 controller: passController,
+                obscureText: true,
+                enableSuggestions: false,
+                autocorrect: false,
                 decoration: InputDecoration(hintText: '••••••••'),
               ),
               SizedBox(height: 10),
@@ -109,26 +141,28 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                   passController.text.trim().isEmpty) {
                 return;
               }
-              final account = SecretaryAccount(
-                id: 'sec-${DateTime.now().millisecondsSinceEpoch}',
-                username: userController.text.trim().toLowerCase(),
-                passwordHash: passController.text.trim(),
-                name: nameController.text.trim(),
-                phone: phoneController.text.trim().isEmpty
-                    ? null
-                    : phoneController.text.trim(),
-                createdAt: DateTime.now().toIso8601String(),
+              if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+                      .hasMatch(userController.text.trim()) ||
+                  passController.text.length < 8) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'اكتب بريدًا إلكترونيًا صحيحًا وكلمة مرور من ٨ أحرف على الأقل',
+                    ),
+                  ),
+                );
+                return;
+              }
+              final ok = await _staffAction(
+                () => SupabaseService.createSecretaryAccount(
+                  email: userController.text.trim(),
+                  password: passController.text,
+                  name: nameController.text.trim(),
+                  phone: phoneController.text.trim(),
+                ),
               );
-
-              if (ctx.mounted) Navigator.pop(ctx);
-
-              // Optimistic UI update
-              setState(() {
-                _secretaries.insert(0, account);
-              });
-
-              await SupabaseService.addSecretaryAccount(account);
-              _loadSecretaries();
+              passController.clear();
+              if (ok && ctx.mounted) Navigator.pop(ctx);
             },
             child: Text('حفظ المشرف'),
           ),
@@ -159,6 +193,9 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
             SizedBox(height: 6),
             TextField(
               controller: newPassController,
+              obscureText: true,
+              enableSuggestions: false,
+              autocorrect: false,
               decoration: InputDecoration(
                 hintText: 'اكتب كلمة المرور الجديدة...',
               ),
@@ -169,13 +206,14 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء')),
           ElevatedButton(
             onPressed: () async {
-              if (newPassController.text.trim().isEmpty) return;
-              if (ctx.mounted) Navigator.pop(ctx);
-
-              await SupabaseService.updateSecretaryAccount(account.id, {
-                'passwordHash': newPassController.text.trim(),
-              });
-              _loadSecretaries();
+              if (newPassController.text.length < 8) return;
+              final ok = await _staffAction(
+                () => SupabaseService.updateSecretaryAccount(account.id, {
+                  'password': newPassController.text,
+                }),
+              );
+              newPassController.clear();
+              if (ok && ctx.mounted) Navigator.pop(ctx);
             },
             child: Text('تحديث'),
           ),
@@ -323,24 +361,6 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                           ),
                         ),
                         SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 12,
-                              color: AppColors.medical,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'فاقوس - الشرقية | elattar.site',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: context.ink,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -349,6 +369,14 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
             ),
             SizedBox(height: 20),
 
+            if (_staffError != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  _staffError!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
             // Secretary Accounts Management Section
             Container(
               padding: EdgeInsets.all(16),
@@ -509,20 +537,13 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                                       ? 'تعطيل الحساب'
                                       : 'تفعيل الحساب',
                                   onPressed: () async {
-                                    setState(() {
-                                      final idx = _secretaries.indexWhere(
-                                        (s) => s.id == sec.id,
-                                      );
-                                      if (idx != -1) {
-                                        _secretaries[idx] = _secretaries[idx]
-                                            .copyWith(isActive: !sec.isActive);
-                                      }
-                                    });
-                                    await SupabaseService.updateSecretaryAccount(
-                                      sec.id,
-                                      {'isActive': !sec.isActive},
+                                    await _staffAction(
+                                      () =>
+                                          SupabaseService.updateSecretaryAccount(
+                                            sec.id,
+                                            {'isActive': !sec.isActive},
+                                          ),
                                     );
-                                    _loadSecretaries();
                                   },
                                 ),
 
@@ -573,15 +594,12 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                                     );
 
                                     if (confirm == true) {
-                                      setState(() {
-                                        _secretaries.removeWhere(
-                                          (s) => s.id == sec.id,
-                                        );
-                                      });
-                                      await SupabaseService.deleteSecretaryAccount(
-                                        sec.id,
+                                      await _staffAction(
+                                        () =>
+                                            SupabaseService.deleteSecretaryAccount(
+                                              sec.id,
+                                            ),
                                       );
-                                      _loadSecretaries();
                                     }
                                   },
                                 ),
