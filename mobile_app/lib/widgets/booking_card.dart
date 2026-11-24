@@ -84,10 +84,14 @@ class BookingCard extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 12),
-        Row(
+        Wrap(
+          spacing: 5,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             if (onStatusChange != null && appointment.status != 'confirmed')
-              Expanded(
+              SizedBox(
+                width: 100,
                 child: FilledButton(
                   onPressed: () => onStatusChange!('confirmed'),
                   style: FilledButton.styleFrom(
@@ -105,6 +109,7 @@ class BookingCard extends StatelessWidget {
                   ),
                   child: const Text(
                     'تأكيد الحجز',
+                    maxLines: 1,
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -121,7 +126,8 @@ class BookingCard extends StatelessWidget {
                   foregroundColor: context.night
                       ? const Color(0xFFFFB2B2)
                       : const Color(0xFFAC3C3C),
-                  minimumSize: const Size(48, 44),
+                  minimumSize: const Size(44, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
                 child: const Text('رفض', style: TextStyle(fontSize: 11)),
               ),
@@ -135,12 +141,16 @@ class BookingCard extends StatelessWidget {
                 foregroundColor: context.night
                     ? const Color(0xFFA0E4BF)
                     : const Color(0xFF167448),
-                minimumSize: const Size(64, 44),
+                minimumSize: const Size(56, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
               ),
               child: const Text('واتساب', style: TextStyle(fontSize: 11)),
             ),
             const SizedBox(width: 3),
             PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36),
+              style: IconButton.styleFrom(minimumSize: const Size(36, 44), padding: EdgeInsets.zero),
               tooltip: 'تفاصيل وإجراءات الحجز',
               icon: Icon(Icons.more_vert, color: context.secondaryInk),
               onSelected: (v) {
