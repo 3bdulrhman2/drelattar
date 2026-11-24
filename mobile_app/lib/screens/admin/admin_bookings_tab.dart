@@ -9,7 +9,12 @@ import '../../widgets/booking_card.dart';
 
 class AdminBookingsTab extends StatefulWidget {
   final List<Appointment>? previewAppointments;
-  const AdminBookingsTab({super.key, this.previewAppointments});
+  final bool canDelete;
+  const AdminBookingsTab({
+    super.key,
+    this.previewAppointments,
+    this.canDelete = true,
+  });
   @override
   State<AdminBookingsTab> createState() => _AdminBookingsTabState();
 }
@@ -361,7 +366,7 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
                         child: BookingCard(
                           appointment: a,
                           onStatusChange: (s) => _statusChange(a, s),
-                          onDelete: () => _delete(a),
+                          onDelete: widget.canDelete ? () => _delete(a) : null,
                         ),
                       ),
                     ],
