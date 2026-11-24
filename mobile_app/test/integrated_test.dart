@@ -82,14 +82,14 @@ void main() {
             .widget<BottomNavigationBar>(find.byType(BottomNavigationBar))
             .items
             .length,
-        5,
+        6,
       );
       expect(find.byType(Image), findsWidgets);
       expect(find.byTooltip('الوضع الليلي'), findsOneWidget);
       expect(t.takeException(), isNull);
       await expectLater(
         find.byType(MaterialApp),
-        matchesGoldenFile('integrated/home-light-$width.png'),
+        matchesGoldenFile('baselines/integrated_test/home-light-$width.png'),
       );
       await t.tap(find.byTooltip('الوضع الليلي'));
       await t.pumpAndSettle();
@@ -99,7 +99,7 @@ void main() {
       expect(find.byTooltip('الوضع النهاري'), findsOneWidget);
       await expectLater(
         find.byType(MaterialApp),
-        matchesGoldenFile('integrated/home-dark-$width.png'),
+        matchesGoldenFile('baselines/integrated_test/home-dark-$width.png'),
       );
       await t.tap(find.text('الحجوزات').last);
       await t.pumpAndSettle();
@@ -111,7 +111,7 @@ void main() {
       );
       await expectLater(
         find.byType(MaterialApp),
-        matchesGoldenFile('integrated/agenda-dark-$width.png'),
+        matchesGoldenFile('baselines/integrated_test/agenda-dark-$width.png'),
       );
       await t.ensureVisible(find.byTooltip('تفاصيل وإجراءات الحجز').first);
       await t.tap(find.byTooltip('تفاصيل وإجراءات الحجز').first);
@@ -121,7 +121,7 @@ void main() {
       expect(find.text('حذف الحجز'), findsOneWidget);
       await expectLater(
         find.byType(MaterialApp),
-        matchesGoldenFile('integrated/menu-dark-$width.png'),
+        matchesGoldenFile('baselines/integrated_test/menu-dark-$width.png'),
       );
       await t.tapAt(const Offset(5, 90));
       await t.pumpAndSettle();
@@ -129,7 +129,7 @@ void main() {
         await t.tap(find.text(item).last);
         await t.pumpAndSettle();
         expect(t.takeException(), isNull);
-        await expectLater(find.byType(MaterialApp),matchesGoldenFile('integrated/tab-$item-$width.png'));
+        await expectLater(find.byType(MaterialApp),matchesGoldenFile('baselines/integrated_test/tab-$item-$width.png'));
       }
       await t.pumpWidget(const SizedBox());
       await t.pumpAndSettle();
