@@ -97,7 +97,7 @@ void main() {
             ),
           );
           await t.pumpAndSettle();
-          expect(find.text('إضافة مريض'), findsOneWidget);
+          expect(find.byTooltip('إضافة مريض'), findsOneWidget);
           expect(find.text('استدعاء الدور التالي'), findsOneWidget);
           expect(find.text('منى عبد الرحمن'), findsOneWidget);
           expect(t.takeException(), isNull);
