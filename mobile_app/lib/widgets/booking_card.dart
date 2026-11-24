@@ -7,11 +7,13 @@ import 'status_badge.dart';
 class BookingCard extends StatelessWidget {
   final Appointment appointment;
   final Function(String newStatus)? onStatusChange;
+  final VoidCallback? onDelete;
 
   const BookingCard({
     super.key,
     required this.appointment,
     this.onStatusChange,
+    this.onDelete,
   });
 
   Future<void> _makeCall(String phone) async {
@@ -228,6 +230,16 @@ class BookingCard extends StatelessWidget {
                     ),
                     child: const Text('إلغاء', style: TextStyle(fontSize: 11)),
                   ),
+                if (onDelete != null) ...[
+                  const SizedBox(width: 6),
+                  IconButton(
+                    onPressed: onDelete,
+                    tooltip: 'حذف الحجز',
+                    icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade400),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                ],
               ],
             ],
           ),
