@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import {disableStaffDeviceBeforeLogout} from '../lib/staffDeviceRegistration';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 export interface AuthUser { id: string; email: string; role: 'admin' | 'secretary'; name: string }
 interface AuthContextType {
@@ -59,7 +60,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
       return {success: false, error: 'تعذر تسجيل الدخول بحساب موظف مخول. لا توجد كلمة مرور محلية بديلة.'};
     } finally { setIsLoading(false); }
   };
-  const logout = async () => { ++epoch.current; setUser(null); await supabase?.auth.signOut(); };
+  const logout = async () => { if(!await disableStaffDeviceBeforeLogout()){alert('تعذر إيقاف إشعارات الجهاز. اتصل بالإنترنت وحاول تسجيل الخروج مرة أخرى');return;} const result=await supabase?.auth.signOut();if(result?.error){alert('تعذر تسجيل الخروج. راجع اتصال الإنترنت وحاول مرة أخرى');return;}++epoch.current; setUser(null); };
   return <AuthContext.Provider value={{user,isAuthenticated:!!user,isLoading,isSupabaseAuth:isSupabaseConfigured,login,logout}}>{children}</AuthContext.Provider>;
 };
 export const useAuth = () => { const c=useContext(AuthContext); if (!c) throw new Error('AuthProvider missing'); return c; };

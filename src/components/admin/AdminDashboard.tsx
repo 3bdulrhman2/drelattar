@@ -26,7 +26,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useContent } from '../../context/ContentContext';
 import { isSupabaseConfigured } from '../../lib/supabase';
-import { requestWebNotificationPermission, triggerLocalNotification } from '../../lib/pushNotifications';
+import { StaffPushPanel } from './StaffPushPanel';
 import { BroadcastNotificationModal } from './BroadcastNotificationModal';
 import { OverviewTab } from './tabs/OverviewTab';
 import { DoctorInfoTab } from './tabs/DoctorInfoTab';
@@ -68,7 +68,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
 
-  const [notificationStatus, setNotificationStatus] = useState<string>(() => {
+  const [notificationStatus] = useState<string>(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       return Notification.permission;
     }
@@ -79,21 +79,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     await saveToSupabase();
   };
 
-  const handleToggleNotifications = async () => {
-    const perm = await requestWebNotificationPermission();
-    setNotificationStatus(perm);
-    if (perm === 'granted') {
-      triggerLocalNotification({
-        title: 'تم تفعيل التنبيهات بنجاح! 🔔',
-        body: 'سيصلك تنبيه صوتي وإشعار فوري عند قيام أي مريض بحجز موعد جديد بالعيادة.',
-        type: 'new_booking',
-      });
-    } else if (perm === 'denied') {
-      alert('الإشعارات محظورة في إعدادات المتصفح. لتفعيلها: اضغط على أيقونة القفل بجانب رابط الموقع في شريط العنوان واختر "سماح" للإشعارات.');
-    }
-  };
+  const handleToggleNotifications = async () => { handleSelectTab('staff-push'); };
 
   const tabs = [
+    {id:'staff-push',label:'إشعارات الفريق',icon:Bell},
     { id: 'overview', label: '1. نظرة عامة', icon: LayoutDashboard },
     { id: 'doctor', label: '2. بيانات الطبيب', icon: User },
     { id: 'clinic', label: '3. معلومات العيادة', icon: Building },
@@ -110,6 +99,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
   const renderActiveTab = () => {
     switch (activeTab) {
+      case 'staff-push': return <StaffPushPanel/>;
       case 'overview':
         return <OverviewTab onSelectTab={handleSelectTab} />;
       case 'doctor':
@@ -208,8 +198,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             }`}
             title={
               notificationStatus === 'granted'
-                ? 'الإشعارات مفعلة (انقر لإرسال تنبيه تجريبي)'
-                : 'انقر لتفعيل التنبيه الصوتي وإشعارات المتصفح'
+                ? 'حالة إشعارات الفريق'
+                : 'حالة إشعارات الفريق'
             }
           >
             {notificationStatus === 'granted' ? (
