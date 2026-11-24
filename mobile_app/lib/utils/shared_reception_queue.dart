@@ -78,7 +78,13 @@ ReceptionSchedule calculateReception({
     // Walk-in arrival cannot be scheduled before itself; FIFO otherwise persists.
     if (w.time.isAfter(next)) next = quarterCeiling(w.time);
     bool blocked(DateTime t) => placed.any((p) {
-      if (p.source == 'website' && !['pending', 'confirmed'].contains(p.status))
+      if (p.source == 'website' &&
+          ![
+            'pending',
+            'confirmed',
+            'arrived',
+            'in_consultation',
+          ].contains(p.status))
         return false;
       if (p.source != 'website' &&
           !['waiting', 'in_consultation'].contains(p.status))
