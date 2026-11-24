@@ -22,17 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _fillDefaultCredentials();
-  }
-
-  void _fillDefaultCredentials() {
-    if (_selectedRole == UserRole.admin) {
-      _identifierController.text = 'admin@drelattar.com';
-      _passwordController.text = 'DrElattar2026!';
-    } else {
-      _identifierController.text = 'secretary';
-      _passwordController.text = 'ElattarSecretary2026!';
-    }
+    // Convenience prefill of the public admin email only. Passwords are
+    // never prefilled or stored in the app; sign-in uses the same Supabase
+    // Auth staff accounts as the website dashboards.
+    _identifierController.text = 'admin@elattar.site';
   }
 
   Future<void> _handleLogin() async {
@@ -51,12 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    bool success = false;
-    if (_selectedRole == UserRole.admin) {
-      success = await AuthService.loginAdmin(identifier, password);
-    } else {
-      success = await AuthService.loginSecretary(identifier, password);
-    }
+    // The backend decides the actual staff role; the toggle only presets
+    // which email the field starts with.
+    final success = await AuthService.login(identifier, password);
 
     if (!mounted) return;
 
@@ -149,7 +139,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               setState(() {
                                 _selectedRole = UserRole.admin;
                                 _errorMessage = null;
-                                _fillDefaultCredentials();
+                                _identifierController.text = 'admin@elattar.site';
+                                _passwordController.clear();
                               });
                             },
                             borderRadius: BorderRadius.circular(12),
@@ -181,7 +172,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               setState(() {
                                 _selectedRole = UserRole.secretary;
                                 _errorMessage = null;
-                                _fillDefaultCredentials();
+                                _identifierController.clear();
+                                _passwordController.clear();
                               });
                             },
                             borderRadius: BorderRadius.circular(12),
