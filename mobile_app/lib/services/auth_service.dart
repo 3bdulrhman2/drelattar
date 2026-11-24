@@ -137,11 +137,14 @@ class AuthService {
   }
 
   static Future<void> logout() async {
+    final safe = await NotificationService.unregisterBeforeLogout();
+    if (!safe)
+      throw StateError(
+        'تعذر إيقاف إشعارات الجهاز. اتصل بالإنترنت وحاول تسجيل الخروج مرة أخرى',
+      );
+    await _client?.auth.signOut();
     currentUser = null;
     NotificationService.stopRealtimeListener();
     await _clearStoredUser();
-    try {
-      await _client?.auth.signOut();
-    } catch (_) {}
   }
 }
