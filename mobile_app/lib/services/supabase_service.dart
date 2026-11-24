@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/appointment.dart';
 import '../models/clinic_holiday.dart';
 import '../models/clinic_announcement.dart';
@@ -20,12 +21,23 @@ class SupabaseService {
   static const String anonKey =
       String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
 
-  static Map<String, String> get _headers => {
-        'apikey': anonKey,
-        'Authorization': 'Bearer $anonKey',
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation',
-      };
+  /// Uses the signed-in staff member's session token when available so the
+  /// backend row-level security sees the real caller (same model as the
+  /// website dashboards). Falls back to the anonymous publishable key only
+  /// for public reads (e.g. clinic settings) before sign-in.
+  static Map<String, String> get _headers {
+    var token = anonKey;
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null) token = session.accessToken;
+    } catch (_) {}
+    return {
+      'apikey': anonKey,
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+    };
+  }
 
   static const String _prefsKeySettings = 'cached_clinic_settings_v2';
   static const String _prefsKeyAppointments = 'cached_appointments_v2';
