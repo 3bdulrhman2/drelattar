@@ -143,10 +143,10 @@ void main() {
           'baselines/small_test/agenda-${dark ? 'dark' : 'light'}.png',
         ),
       );
-      await t.enterText(find.byType(TextField), 'أحمد');
+      await t.enterText(find.byType(TextField), 'منى');
       await t.pumpAndSettle();
-      expect(find.text('أحمد محمود'), findsOneWidget);
-      expect(find.text('منى عبد الرحمن'), findsNothing);
+      expect(find.text('أحمد محمود'), findsNothing);
+      expect(find.text('منى عبد الرحمن'), findsOneWidget);
       await t.tap(find.byIcon(Icons.close).first);
       await t.pumpAndSettle();
       await t.tap(find.text('مؤكد').first);
