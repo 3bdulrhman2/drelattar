@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /admin/*
 
-Sitemap: https://drelattar.com/sitemap.xml
+Sitemap: https://www.elattar.site/sitemap.xml
