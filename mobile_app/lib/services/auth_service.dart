@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'notification_service.dart';
 
 enum UserRole { admin, secretary }
@@ -10,23 +12,19 @@ class AppUser {
   final String identifier;
   final UserRole role;
 
-  AppUser({
-    required this.name,
-    required this.identifier,
-    required this.role,
-  });
+  AppUser({required this.name, required this.identifier, required this.role});
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'identifier': identifier,
-        'role': role == UserRole.admin ? 'admin' : 'secretary',
-      };
+    'name': name,
+    'identifier': identifier,
+    'role': role == UserRole.admin ? 'admin' : 'secretary',
+  };
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-        name: json['name'] ?? '',
-        identifier: json['identifier'] ?? '',
-        role: json['role'] == 'admin' ? UserRole.admin : UserRole.secretary,
-      );
+    name: json['name'] ?? '',
+    identifier: json['identifier'] ?? '',
+    role: json['role'] == 'admin' ? UserRole.admin : UserRole.secretary,
+  );
 }
 
 /// Authentication now goes through Supabase Auth, exactly like the website
@@ -63,8 +61,8 @@ class AuthService {
       final role = roleStr == 'admin'
           ? UserRole.admin
           : roleStr == 'secretary'
-              ? UserRole.secretary
-              : null;
+          ? UserRole.secretary
+          : null;
       if (role == null) return null;
       return AppUser(
         name: row['name']?.toString() ?? '',
@@ -104,7 +102,7 @@ class AuthService {
     try {
       await client.auth.signInWithPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
       final staff = await _resolveStaff();
       if (staff == null) {
