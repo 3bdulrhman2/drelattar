@@ -6,6 +6,7 @@ import 'admin_bookings_tab.dart';
 import 'admin_holidays_tab.dart';
 import 'admin_website_tab.dart';
 import 'admin_more_tab.dart';
+import '../reception_tab.dart';
 
 class AdminMainScreen extends StatefulWidget {
   const AdminMainScreen({super.key});
@@ -24,6 +25,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     AdminHolidaysTab(),
     AdminWebsiteTab(),
     AdminMoreTab(),
+    const ReceptionTab(),
   ];
   void _go(int i) => setState(() => _currentIndex = i);
   @override
@@ -95,6 +97,10 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
           label: 'الموقع',
         ),
         BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'المزيد'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.how_to_reg_outlined),
+          label: 'الاستقبال',
+        ),
       ],
     ),
   );
