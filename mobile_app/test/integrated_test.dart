@@ -19,6 +19,7 @@ void main() {
     final icons = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
+    await (FontLoader('packages/font_awesome_flutter/FontAwesomeBrands')..addFont(rootBundle.load('packages/font_awesome_flutter/lib/fonts/Font-Awesome-7-Brands-Regular-400.otf'))).load();
   });
   List<Appointment> data() {
     final n = DateTime.now();
