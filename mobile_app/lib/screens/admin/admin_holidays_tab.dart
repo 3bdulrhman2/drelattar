@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/clinic_holiday.dart';
 import '../../models/clinic_announcement.dart';
+import '../../services/push_service.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -161,6 +162,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
     final titleController = TextEditingController();
     final contentController = TextEditingController();
     String type = 'info';
+    bool alsoPushToDevices = false;
 
     showDialog(
       context: context,
@@ -201,6 +203,17 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                   maxLines: 3,
                   decoration: const InputDecoration(hintText: 'اكتب نص التنبيه الذي سيظهر لزوار الموقع...'),
                 ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  value: alsoPushToDevices,
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('إرسال أيضاً كإشعار فوري لأجهزة العيادة', style: TextStyle(fontSize: 12)),
+                  subtitle: PushService.isConfigured
+                      ? null
+                      : const Text('إرسال الإشعارات للأجهزة غير مُعد بعد', style: TextStyle(fontSize: 10)),
+                  onChanged: (val) => setDialogState(() => alsoPushToDevices = val ?? false),
+                ),
               ],
             ),
           ),
@@ -231,6 +244,17 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                 });
 
                 await SupabaseService.addAnnouncement(announcement);
+                if (alsoPushToDevices && PushService.isConfigured) {
+                  final pushError = await PushService.sendStaffBroadcast(
+                    title: announcement.title,
+                    body: announcement.content,
+                  );
+                  if (mounted && pushError != null) {
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(content: Text('تم نشر الإعلان بالموقع، لكن: $pushError')),
+                    );
+                  }
+                }
                 _loadSettings();
               },
               child: const Text('نشر الإعلان'),
