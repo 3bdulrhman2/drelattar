@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../models/secretary_account.dart';
 import '../../services/auth_service.dart';
-import '../../services/notification_service.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
@@ -618,31 +617,20 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'تنبيه فوري بالصوت والاهتزاز داخل التطبيق عند وصول حجز جديد أثناء فتحه. الإشعار على الهاتف وهو مقفل يحتاج تفعيل خدمة الإشعارات السحابية — قيد الإعداد حالياً، وبعدها يصلك إشعار فوري لكل حجز جديد.',
+                    'الإشعارات متوقفة في هذه النسخة لحين تحديد المستلمين وإعداد التسجيل الآمن للأجهزة',
                     style: TextStyle(fontSize: 11, color: context.secondaryInk),
                   ),
                   SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await NotificationService.testNotification();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'تم إرسال إشعار تجريبي بالصوت والاهتزاز بنجاح! 🔔',
-                              ),
-                            ),
-                          );
-                        }
-                      },
+                      onPressed: null,
                       icon: Icon(
                         Icons.notifications_active,
                         size: 18,
                         color: AppColors.royal,
                       ),
-                      label: Text('اختبار إرسال إشعار تجريبي للموبايل 🔔'),
+                      label: Text('الإشعارات غير مفعلة'),
                     ),
                   ),
                 ],
@@ -671,7 +659,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                         ),
                       ),
                       Text(
-                        '1.1.0 (Native Edition)',
+                        '1.1.1 (Native Edition)',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
