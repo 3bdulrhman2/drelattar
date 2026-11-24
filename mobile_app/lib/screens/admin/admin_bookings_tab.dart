@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' show DateFormat;
 import '../../models/appointment.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/clinic_time.dart';
 import '../../widgets/booking_card.dart';
 
 class AdminBookingsTab extends StatefulWidget {
@@ -127,222 +128,249 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
   Widget build(BuildContext context) {
     final list = _filtered;
     final start = _day.subtract(const Duration(days: 2));
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'جدول اليوم',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                    color: context.ink,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: _pickDate,
-                child: const Text('اختيار التاريخ'),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () => setState(
-                  () => _day = _day.subtract(const Duration(days: 5)),
-                ),
-                tooltip: 'أيام سابقة',
-                icon: const Icon(Icons.chevron_right),
-              ),
-              Expanded(
-                child: Text(
-                  DateFormat('MMMM yyyy', 'ar').format(_day),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: context.secondaryInk),
-                ),
-              ),
-              IconButton(
-                onPressed: () =>
-                    setState(() => _day = _day.add(const Duration(days: 5))),
-                tooltip: 'أيام تالية',
-                icon: const Icon(Icons.chevron_left),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            children: List.generate(5, (i) {
-              final d = start.add(Duration(days: i));
-              final selected = _range == 'day' && _date(d) == _date(_day);
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsetsDirectional.only(end: i < 4 ? 8 : 0),
-                  child: Material(
-                    color: selected ? AppColors.royal : context.panel,
-                    borderRadius: BorderRadius.circular(15),
-                    child: InkWell(
-                      onTap: () => setState(() {
-                        _day = d;
-                        _range = 'day';
-                      }),
-                      borderRadius: BorderRadius.circular(15),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Column(
-                          children: [
-                            Text(
-                              DateFormat('EEE', 'ar').format(d),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: selected
-                                    ? Colors.white
-                                    : context.secondaryInk,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              DateFormat('d', 'ar').format(d),
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: selected ? Colors.white : context.ink,
-                              ),
-                            ),
-                          ],
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'جدول اليوم',
+                          style: TextStyle(
+                            fontSize: 25,
+                            fontWeight: FontWeight.bold,
+                            color: context.ink,
+                          ),
                         ),
                       ),
-                    ),
+                      TextButton(
+                        onPressed: _pickDate,
+                        child: const Text('اختيار التاريخ'),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            }),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 5),
-          child: TextField(
-            controller: _search,
-            onChanged: (v) => setState(() => _query = v),
-            decoration: InputDecoration(
-              hintText: 'ابحث بالاسم أو الهاتف أو رقم الحجز',
-              prefixIcon: const Icon(Icons.search, size: 19),
-              suffixIcon: _query.isNotEmpty
-                  ? IconButton(
-                      onPressed: () {
-                        _search.clear();
-                        setState(() => _query = '');
-                      },
-                      icon: const Icon(Icons.close, size: 18),
-                    )
-                  : null,
-            ),
-          ),
-        ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            children: [
-              _chip('اليوم المحدد', 'day', true),
-              _chip('كل التواريخ', 'all', true),
-              _chip('القادمة', 'upcoming', true),
-              _chip('السابقة', 'past', true),
-            ],
-          ),
-        ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            children: [
-              _chip('الكل', 'all', false),
-              _chip('انتظار', 'pending', false),
-              _chip('مؤكد', 'confirmed', false),
-              _chip('تم الكشف', 'completed', false),
-              _chip('ملغي', 'cancelled', false),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              '${list.length} مواعيد · ${list.where((a) => a.status == 'pending').length} تحتاج تأكيد',
-              style: TextStyle(fontSize: 11, color: context.secondaryInk),
-            ),
-          ),
-        ),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                    itemCount: list.isEmpty ? 1 : list.length,
-                    itemBuilder: (context, i) {
-                      if (list.isEmpty)
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 48),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.event_available_outlined,
-                                color: context.secondaryInk,
-                                size: 40,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'لا توجد حجوزات مطابقة',
-                                style: TextStyle(color: context.secondaryInk),
-                              ),
-                            ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => setState(
+                          () => _day = _day.subtract(const Duration(days: 5)),
+                        ),
+                        tooltip: 'أيام سابقة',
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                      Expanded(
+                        child: Text(
+                          DateFormat('MMMM yyyy', 'ar').format(_day),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.secondaryInk,
                           ),
-                        );
-                      final a = list[i];
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 37,
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 16),
-                              child: Text(
-                                a.appointmentTime,
-                                textDirection: TextDirection.ltr,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: context.secondaryInk,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(
+                          () => _day = _day.add(const Duration(days: 5)),
+                        ),
+                        tooltip: 'أيام تالية',
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    children: List.generate(5, (i) {
+                      final d = start.add(Duration(days: i));
+                      final selected =
+                          _range == 'day' && _date(d) == _date(_day);
+                      return Expanded(
+                        child: Padding(
+                          padding: EdgeInsetsDirectional.only(
+                            end: i < 4 ? 8 : 0,
+                          ),
+                          child: Material(
+                            color: selected ? AppColors.royal : context.panel,
+                            borderRadius: BorderRadius.circular(15),
+                            child: InkWell(
+                              onTap: () => setState(() {
+                                _day = d;
+                                _range = 'day';
+                              }),
+                              borderRadius: BorderRadius.circular(15),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      DateFormat('EEE', 'ar').format(d),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: selected
+                                            ? Colors.white
+                                            : context.secondaryInk,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      DateFormat('d', 'ar').format(d),
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: selected
+                                            ? Colors.white
+                                            : context.ink,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: BookingCard(
-                              appointment: a,
-                              onStatusChange: (s) => _statusChange(a, s),
-                              onDelete: () => _delete(a),
-                            ),
-                          ),
-                        ],
+                        ),
                       );
-                    },
+                    }),
                   ),
                 ),
-        ),
-      ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 5),
+                  child: TextField(
+                    controller: _search,
+                    onChanged: (v) => setState(() => _query = v),
+                    decoration: InputDecoration(
+                      hintText: 'ابحث بالاسم أو الهاتف أو رقم الحجز',
+                      prefixIcon: const Icon(Icons.search, size: 19),
+                      suffixIcon: _query.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _query = '');
+                              },
+                              icon: const Icon(Icons.close, size: 18),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    children: [
+                      _chip('اليوم المحدد', 'day', true),
+                      _chip('كل التواريخ', 'all', true),
+                      _chip('القادمة', 'upcoming', true),
+                      _chip('السابقة', 'past', true),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _StatusHeader(
+              color: context.canvas,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Row(
+                  children: [
+                    _chip('الكل', 'all', false),
+                    _chip('انتظار', 'pending', false),
+                    _chip('مؤكد', 'confirmed', false),
+                    _chip('تم الكشف', 'completed', false),
+                    _chip('ملغي', 'cancelled', false),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  '${list.length} مواعيد · ${list.where((a) => a.status == 'pending').length} تحتاج تأكيد',
+                  style: TextStyle(fontSize: 11, color: context.secondaryInk),
+                ),
+              ),
+            ),
+          ),
+          if (_loading)
+            const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate((context, i) {
+                  if (list.isEmpty)
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.event_available_outlined,
+                            color: context.secondaryInk,
+                            size: 40,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'لا توجد حجوزات مطابقة',
+                            style: TextStyle(color: context.secondaryInk),
+                          ),
+                        ],
+                      ),
+                    );
+                  final a = list[i];
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 47,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Text(
+                            clinicTime(a.appointmentTime),
+                            textDirection: TextDirection.ltr,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: context.secondaryInk,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: BookingCard(
+                          appointment: a,
+                          onStatusChange: (s) => _statusChange(a, s),
+                          onDelete: () => _delete(a),
+                        ),
+                      ),
+                    ],
+                  );
+                }, childCount: list.isEmpty ? 1 : list.length),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -373,4 +401,24 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
       ),
     );
   }
+}
+
+class _StatusHeader extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final Color color;
+  _StatusHeader({required this.child, required this.color});
+  @override
+  double get minExtent => 52;
+  @override
+  double get maxExtent => 52;
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => SizedBox.expand(
+    child: Material(color: color, child: child),
+  );
+  @override
+  bool shouldRebuild(covariant _StatusHeader old) => true;
 }
