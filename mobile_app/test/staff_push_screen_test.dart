@@ -13,8 +13,8 @@ void main(){
   t.view.physicalSize=Size(width,844);t.view.devicePixelRatio=1;addTearDown(t.view.resetPhysicalSize);addTearDown(t.view.resetDevicePixelRatio);addTearDown(()=>AuthService.currentUser=null);
   await t.pumpWidget(MaterialApp(debugShowCheckedModeBanner:false,theme:AppTheme.lightTheme,locale:const Locale('ar','EG'),supportedLocales:const[Locale('ar','EG')],localizationsDelegates:const[GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],home:const StaffPushScreen()));await t.pumpAndSettle();
   expect(find.byType(TextField),role==UserRole.admin?findsNWidgets(2):findsNothing);
-  for(final b in t.widgetList<FilledButton>(find.byType(FilledButton)))expect(b.onPressed,isNull);
-  expect(find.textContaining('خدمة الإرسال لم تجهز'),findsOneWidget);expect(t.takeException(),isNull);
+  expect(t.widget<FilledButton>(find.widgetWithText(FilledButton,'تفعيل الاستقبال على هذا الجهاز')).onPressed,isNotNull); if(role==UserRole.admin)expect(t.widget<FilledButton>(find.widgetWithText(FilledButton,'مراجعة وإرسال للفريق')).onPressed,isNull);
+  expect(find.textContaining('الإرسال غير مفعّل'),findsOneWidget);expect(t.takeException(),isNull);
   await expectLater(find.byType(MaterialApp),matchesGoldenFile('parity/staff-push-${role.name}-$width.png'));
  });}}
 }
