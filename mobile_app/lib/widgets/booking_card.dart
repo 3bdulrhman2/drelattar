@@ -150,7 +150,10 @@ class BookingCard extends StatelessWidget {
             PopupMenuButton<String>(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 36),
-              style: IconButton.styleFrom(minimumSize: const Size(36, 44), padding: EdgeInsets.zero),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(36, 44),
+                padding: EdgeInsets.zero,
+              ),
               tooltip: 'تفاصيل وإجراءات الحجز',
               icon: Icon(Icons.more_vert, color: context.secondaryInk),
               onSelected: (v) {
