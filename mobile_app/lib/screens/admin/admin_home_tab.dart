@@ -30,6 +30,8 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
   @override
   void initState() {
     super.initState();
+    if (widget.previewAppointments == null)
+      SupabaseService.appointmentChanges.addListener(_reloadAppointments);
     _appointments =
         widget.previewAppointments ?? SupabaseService.cachedAppointments;
     _settings = SupabaseService.cachedSettings;
@@ -39,6 +41,16 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
     } else {
       _load();
     }
+  }
+
+  void _reloadAppointments() {
+    if (mounted) _load();
+  }
+
+  @override
+  void dispose() {
+    SupabaseService.appointmentChanges.removeListener(_reloadAppointments);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -62,7 +74,10 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final today = _appointments.where((a) => a.appointmentDate == date).toList()
       ..sort((a, b) => a.appointmentTime.compareTo(b.appointmentTime));
-    final pending = _appointments.where((a) => a.status == 'pending').length;
+    final pendingList =
+        _appointments.where((a) => a.status == 'pending').toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final pending = pendingList.length;
     final confirmed = today.where((a) => a.status == 'confirmed').length;
     final completed = today.where((a) => a.status == 'completed').length;
     final upcoming = today
@@ -106,7 +121,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.night ? 'يحتاج مراجعتك' : 'مواعيد اليوم',
+                  'بانتظار التأكيد',
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
@@ -125,7 +140,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        '${today.length}',
+                        '$pending',
                         style: const TextStyle(
                           fontSize: 48,
                           height: 1.3,
@@ -179,8 +194,8 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
               Expanded(
                 child: _stat(
                   context,
-                  context.night ? 'مواعيد اليوم' : 'بانتظار التأكيد',
-                  context.night ? '${today.length}' : '$pending',
+                  context.night ? 'بانتظار التأكيد' : 'بانتظار التأكيد',
+                  '$pending',
                   context.night ? 'اليوم' : 'راجع الطلبات',
                   widget.onNavigateToBookings,
                 ),
@@ -246,7 +261,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
           ),
           const SizedBox(height: 20),
           Text(
-            'مواعيد اليوم',
+            'بانتظار التأكيد',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -254,31 +269,36 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
             ),
           ),
           const SizedBox(height: 10),
-          if (today.isEmpty)
+          if (pendingList.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                'لا توجد حجوزات اليوم',
+                'لا توجد حجوزات بانتظار التأكيد',
                 style: TextStyle(color: context.secondaryInk),
               ),
             )
           else
-            ...today
-                .take(5)
-                .map(
-                  (a) => BookingCard(
-                    appointment: a,
-                    onStatusChange: widget.previewAppointments != null
-                        ? null
-                        : (s) async {
+            ...pendingList.map(
+              (a) => BookingCard(
+                appointment: a,
+                onStatusChange: widget.previewAppointments != null
+                    ? null
+                    : (s) async {
+                        final ok =
                             await SupabaseService.updateAppointmentStatus(
                               a.id,
                               s,
                             );
-                            await _load();
-                          },
-                  ),
-                ),
+                        if (!ok && context.mounted)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('تعذر حفظ التغيير. حاول مرة أخرى'),
+                            ),
+                          );
+                        await _load();
+                      },
+              ),
+            ),
           Text(
             'تم الكشف اليوم: $completed · إجمالي الحجوزات: ${_appointments.length}',
             style: TextStyle(fontSize: 11, color: context.secondaryInk),
