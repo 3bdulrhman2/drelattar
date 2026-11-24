@@ -700,7 +700,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                         ),
                       ),
                       Text(
-                        '1.1.4 (Native Edition)',
+                        '1.1.5 (Native Edition)',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
