@@ -478,7 +478,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                   const Text('نظام التنبيهات والإشعارات الفورية', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.dark)),
                   const SizedBox(height: 4),
                   const Text(
-                    'يتم تشغيل التنبيه الفوري بالصوت والاهتزاز عند وصول أي حجز جديد من الموقع الإلكتروني حتى لو كان الهاتف مقفلاً.',
+                    'تنبيه فوري بالصوت والاهتزاز داخل التطبيق عند وصول حجز جديد أثناء فتحه. الإشعار على الهاتف وهو مقفل يحتاج تفعيل خدمة الإشعارات السحابية — قيد الإعداد حالياً، وبعدها يصلك إشعار فوري لكل حجز جديد.',
                     style: TextStyle(fontSize: 11, color: AppColors.muted),
                   ),
                   const SizedBox(height: 12),
