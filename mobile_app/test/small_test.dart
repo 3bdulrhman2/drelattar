@@ -121,7 +121,7 @@ void main() {
       expect(t.takeException(), isNull);
       await expectLater(
         find.byType(MaterialApp),
-        matchesGoldenFile('small-goldens/home-${dark ? 'dark' : 'light'}.png'),
+        matchesGoldenFile('baselines/small_test/home-${dark ? 'dark' : 'light'}.png'),
       );
     });
     testWidgets('agenda ${dark ? 'dark' : 'light'} filters and actions', (
@@ -140,7 +140,7 @@ void main() {
       await expectLater(
         find.byType(MaterialApp),
         matchesGoldenFile(
-          'small-goldens/agenda-${dark ? 'dark' : 'light'}.png',
+          'baselines/small_test/agenda-${dark ? 'dark' : 'light'}.png',
         ),
       );
       await t.enterText(find.byType(TextField), 'أحمد');
@@ -202,7 +202,7 @@ void main() {
     expect(statusY, lessThan(100));
     await expectLater(
       find.byType(MaterialApp),
-      matchesGoldenFile('small-goldens/agenda-pinned.png'),
+      matchesGoldenFile('baselines/small_test/agenda-pinned.png'),
     );
     final state = t.state<ScrollableState>(
       find.descendant(of: scroll, matching: find.byType(Scrollable)).first,
@@ -212,7 +212,7 @@ void main() {
     expect(t.getTopLeft(find.text('جدول اليوم')).dy, greaterThan(55));
     await expectLater(
       find.byType(MaterialApp),
-      matchesGoldenFile('small-goldens/agenda-restored.png'),
+      matchesGoldenFile('baselines/small_test/agenda-restored.png'),
     );
     expect(t.takeException(), isNull);
   });
