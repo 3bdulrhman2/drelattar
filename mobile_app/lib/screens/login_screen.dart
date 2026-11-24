@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import 'admin/admin_main_screen.dart';
@@ -30,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     final identifier = _identifierController.text.trim();
-    final password = _passwordController.text.trim();
+    final password = _passwordController.text;
 
     if (identifier.isEmpty || password.isEmpty) {
       setState(() {
@@ -55,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (success) {
-      if (_selectedRole == UserRole.admin) {
+      if (AuthService.currentUser?.role == UserRole.admin) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const AdminMainScreen()),
         );
@@ -139,7 +140,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               setState(() {
                                 _selectedRole = UserRole.admin;
                                 _errorMessage = null;
-                                _identifierController.text = 'admin@elattar.site';
+                                _identifierController.text =
+                                    'admin@elattar.site';
                                 _passwordController.clear();
                               });
                             },
@@ -228,7 +230,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFFEE2E2),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFFCA5A5)),
+                              border: Border.all(
+                                color: const Color(0xFFFCA5A5),
+                              ),
                             ),
                             child: Text(
                               _errorMessage!,
@@ -318,8 +322,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor:
-                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : Text(
@@ -339,10 +344,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const Text(
                     'نظام العيادة المتكامل • متصل لحظياً بموقع elattar.site',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.muted,
-                    ),
+                    style: TextStyle(fontSize: 11, color: AppColors.muted),
                   ),
                 ],
               ),
