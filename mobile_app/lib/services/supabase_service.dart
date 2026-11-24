@@ -64,6 +64,7 @@ class SupabaseService {
       final settingsJsonStr = prefs.getString(_prefsKeySettings);
       if (settingsJsonStr != null) {
         final decoded = jsonDecode(settingsJsonStr);
+        if (decoded is Map) decoded.remove('secretaryAccounts');
         if (decoded is Map<String, dynamic>) {
           cachedSettings = decoded;
           _syncSubCaches(cachedSettings!);
@@ -90,7 +91,9 @@ class SupabaseService {
   static void _persistSettingsToDisk(Map<String, dynamic> settings) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefsKeySettings, jsonEncode(settings));
+      final safe = Map<String, dynamic>.from(settings)
+        ..remove('secretaryAccounts');
+      await prefs.setString(_prefsKeySettings, jsonEncode(safe));
     } catch (_) {}
   }
 
@@ -248,11 +251,7 @@ class SupabaseService {
           .map((json) => SocialReview.fromJson(json))
           .toList();
     }
-    if (settings['secretaryAccounts'] is List) {
-      cachedSecretaries = (settings['secretaryAccounts'] as List)
-          .map((json) => SecretaryAccount.fromJson(json))
-          .toList();
-    }
+    settings.remove('secretaryAccounts');
   }
 
   static Future<bool> saveClinicSettings(Map<String, dynamic> content) async {
@@ -481,64 +480,59 @@ class SupabaseService {
 
   // ---------------- SECRETARY ACCOUNTS ----------------
 
+  static Future<Map<String, dynamic>> _staffRequest(
+    Map<String, dynamic> body,
+  ) async {
+    if (supabaseUrl.isEmpty) throw StateError('خدمة الحسابات غير متاحة الآن');
+    final response = await http.post(
+      Uri.parse('$supabaseUrl/functions/v1/clinic-staff'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200)
+      throw StateError(
+        'تعذر إتمام العملية. تأكد من الاتصال وتفعيل خدمة حسابات الفريق.',
+      );
+    return Map<String, dynamic>.from(jsonDecode(response.body));
+  }
+
   static Future<List<SecretaryAccount>> getSecretaryAccounts({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && cachedSecretaries.isNotEmpty) {
-      return cachedSecretaries;
-    }
-
-    final settings = await getClinicSettings(forceRefresh: forceRefresh);
-    if (settings == null) return [];
-
-    final List<dynamic> list = settings['secretaryAccounts'] ?? [];
-    cachedSecretaries = list
-        .map((json) => SecretaryAccount.fromJson(json))
+    final result = await _staffRequest({'action': 'list'});
+    cachedSecretaries = (result['accounts'] as List)
+        .map((e) => SecretaryAccount.fromJson(e))
         .toList();
-    return cachedSecretaries;
+    return List.of(cachedSecretaries);
   }
 
-  static Future<bool> addSecretaryAccount(SecretaryAccount account) async {
-    final settings = await getClinicSettings();
-    if (settings == null) return false;
-
-    final List<dynamic> list = List.from(settings['secretaryAccounts'] ?? []);
-    list.insert(0, account.toJson());
-    settings['secretaryAccounts'] = list;
-
-    return await saveClinicSettings(settings);
+  static Future<bool> createSecretaryAccount({
+    required String email,
+    required String password,
+    required String name,
+    String? phone,
+  }) async {
+    await _staffRequest({
+      'action': 'create',
+      'email': email,
+      'password': password,
+      'name': name,
+      'phone': phone,
+    });
+    return true;
   }
 
   static Future<bool> updateSecretaryAccount(
     String id,
     Map<String, dynamic> updates,
   ) async {
-    final settings = await getClinicSettings();
-    if (settings == null) return false;
-
-    final List<dynamic> list = List.from(settings['secretaryAccounts'] ?? []);
-    for (int i = 0; i < list.length; i++) {
-      if (list[i]['id'] == id) {
-        final item = Map<String, dynamic>.from(list[i]);
-        item.addAll(updates);
-        list[i] = item;
-        break;
-      }
-    }
-    settings['secretaryAccounts'] = list;
-
-    return await saveClinicSettings(settings);
+    await _staffRequest({'action': 'update', 'id': id, ...updates});
+    return true;
   }
 
   static Future<bool> deleteSecretaryAccount(String id) async {
-    final settings = await getClinicSettings();
-    if (settings == null) return false;
-
-    final List<dynamic> list = List.from(settings['secretaryAccounts'] ?? []);
-    list.removeWhere((item) => item['id'] == id);
-    settings['secretaryAccounts'] = list;
-
-    return await saveClinicSettings(settings);
+    await _staffRequest({'action': 'delete', 'id': id});
+    return true;
   }
 
   // ---------------- REVIEWS ----------------
