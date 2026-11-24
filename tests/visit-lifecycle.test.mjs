@@ -1,0 +1,5 @@
+import {PGlite} from '@electric-sql/pglite';import fs from 'node:fs';import assert from 'node:assert/strict';
+const d=new PGlite();await d.exec("create table appointments(id int primary key,status text constraint appointments_status_check check(status in ('pending','confirmed','cancelled','completed')));insert into appointments values(1,'pending'),(2,'completed');");await d.exec(fs.readFileSync('review/clinic-visit-lifecycle.sql','utf8'));
+for(const status of ['confirmed','arrived','in_consultation','completed']){await d.query('update appointments set status=$1 where id=1',[status]);assert.equal((await d.query('select status from appointments where id=1')).rows[0].status,status);}
+for(const status of ['pending','confirmed','arrived','in_consultation']){await assert.rejects(()=>d.query('update appointments set status=$1 where id=1',[status]),/Invalid clinic visit transition/);}
+assert.equal((await d.query('select count(*)::int as n from appointments where status=\'completed\'')).rows[0].n,2);await d.close();console.log('Four-stage lifecycle persists; completed regression and old-client reconfirm blocked; existing completed rows preserved');
