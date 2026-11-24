@@ -1,8 +1,10 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/appointment.dart';
 import '../models/clinic_holiday.dart';
 import '../models/clinic_announcement.dart';
@@ -16,10 +18,14 @@ class SupabaseService {
   //     --dart-define=SUPABASE_URL=https://your-project.supabase.co \
   //     --dart-define=SUPABASE_ANON_KEY=your-anon-key
   // No hardcoded values here — credentials must come from the build environment.
-  static const String supabaseUrl =
-      String.fromEnvironment('SUPABASE_URL', defaultValue: '');
-  static const String anonKey =
-      String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: '',
+  );
+  static const String anonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: '',
+  );
 
   /// Uses the signed-in staff member's session token when available so the
   /// backend row-level security sees the real caller (same model as the
@@ -68,10 +74,14 @@ class SupabaseService {
       final apptsJsonStr = prefs.getString(_prefsKeyAppointments);
       if (apptsJsonStr != null) {
         final List<dynamic> decodedList = jsonDecode(apptsJsonStr);
-        cachedAppointments = decodedList.map((j) => Appointment.fromJson(j)).toList();
+        cachedAppointments = decodedList
+            .map((j) => Appointment.fromJson(j))
+            .toList();
       }
 
-      debugPrint('Local disk cache loaded: ${cachedAppointments.length} appointments, settings=${cachedSettings != null}');
+      debugPrint(
+        'Local disk cache loaded: ${cachedAppointments.length} appointments, settings=${cachedSettings != null}',
+      );
     } catch (e) {
       debugPrint('Error initializing local disk cache: $e');
     }
@@ -96,7 +106,9 @@ class SupabaseService {
 
   // ---------------- APPOINTMENTS ----------------
 
-  static Future<List<Appointment>> getAppointments({bool forceRefresh = false}) async {
+  static Future<List<Appointment>> getAppointments({
+    bool forceRefresh = false,
+  }) async {
     if (!forceRefresh && cachedAppointments.isNotEmpty) {
       // Fetch in background silently
       _fetchAppointmentsBackground();
@@ -105,13 +117,17 @@ class SupabaseService {
 
     try {
       final response = await http.get(
-        Uri.parse('$supabaseUrl/rest/v1/appointments?select=*&order=created_at.desc'),
+        Uri.parse(
+          '$supabaseUrl/rest/v1/appointments?select=*&order=created_at.desc',
+        ),
         headers: _headers,
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        cachedAppointments = data.map((json) => Appointment.fromJson(json)).toList();
+        cachedAppointments = data
+            .map((json) => Appointment.fromJson(json))
+            .toList();
         _persistAppointmentsToDisk(cachedAppointments);
         return cachedAppointments;
       }
@@ -124,34 +140,31 @@ class SupabaseService {
   static void _fetchAppointmentsBackground() async {
     try {
       final response = await http.get(
-        Uri.parse('$supabaseUrl/rest/v1/appointments?select=*&order=created_at.desc'),
+        Uri.parse(
+          '$supabaseUrl/rest/v1/appointments?select=*&order=created_at.desc',
+        ),
         headers: _headers,
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        cachedAppointments = data.map((json) => Appointment.fromJson(json)).toList();
+        cachedAppointments = data
+            .map((json) => Appointment.fromJson(json))
+            .toList();
         _persistAppointmentsToDisk(cachedAppointments);
       }
     } catch (_) {}
   }
 
   static Future<bool> updateAppointmentStatus(String id, String status) async {
-    // Optimistic update
-    for (int i = 0; i < cachedAppointments.length; i++) {
-      if (cachedAppointments[i].id == id) {
-        cachedAppointments[i] = cachedAppointments[i].copyWith(status: status);
-        break;
-      }
-    }
-    _persistAppointmentsToDisk(cachedAppointments);
-
     try {
       final response = await http.patch(
         Uri.parse('$supabaseUrl/rest/v1/appointments?id=eq.$id'),
         headers: _headers,
         body: jsonEncode({'status': status}),
       );
-      return response.statusCode == 200 || response.statusCode == 204;
+      final ok = response.statusCode == 200 || response.statusCode == 204;
+      if (ok) await getAppointments(forceRefresh: true);
+      return ok;
     } catch (e) {
       debugPrint('Error updating appointment status: $e');
       return false;
@@ -159,16 +172,14 @@ class SupabaseService {
   }
 
   static Future<bool> deleteAppointment(String id) async {
-    // Optimistic removal
-    cachedAppointments.removeWhere((a) => a.id == id);
-    _persistAppointmentsToDisk(cachedAppointments);
-
     try {
       final response = await http.delete(
         Uri.parse('$supabaseUrl/rest/v1/appointments?id=eq.$id'),
         headers: _headers,
       );
-      return response.statusCode == 200 || response.statusCode == 204;
+      final ok = response.statusCode == 200 || response.statusCode == 204;
+      if (ok) await getAppointments(forceRefresh: true);
+      return ok;
     } catch (e) {
       debugPrint('Error deleting appointment: $e');
       return false;
@@ -177,7 +188,9 @@ class SupabaseService {
 
   // ---------------- CLINIC SETTINGS ----------------
 
-  static Future<Map<String, dynamic>?> getClinicSettings({bool forceRefresh = false}) async {
+  static Future<Map<String, dynamic>?> getClinicSettings({
+    bool forceRefresh = false,
+  }) async {
     if (!forceRefresh && cachedSettings != null) {
       _fetchSettingsBackground();
       return cachedSettings;
@@ -185,14 +198,18 @@ class SupabaseService {
 
     try {
       final response = await http.get(
-        Uri.parse('$supabaseUrl/rest/v1/clinic_settings?key=eq.main_settings&select=*'),
+        Uri.parse(
+          '$supabaseUrl/rest/v1/clinic_settings?key=eq.main_settings&select=*',
+        ),
         headers: _headers,
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         if (data.isNotEmpty && data[0]['content'] != null) {
-          cachedSettings = Map<String, dynamic>.from(data[0]['content'] as Map<String, dynamic>);
+          cachedSettings = Map<String, dynamic>.from(
+            data[0]['content'] as Map<String, dynamic>,
+          );
           _syncSubCaches(cachedSettings!);
           _persistSettingsToDisk(cachedSettings!);
           return cachedSettings;
@@ -207,13 +224,17 @@ class SupabaseService {
   static void _fetchSettingsBackground() async {
     try {
       final response = await http.get(
-        Uri.parse('$supabaseUrl/rest/v1/clinic_settings?key=eq.main_settings&select=*'),
+        Uri.parse(
+          '$supabaseUrl/rest/v1/clinic_settings?key=eq.main_settings&select=*',
+        ),
         headers: _headers,
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         if (data.isNotEmpty && data[0]['content'] != null) {
-          cachedSettings = Map<String, dynamic>.from(data[0]['content'] as Map<String, dynamic>);
+          cachedSettings = Map<String, dynamic>.from(
+            data[0]['content'] as Map<String, dynamic>,
+          );
           _syncSubCaches(cachedSettings!);
           _persistSettingsToDisk(cachedSettings!);
         }
@@ -279,7 +300,9 @@ class SupabaseService {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
     bookingSettings['slotDurationMinutes'] = minutes;
     settings['bookingSettings'] = bookingSettings;
 
@@ -302,10 +325,13 @@ class SupabaseService {
     clinic['hoursFriday'] = hoursFriday;
     settings['clinic'] = clinic;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
     if (startTime != null) bookingSettings['startTime'] = startTime;
     if (endTime != null) bookingSettings['endTime'] = endTime;
-    if (startTimeFriday != null) bookingSettings['startTimeFriday'] = startTimeFriday;
+    if (startTimeFriday != null)
+      bookingSettings['startTimeFriday'] = startTimeFriday;
     if (endTimeFriday != null) bookingSettings['endTimeFriday'] = endTimeFriday;
     settings['bookingSettings'] = bookingSettings;
 
@@ -321,11 +347,16 @@ class SupabaseService {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
-    if (minAdvanceHours != null) bookingSettings['minAdvanceHours'] = minAdvanceHours;
-    if (maxAdvanceDays != null) bookingSettings['maxAdvanceDays'] = maxAdvanceDays;
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
+    if (minAdvanceHours != null)
+      bookingSettings['minAdvanceHours'] = minAdvanceHours;
+    if (maxAdvanceDays != null)
+      bookingSettings['maxAdvanceDays'] = maxAdvanceDays;
     if (allowedDays != null) bookingSettings['allowedDays'] = allowedDays;
-    if (enableFutureBooking != null) bookingSettings['enableFutureBooking'] = enableFutureBooking;
+    if (enableFutureBooking != null)
+      bookingSettings['enableFutureBooking'] = enableFutureBooking;
     settings['bookingSettings'] = bookingSettings;
 
     return await saveClinicSettings(settings);
@@ -337,7 +368,9 @@ class SupabaseService {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
     bookingSettings['isClosedToday'] = isClosed;
     if (reason != null) {
       bookingSettings['closedTodayReason'] = reason;
@@ -351,8 +384,12 @@ class SupabaseService {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
-    final List<dynamic> currentClosed = List.from(bookingSettings['closedDates'] ?? []);
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
+    final List<dynamic> currentClosed = List.from(
+      bookingSettings['closedDates'] ?? [],
+    );
 
     if (isClosed) {
       if (!currentClosed.contains(dateStr)) {
@@ -372,8 +409,12 @@ class SupabaseService {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
-    final List<dynamic> currentHolidays = List.from(bookingSettings['holidays'] ?? []);
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
+    final List<dynamic> currentHolidays = List.from(
+      bookingSettings['holidays'] ?? [],
+    );
     currentHolidays.insert(0, holiday.toJson());
 
     bookingSettings['holidays'] = currentHolidays;
@@ -386,8 +427,12 @@ class SupabaseService {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
-    final List<dynamic> currentHolidays = List.from(bookingSettings['holidays'] ?? []);
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
+    final List<dynamic> currentHolidays = List.from(
+      bookingSettings['holidays'] ?? [],
+    );
     currentHolidays.removeWhere((h) => h['id'] == id);
 
     bookingSettings['holidays'] = currentHolidays;
@@ -402,8 +447,12 @@ class SupabaseService {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
-    final List<dynamic> currentAnnouncements = List.from(bookingSettings['announcements'] ?? []);
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
+    final List<dynamic> currentAnnouncements = List.from(
+      bookingSettings['announcements'] ?? [],
+    );
     currentAnnouncements.insert(0, announcement.toJson());
 
     bookingSettings['announcements'] = currentAnnouncements;
@@ -416,8 +465,12 @@ class SupabaseService {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
-    final bookingSettings = Map<String, dynamic>.from(settings['bookingSettings'] ?? {});
-    final List<dynamic> currentAnnouncements = List.from(bookingSettings['announcements'] ?? []);
+    final bookingSettings = Map<String, dynamic>.from(
+      settings['bookingSettings'] ?? {},
+    );
+    final List<dynamic> currentAnnouncements = List.from(
+      bookingSettings['announcements'] ?? [],
+    );
     currentAnnouncements.removeWhere((a) => a['id'] == id);
 
     bookingSettings['announcements'] = currentAnnouncements;
@@ -428,7 +481,9 @@ class SupabaseService {
 
   // ---------------- SECRETARY ACCOUNTS ----------------
 
-  static Future<List<SecretaryAccount>> getSecretaryAccounts({bool forceRefresh = false}) async {
+  static Future<List<SecretaryAccount>> getSecretaryAccounts({
+    bool forceRefresh = false,
+  }) async {
     if (!forceRefresh && cachedSecretaries.isNotEmpty) {
       return cachedSecretaries;
     }
@@ -437,7 +492,9 @@ class SupabaseService {
     if (settings == null) return [];
 
     final List<dynamic> list = settings['secretaryAccounts'] ?? [];
-    cachedSecretaries = list.map((json) => SecretaryAccount.fromJson(json)).toList();
+    cachedSecretaries = list
+        .map((json) => SecretaryAccount.fromJson(json))
+        .toList();
     return cachedSecretaries;
   }
 
@@ -452,7 +509,10 @@ class SupabaseService {
     return await saveClinicSettings(settings);
   }
 
-  static Future<bool> updateSecretaryAccount(String id, Map<String, dynamic> updates) async {
+  static Future<bool> updateSecretaryAccount(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     final settings = await getClinicSettings();
     if (settings == null) return false;
 
@@ -483,7 +543,9 @@ class SupabaseService {
 
   // ---------------- REVIEWS ----------------
 
-  static Future<List<SocialReview>> getSocialReviews({bool forceRefresh = false}) async {
+  static Future<List<SocialReview>> getSocialReviews({
+    bool forceRefresh = false,
+  }) async {
     if (!forceRefresh && cachedReviews.isNotEmpty) {
       return cachedReviews;
     }
