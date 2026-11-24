@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/social_review.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/clinic_time.dart';
 
 class AdminWebsiteTab extends StatefulWidget {
   AdminWebsiteTab({super.key});
@@ -190,8 +191,10 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
   // Save working hours
   Future<void> _saveWorkingHours() async {
     final success = await SupabaseService.updateClinicWorkingHours(
-      hoursRegular: _regularHoursController.text.trim(),
-      hoursFriday: _fridayHoursController.text.trim(),
+      hoursRegular:
+          'السبت إلى الخميس: من ${clinicTime(_startTimeRegular)} حتى ${clinicTime(_endTimeRegular)}',
+      hoursFriday:
+          'يوم الجمعة: من ${clinicTime(_startTimeFriday)} حتى ${clinicTime(_endTimeFriday)}',
       startTime: _startTimeRegular,
       endTime: _endTimeRegular,
       startTimeFriday: _startTimeFriday,
@@ -1046,15 +1049,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                     ),
                   ),
                   SizedBox(height: 6),
-                  TextField(
-                    controller: _regularHoursController,
-                    decoration: InputDecoration(
-                      hintText:
-                          'السبت إلى الخميس: من 1:00 ظهراً حتى 9:00 مساءً',
-                      prefixIcon: Icon(Icons.calendar_month, size: 18),
-                    ),
-                  ),
-                  SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -1088,14 +1082,6 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                     ),
                   ),
                   SizedBox(height: 6),
-                  TextField(
-                    controller: _fridayHoursController,
-                    decoration: InputDecoration(
-                      hintText: 'يوم الجمعة: من 4:00 عصراً حتى 10:00 مساءً',
-                      prefixIcon: Icon(Icons.wb_sunny_outlined, size: 18),
-                    ),
-                  ),
-                  SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -1761,16 +1747,10 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
             contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           ),
           items: times.map((t) {
-            final hour = int.parse(t.split(':')[0]);
-            final display = hour > 12
-                ? '${hour - 12}:00 م'
-                : hour == 12
-                ? '12:00 م'
-                : '$hour:00 ص';
             return DropdownMenuItem(
               value: t,
               child: Text(
-                '$t ($display)',
+                clinicTime(t),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 11),
