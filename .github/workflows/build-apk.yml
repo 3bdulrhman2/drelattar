@@ -23,7 +23,7 @@ jobs:
           curl -fsSL 'https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hOA-W1Q.ttf' -o assets/fonts/Arabic-Regular.ttf
           curl -fsSL 'https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hAc5W1Q.ttf' -o assets/fonts/Arabic-Bold.ttf
           flutter pub get
-          flutter test --update-goldens test/widget_test.dart test/integrated_test.dart test/notification_hold_test.dart test/small_test.dart test/staff_contract_test.dart test/secretary_parity_test.dart test/staff_push_screen_test.dart test/reception_preview_test.dart
+          flutter test --update-goldens test/widget_test.dart test/integrated_test.dart test/notification_hold_test.dart test/small_test.dart test/staff_contract_test.dart test/secretary_parity_test.dart test/staff_push_screen_test.dart test/reception_preview_test.dart test/reception_design_test.dart
           flutter build apk --release --split-per-abi --target-platform android-arm64 \
             --dart-define=SUPABASE_URL=https://jpamutyomblwobwntoky.supabase.co \
             --dart-define=SUPABASE_ANON_KEY=sb_publishable_0WaaRxegFhmOhqRgrRQFXA_p39Y-RXQ
