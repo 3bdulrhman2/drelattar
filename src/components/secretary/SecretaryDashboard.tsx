@@ -21,8 +21,8 @@ import {
   BellRing,
   Sparkles,
 } from 'lucide-react';
+import { StaffPushPanel } from '../admin/StaffPushPanel';
 import { useContent } from '../../context/ContentContext';
-import { requestWebNotificationPermission, triggerLocalNotification } from '../../lib/pushNotifications';
 import {
   getCairoDateTime,
   getCairoTodayString,
@@ -72,26 +72,14 @@ export const SecretaryDashboard: React.FC<SecretaryDashboardProps> = ({
   const [holidayReason, setHolidayReason] = useState('');
 
   // Browser Notification State
-  const [notificationStatus, setNotificationStatus] = useState<string>(() => {
+  const [notificationStatus] = useState<string>(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       return Notification.permission;
     }
     return 'unsupported';
   });
 
-  const handleToggleNotifications = async () => {
-    const perm = await requestWebNotificationPermission();
-    setNotificationStatus(perm);
-    if (perm === 'granted') {
-      triggerLocalNotification({
-        title: 'تم تفعيل التنبيهات بنجاح! 🔔',
-        body: 'سيصلك تنبيه صوتي وإشعار فوري عند قيام أي مريض بحجز موعد جديد بالعيادة.',
-        type: 'new_booking',
-      });
-    } else if (perm === 'denied') {
-      alert('الإشعارات محظورة في إعدادات المتصفح. لتفعيلها: اضغط على أيقونة القفل بجانب رابط الموقع في شريط العنوان واختر "سماح" للإشعارات.');
-    }
-  };
+  const handleToggleNotifications = async () => { document.getElementById('clinic-staff-notifications')?.scrollIntoView({behavior:'smooth'}); };
 
   // Future Date Closure State
   const [selectedCloseDate, setSelectedCloseDate] = useState(todayStr);
@@ -222,8 +210,8 @@ export const SecretaryDashboard: React.FC<SecretaryDashboardProps> = ({
               }`}
               title={
                 notificationStatus === 'granted'
-                  ? 'الإشعارات الصوتية والفورية مفعلة (انقر لإرسال تنبيه تجريبي)'
-                  : 'انقر لتفعيل التنبيه الصوتي وإشعارات المتصفح للحجوزات الجديدة'
+                  ? 'إعدادات إشعارات الفريق'
+                  : 'إعدادات إشعارات الفريق'
               }
             >
               {notificationStatus === 'granted' ? (
@@ -260,6 +248,8 @@ export const SecretaryDashboard: React.FC<SecretaryDashboardProps> = ({
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-6">
+<div id="clinic-staff-notifications"><StaffPushPanel/></div>
+
         
         {/* SECTION 1: Clinic Today Status & Quick Availability Bar */}
         <div className="bg-slate-800/80 rounded-2xl p-5 sm:p-6 border border-slate-700/60 shadow-lg space-y-5">
