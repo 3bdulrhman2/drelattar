@@ -289,7 +289,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.dark,
+                                color: context.ink,
                               ),
                             ),
                             SizedBox(width: 6),
@@ -367,7 +367,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                       ElevatedButton.icon(
@@ -476,7 +476,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.dark,
+                                      color: context.ink,
                                     ),
                                   ),
                                   Text(
@@ -610,7 +610,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.dark,
+                      color: context.ink,
                     ),
                   ),
                   SizedBox(height: 4),
@@ -672,7 +672,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.dark,
+                          color: context.ink,
                         ),
                       ),
                     ],
