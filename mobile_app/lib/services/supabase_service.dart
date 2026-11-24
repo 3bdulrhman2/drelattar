@@ -158,6 +158,23 @@ class SupabaseService {
     }
   }
 
+  static Future<bool> deleteAppointment(String id) async {
+    // Optimistic removal
+    cachedAppointments.removeWhere((a) => a.id == id);
+    _persistAppointmentsToDisk(cachedAppointments);
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$supabaseUrl/rest/v1/appointments?id=eq.$id'),
+        headers: _headers,
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint('Error deleting appointment: $e');
+      return false;
+    }
+  }
+
   // ---------------- CLINIC SETTINGS ----------------
 
   static Future<Map<String, dynamic>?> getClinicSettings({bool forceRefresh = false}) async {
