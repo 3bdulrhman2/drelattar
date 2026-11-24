@@ -194,6 +194,27 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
                                 await SupabaseService.updateAppointmentStatus(appt.id, newStatus);
                                 _loadBookings();
                               },
+                              onDelete: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('حذف الحجز', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                    content: Text('هل أنت متأكد من حذف حجز ${appt.patientName}؟ لا يمكن التراجع.', style: const TextStyle(fontSize: 13)),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        child: Text('حذف', style: TextStyle(color: Colors.red.shade600, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed == true) {
+                                  setState(() => _allBookings.removeWhere((x) => x.id == appt.id));
+                                  await SupabaseService.deleteAppointment(appt.id);
+                                  _loadBookings();
+                                }
+                              },
                             );
                           },
                         ),
