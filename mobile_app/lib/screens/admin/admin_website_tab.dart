@@ -883,8 +883,9 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       Row(
                         children: [
@@ -1164,12 +1165,14 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                         ),
                       ),
                       SizedBox(width: 8),
-                      Text(
-                        'قواعد وشروط الحجز المسبق بالموقع',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: context.ink,
+                      Expanded(
+                        child: Text(
+                          'قواعد وشروط الحجز المسبق بالموقع',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: context.ink,
+                          ),
                         ),
                       ),
                     ],
@@ -1322,27 +1325,30 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                   SizedBox(height: 14),
 
                   // Rule D: Enable / Disable Booking System
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      'تفعيل نظام الحجز الإلكتروني بالموقع',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  Material(
+                    color: Colors.transparent,
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'تفعيل نظام الحجز الإلكتروني بالموقع',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    subtitle: Text(
-                      'عند الإيقاف، يتم إخفاء مواعيد الحجز من الموقع مؤقتاً',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: context.secondaryInk,
+                      subtitle: Text(
+                        'عند الإيقاف، يتم إخفاء مواعيد الحجز من الموقع مؤقتاً',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: context.secondaryInk,
+                        ),
                       ),
+                      value: _enableFutureBooking,
+                      activeThumbColor: AppColors.royal,
+                      activeTrackColor: AppColors.royal.withValues(alpha: 0.3),
+                      onChanged: (val) =>
+                          setState(() => _enableFutureBooking = val),
                     ),
-                    value: _enableFutureBooking,
-                    activeThumbColor: AppColors.royal,
-                    activeTrackColor: AppColors.royal.withValues(alpha: 0.3),
-                    onChanged: (val) =>
-                        setState(() => _enableFutureBooking = val),
                   ),
                   SizedBox(height: 10),
 
@@ -1748,6 +1754,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
         ),
         SizedBox(height: 4),
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: value,
           isDense: true,
           decoration: InputDecoration(
@@ -1762,7 +1769,12 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                 : '$hour:00 ص';
             return DropdownMenuItem(
               value: t,
-              child: Text('$t ($display)', style: TextStyle(fontSize: 11)),
+              child: Text(
+                '$t ($display)',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11),
+              ),
             );
           }).toList(),
           onChanged: onChanged,
