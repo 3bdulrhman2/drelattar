@@ -7,10 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_clinic/theme/app_theme.dart';
 import 'package:my_clinic/screens/admin/admin_main_screen.dart';
 import 'package:my_clinic/services/supabase_service.dart';
-import 'package:my_clinic/widgets/booking_card.dart';
 import 'package:my_clinic/models/appointment.dart';
-import 'package:my_clinic/screens/admin/admin_home_tab.dart';
-import 'package:my_clinic/screens/admin/admin_bookings_tab.dart';
 
 void main() {
   setUpAll(() async {
