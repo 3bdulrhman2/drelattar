@@ -170,6 +170,16 @@ class NotificationService {
     }
   }
 
+  static void stopRealtimeListener() {
+    try {
+      final channel = _realtimeChannel;
+      _realtimeChannel = null;
+      if (channel != null) {
+        Supabase.instance.client.removeChannel(channel);
+      }
+    } catch (_) {}
+  }
+
   static Future<bool> requestPermission() async {
     try {
       final androidPlugin = _notificationsPlugin
@@ -185,9 +195,15 @@ class NotificationService {
     return false;
   }
 
+  /// Starts the live booking-alert listener. Requires a signed-in staff
+  /// session: the backend only streams appointment changes to authorized
+  /// staff, so this is called after login/session restore, not at app start.
   static void startRealtimeListener() {
     try {
       if (_realtimeChannel != null) return;
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) return;
+      Supabase.instance.client.realtime.setAuth(session.accessToken);
 
       _realtimeChannel = Supabase.instance.client
           .channel('public:appointments_realtime_alerts')
