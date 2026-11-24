@@ -449,7 +449,9 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                           ),
                           SizedBox(height: 6),
                           Text(
-                            'لم تتم إضافة حسابات سكرتارية بعد',
+                            _staffError == null
+                                ? 'لم تتم إضافة حسابات سكرتارية بعد'
+                                : 'تعذر تحميل حسابات السكرتارية',
                             style: TextStyle(
                               fontSize: 12,
                               color: context.secondaryInk,
@@ -458,7 +460,9 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'اضغط زر "إضافة سكرتير" بالأعلى لإنشاء حساب جديد',
+                            _staffError == null
+                                ? 'اضغط زر "إضافة سكرتير" بالأعلى لإنشاء حساب جديد'
+                                : 'يلزم تفعيل خدمة حسابات الفريق والاتصال بها',
                             style: TextStyle(
                               fontSize: 10,
                               color: context.secondaryInk,
@@ -677,7 +681,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                         ),
                       ),
                       Text(
-                        '1.1.1 (Native Edition)',
+                        '1.1.2 (Native Edition)',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
