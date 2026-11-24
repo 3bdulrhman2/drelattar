@@ -268,7 +268,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
             ),
           if (_loading)
             const Center(child: CircularProgressIndicator())
-          else if (items.isEmpty)
+          else if (items.isEmpty && schedule?.unplaced.isNotEmpty != true)
             Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
@@ -284,10 +284,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
               style: TextStyle(color: Colors.red),
             ),
             ...schedule!.unplaced.map(
-              (i) => ListTile(
-                title: Text(i.name),
-                subtitle: const Text('لم يُخصص وقت، راجع الطبيب'),
-              ),
+              (i) => _tile(context, i, unscheduled: true),
             ),
           ],
         ],
@@ -295,7 +292,11 @@ class _ReceptionTabState extends State<ReceptionTab> {
     );
   }
 
-  Widget _tile(BuildContext context, ReceptionItem i) => Container(
+  Widget _tile(
+    BuildContext context,
+    ReceptionItem i, {
+    bool unscheduled = false,
+  }) => Container(
     margin: const EdgeInsets.only(top: 10),
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
@@ -340,9 +341,11 @@ class _ReceptionTabState extends State<ReceptionTab> {
               ),
             ),
             Text(
-              clinicTime(
-                '${i.time.hour.toString().padLeft(2, '0')}:${i.time.minute.toString().padLeft(2, '0')}',
-              ),
+              unscheduled
+                  ? 'بدون موعد متاح'
+                  : clinicTime(
+                      '${i.time.hour.toString().padLeft(2, '0')}:${i.time.minute.toString().padLeft(2, '0')}',
+                    ),
               style: TextStyle(
                 color: context.accent,
                 fontWeight: FontWeight.bold,
