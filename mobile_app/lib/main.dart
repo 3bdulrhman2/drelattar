@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
 import 'services/supabase_service.dart';
@@ -11,6 +12,7 @@ void main() async {
 
   // Pre-load cached appointments & settings from local disk in ~5ms for instant launch
   await SupabaseService.initLocalCache();
+  await Appearance.load();
 
   // Initialize Local Notifications & Firebase Messaging
   await NotificationService.initialize();
@@ -36,21 +38,23 @@ class MyClinicApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'عيادتي | My Clinic',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      locale: const Locale('ar', 'EG'),
-      supportedLocales: const [
-        Locale('ar', 'EG'),
-        Locale('ar', ''),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: const SplashScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: Appearance.mode,
+      builder: (context, mode, _) => MaterialApp(
+        title: 'عيادتي | My Clinic',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: mode,
+        locale: const Locale('ar', 'EG'),
+        supportedLocales: const [Locale('ar', 'EG'), Locale('ar', '')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: const SplashScreen(),
+      ),
     );
   }
 }
