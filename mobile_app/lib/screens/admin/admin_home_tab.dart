@@ -11,11 +11,13 @@ class AdminHomeTab extends StatefulWidget {
   final VoidCallback? onNavigateToBookings;
   final VoidCallback? onNavigateToWebsite;
   final List<Appointment>? previewAppointments;
+  final bool canEditWebsite;
   const AdminHomeTab({
     super.key,
     this.onNavigateToBookings,
     this.onNavigateToWebsite,
     this.previewAppointments,
+    this.canEditWebsite = true,
   });
   @override
   State<AdminHomeTab> createState() => _AdminHomeTabState();
@@ -214,14 +216,15 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
             'عرض الكل',
             widget.onNavigateToBookings,
           ),
-          const SizedBox(height: 10),
-          _quick(
-            context,
-            Icons.chat_bubble_outline,
-            'إعلان الموقع',
-            'تعديل',
-            widget.onNavigateToWebsite,
-          ),
+          if (widget.canEditWebsite) const SizedBox(height: 10),
+          if (widget.canEditWebsite)
+            _quick(
+              context,
+              Icons.chat_bubble_outline,
+              'إعلان الموقع',
+              'تعديل',
+              widget.onNavigateToWebsite,
+            ),
           const SizedBox(height: 18),
           Row(
             children: [
