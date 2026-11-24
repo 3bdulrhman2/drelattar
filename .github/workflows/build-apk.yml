@@ -18,10 +18,10 @@ jobs:
         working-directory: mobile_app
         run: |
           flutter pub get
-          flutter build apk --release \
+          flutter build apk --release --split-per-abi --target-platform android-arm64 \
             --dart-define=SUPABASE_URL=https://jpamutyomblwobwntoky.supabase.co \
             --dart-define=SUPABASE_ANON_KEY=sb_publishable_0WaaRxegFhmOhqRgrRQFXA_p39Y-RXQ
       - uses: actions/upload-artifact@v4
         with:
           name: clinic-app-release-apk
-          path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+          path: mobile_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
