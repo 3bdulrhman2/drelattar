@@ -88,12 +88,21 @@ jobs:
             adb install -r mobile_app/build/app/outputs/flutter-apk/app-debug.apk
             adb shell cmd appwidget grantbind --package com.drelattar.my_clinic --user 0 > grant.txt 2>&1 || true
             adb shell cmd appwidget --help > appwidget-help.txt 2>&1 || true
+            adb shell settings put global hide_error_dialogs 1
+            adb shell input keyevent KEYCODE_HOME
+            sleep 15
             adb shell am start -n com.drelattar.my_clinic/.WidgetProofActivity
             sleep 6
             python3 .github/tap_dialog.py
-            sleep 5
+            sleep 4
             python3 .github/tap_dialog.py
-            sleep 6
+            sleep 4
+            python3 .github/tap_dialog.py
+            sleep 4
+            python3 .github/tap_dialog.py
+            sleep 4
+            python3 .github/tap_dialog.py
+            sleep 4
             adb exec-out screencap -p > widgets-proof.png
             adb shell dumpsys appwidget | grep -A6 my_clinic > appwidget-dump.txt
             adb logcat -d -s WidgetProof:I AndroidRuntime:E > logcat.txt
