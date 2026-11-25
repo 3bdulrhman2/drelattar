@@ -180,6 +180,32 @@ class NotificationService {
     return false;
   }
 
+  /// Local-only phone notification (nothing is sent through the server) that
+  /// tells the signed-in user a background save failed and was rolled back.
+  static Future<void> showSaveFailure(String body) async {
+    if (!_ready) return;
+    try {
+      await _local
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+      await _local.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(2147483647),
+        'تعذر حفظ التغيير',
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'clinic_save_failures',
+            'تنبيهات فشل الحفظ',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
+
   static Future<void> showBookingAlert({
     required String title,
     required String body,
