@@ -7,6 +7,7 @@ import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/saving_indicator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,6 +63,8 @@ class MyClinicApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
+        builder: (context, child) =>
+            SavingIndicator(child: child ?? const SizedBox.shrink()),
         home: const SplashScreen(),
       ),
     );
