@@ -24,26 +24,46 @@ class WidgetProofActivity : Activity() {
         val json = "{\"day\":\"$day\",\"current\":{\"name\":\"أحمد محمد\"},\"upcoming\":[{\"name\":\"منى سعيد\",\"t\":\"$t\",\"m\":$m}]}"
         getSharedPreferences(ClinicWidgetData.PREFS, MODE_PRIVATE).edit().putString(ClinicWidgetData.KEY, json).apply()
         host = AppWidgetHost(this, 1)
-        val mgr = AppWidgetManager.getInstance(this)
-        val root = LinearLayout(this)
+        mgr = AppWidgetManager.getInstance(this)
+        root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.gravity = Gravity.TOP
         root.setBackgroundColor(Color.parseColor("#DDDDDD"))
         root.setPadding(24, 120, 24, 24)
-        for (cls in listOf(CurrentVisitWidget::class.java, NextBookingWidget::class.java)) {
-            val id = host.allocateAppWidgetId()
-            val ok = mgr.bindAppWidgetIdIfAllowed(id, ComponentName(this, cls))
-            val st = android.widget.TextView(this); st.text = cls.simpleName + " bind=" + ok; root.addView(st)
-            android.util.Log.i("WidgetProof", cls.simpleName + " bind=" + ok)
-            if (!ok) continue
-            val info = mgr.getAppWidgetInfo(id)
-            val v = host.createView(this, id, info)
-            v.setAppWidget(id, info)
-            val lp = LinearLayout.LayoutParams(resources.displayMetrics.widthPixels - 48, (resources.displayMetrics.density * 140).toInt())
-            lp.bottomMargin = 24
-            root.addView(v, lp)
-        }
         setContentView(root)
+        step(0)
+    }
+
+    private lateinit var mgr: AppWidgetManager
+    private lateinit var root: LinearLayout
+    private val classes = listOf(CurrentVisitWidget::class.java, NextBookingWidget::class.java)
+    private val ids = IntArray(2)
+
+    private fun step(i: Int) {
+        if (i >= classes.size) return
+        if (ids[i] == 0) ids[i] = host.allocateAppWidgetId()
+        val comp = ComponentName(this, classes[i])
+        val ok = mgr.bindAppWidgetIdIfAllowed(ids[i], comp)
+        android.util.Log.i("WidgetProof", classes[i].simpleName + " bind=" + ok)
+        if (!ok) {
+            val it = android.content.Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, ids[i])
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, comp)
+            startActivityForResult(it, i)
+            return
+        }
+        val info = mgr.getAppWidgetInfo(ids[i])
+        val v = host.createView(this, ids[i], info)
+        v.setAppWidget(ids[i], info)
+        val lp = LinearLayout.LayoutParams(resources.displayMetrics.widthPixels - 48, (resources.displayMetrics.density * 110).toInt())
+        lp.bottomMargin = 24
+        root.addView(v, lp)
+        step(i + 1)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        android.util.Log.i("WidgetProof", "bind result " + requestCode + " " + resultCode)
+        if (resultCode == RESULT_OK) step(requestCode)
     }
     override fun onStart() { super.onStart(); host.startListening() }
     override fun onStop() { super.onStop(); host.stopListening() }
