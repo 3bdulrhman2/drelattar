@@ -146,4 +146,35 @@ void main() {
       expect(SupabaseService.cachedAppointments.single.status, 'pending');
     }, () => bad.client);
   });
+
+  test('sign-out drops pending saves: no stale rollback or notice for next user', () async {
+    final srv = _Server();
+    await http.runWithClient(() async {
+      await SupabaseService.updateAppointmentStatus('a1', 'confirmed');
+      await SupabaseService.resetForLogout();
+      expect(SupabaseService.cachedAppointments, isEmpty);
+      expect(SupabaseService.cachedSettings, isNull);
+      srv.patch.complete(http.Response('boom', 500));
+      await Future.delayed(const Duration(milliseconds: 100));
+      expect(SupabaseService.cachedAppointments, isEmpty, reason: 'old session result ignored');
+    }, () => srv.client);
+  });
+
+  test('fetch that started before a save finished is discarded (no flip-back)', () async {
+    final fetchGate = Completer<http.Response>();
+    final patch = Completer<http.Response>();
+    final client = MockClient((r) async {
+      if (r.method == 'PATCH') return patch.future;
+      return fetchGate.future; // stale server copy, answers late
+    });
+    await http.runWithClient(() async {
+      final late = SupabaseService.getAppointments(forceRefresh: true);
+      await SupabaseService.updateAppointmentStatus('a1', 'confirmed');
+      patch.complete(http.Response(jsonEncode([_appt('confirmed').toJson()]), 200));
+      await Future.delayed(const Duration(milliseconds: 50));
+      fetchGate.complete(http.Response(jsonEncode([_appt('pending').toJson()]), 200));
+      await late;
+      expect(SupabaseService.cachedAppointments.single.status, 'confirmed');
+    }, () => client);
+  });
 }
