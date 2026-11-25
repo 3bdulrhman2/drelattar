@@ -12,6 +12,7 @@ import '../models/clinic_announcement.dart';
 import '../models/secretary_account.dart';
 import '../models/social_review.dart';
 import 'notification_service.dart';
+import 'widget_service.dart';
 
 class SupabaseService {
   static final appointmentChanges = ValueNotifier<int>(0);
@@ -69,6 +70,7 @@ class SupabaseService {
       await prefs.remove(_prefsKeySettings);
       await prefs.remove(_prefsKeyAppointments);
     } catch (_) {}
+    WidgetService.clear();
     appointmentChanges.value++;
     settingsChanges.value++;
   }
@@ -228,6 +230,7 @@ class SupabaseService {
   }
 
   static void _persistAppointmentsToDisk(List<Appointment> appointments) async {
+    WidgetService.pushAppointments(appointments);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
@@ -270,6 +273,32 @@ class SupabaseService {
       debugPrint('Error loading appointments: $e');
     }
     return cachedAppointments;
+  }
+
+  /// Downloads the bookings now, stores them in the local cache and updates
+  /// the home-screen widgets. Used by the background message handler and when
+  /// the app returns to the foreground. Returns true when fresh data was saved.
+  static Future<bool> refreshAppointmentsFromServer() async {
+    try {
+      final gen = _apptGen, sess = _session;
+      final response = await http.get(
+        Uri.parse(
+          '$supabaseUrl/rest/v1/appointments?select=*&order=created_at.desc',
+        ),
+        headers: _headers,
+      );
+      if (gen != _apptGen || sess != _session) return false;
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        cachedAppointments = _applyPending(
+          data.map((json) => Appointment.fromJson(json)).toList(),
+        );
+        _persistAppointmentsToDisk(cachedAppointments);
+        appointmentChanges.value++;
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   static void _fetchAppointmentsBackground() async {
