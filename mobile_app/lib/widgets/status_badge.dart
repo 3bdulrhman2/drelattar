@@ -17,6 +17,16 @@ class StatusBadge extends StatelessWidget {
         text = const Color(0xFF1D4ED8);
         label = 'مؤكد';
         break;
+      case 'arrived':
+        bg = const Color(0xFFDBEAFE);
+        text = const Color(0xFF1D4ED8);
+        label = 'حضر العيادة';
+        break;
+      case 'in_consultation':
+        bg = const Color(0xFFDBEAFE);
+        text = const Color(0xFF1D4ED8);
+        label = 'بدأ الكشف';
+        break;
       case 'completed':
         bg = const Color(0xFFD1FAE5);
         text = const Color(0xFF047857);
