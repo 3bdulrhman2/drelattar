@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,9 +11,87 @@ import '../models/clinic_holiday.dart';
 import '../models/clinic_announcement.dart';
 import '../models/secretary_account.dart';
 import '../models/social_review.dart';
+import 'notification_service.dart';
 
 class SupabaseService {
   static final appointmentChanges = ValueNotifier<int>(0);
+  /// Bumped when cached clinic settings change outside a screen's own setState
+  /// (for example a rollback after a failed background save).
+  static final settingsChanges = ValueNotifier<int>(0);
+
+  // ---- Instant (optimistic) changes ----
+  // A change is applied to the screen and the on-device cache immediately.
+  // The backend save runs in the background. Refreshes never bring back the
+  // old value while a save is still running. If the save fails, the change is
+  // rolled back and the user gets an in-app message and a phone notification.
+  static final GlobalKey<ScaffoldMessengerState> messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+  static const String _prefsKeyPending = 'sync_pending_v1';
+  static final Map<String, String> _pendingStatus = {};
+  static final Set<String> _pendingDeletes = {};
+  static Map<String, dynamic>? _confirmedSettings;
+  static int _settingsInFlight = 0;
+  static int _settingsEpoch = 0;
+  static Future<void> _settingsQueue = Future.value();
+  static bool unsavedFromLastSession = false;
+
+  @visibleForTesting
+  static void seedConfirmedForTest(Map<String, dynamic>? settings) {
+    _confirmedSettings = settings == null ? null : _deepCopy(settings);
+    _pendingStatus.clear();
+    _pendingDeletes.clear();
+    _settingsQueue = Future.value();
+    _settingsInFlight = 0;
+  }
+
+  static Map<String, dynamic> _deepCopy(Map<String, dynamic> m) =>
+      Map<String, dynamic>.from(jsonDecode(jsonEncode(m)) as Map);
+
+  static List<Appointment> _applyPending(List<Appointment> list) => list
+      .where((a) => !_pendingDeletes.contains(a.id))
+      .map(
+        (a) => _pendingStatus.containsKey(a.id)
+            ? a.copyWith(status: _pendingStatus[a.id])
+            : a,
+      )
+      .toList();
+
+  static Future<void> _setPendingFlag(bool on) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (on) {
+        await prefs.setBool(_prefsKeyPending, true);
+      } else {
+        await prefs.remove(_prefsKeyPending);
+      }
+    } catch (_) {}
+  }
+
+  static bool get _anyInFlight =>
+      _settingsInFlight > 0 ||
+      _pendingStatus.isNotEmpty ||
+      _pendingDeletes.isNotEmpty;
+
+  static Future<void> _maybeClearPendingFlag() async {
+    if (!_anyInFlight) await _setPendingFlag(false);
+  }
+
+  /// Shows the failure inside the app and as a phone notification.
+  static void reportSaveFailure(String message) {
+    try {
+      final m = messengerKey.currentState;
+      m?.clearSnackBars();
+      m?.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 10),
+          showCloseIcon: true,
+        ),
+      );
+    } catch (_) {}
+    NotificationService.showSaveFailure(message);
+  }
   // Supabase credentials are injected at build time via --dart-define flags.
   // Build command example:
   //   flutter build apk \
@@ -60,6 +139,8 @@ class SupabaseService {
   static Future<void> initLocalCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      unsavedFromLastSession = prefs.getBool(_prefsKeyPending) == true;
+      if (unsavedFromLastSession) await prefs.remove(_prefsKeyPending);
 
       // 1. Settings
       final settingsJsonStr = prefs.getString(_prefsKeySettings);
@@ -69,6 +150,7 @@ class SupabaseService {
         if (decoded is Map<String, dynamic>) {
           cachedSettings = decoded;
           _syncSubCaches(cachedSettings!);
+          _confirmedSettings = _deepCopy(decoded);
         }
       }
 
@@ -129,9 +211,9 @@ class SupabaseService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        cachedAppointments = data
-            .map((json) => Appointment.fromJson(json))
-            .toList();
+        cachedAppointments = _applyPending(
+          data.map((json) => Appointment.fromJson(json)).toList(),
+        );
         _persistAppointmentsToDisk(cachedAppointments);
         return cachedAppointments;
       }
@@ -151,15 +233,29 @@ class SupabaseService {
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        cachedAppointments = data
-            .map((json) => Appointment.fromJson(json))
-            .toList();
+        cachedAppointments = _applyPending(
+          data.map((json) => Appointment.fromJson(json)).toList(),
+        );
         _persistAppointmentsToDisk(cachedAppointments);
       }
     } catch (_) {}
   }
 
+  /// Shows the new status at once, then saves it in the background.
+  /// Returns true right away (change accepted); a failed save rolls it back
+  /// and reports the failure.
   static Future<bool> updateAppointmentStatus(String id, String status) async {
+    _pendingStatus[id] = status;
+    await _setPendingFlag(true);
+    cachedAppointments = _applyPending(cachedAppointments);
+    _persistAppointmentsToDisk(cachedAppointments);
+    appointmentChanges.value++;
+    unawaited(_saveStatus(id, status));
+    return true;
+  }
+
+  static Future<void> _saveStatus(String id, String status) async {
+    var ok = false;
     try {
       final response = await http.patch(
         Uri.parse('$supabaseUrl/rest/v1/appointments?id=eq.$id'),
@@ -169,35 +265,53 @@ class SupabaseService {
       final rows = response.statusCode == 200
           ? jsonDecode(response.body)
           : null;
-      final ok =
+      ok =
           rows is List &&
           rows.length == 1 &&
           rows.first['id'] == id &&
           rows.first['status'] == status;
-      if (ok) {
-        await getAppointments(forceRefresh: true);
-        appointmentChanges.value++;
-      }
-      return ok;
     } catch (e) {
       debugPrint('Error updating appointment status: $e');
-      return false;
     }
+    if (_pendingStatus[id] == status) _pendingStatus.remove(id);
+    await getAppointments(forceRefresh: true);
+    appointmentChanges.value++;
+    if (!ok) {
+      reportSaveFailure(
+        'لم يتم حفظ تغيير حالة الحجز، رجعناه كما كان. حاول مرة أخرى.',
+      );
+    }
+    await _maybeClearPendingFlag();
   }
 
   static Future<bool> deleteAppointment(String id) async {
+    _pendingDeletes.add(id);
+    await _setPendingFlag(true);
+    cachedAppointments = _applyPending(cachedAppointments);
+    _persistAppointmentsToDisk(cachedAppointments);
+    appointmentChanges.value++;
+    unawaited(_saveDelete(id));
+    return true;
+  }
+
+  static Future<void> _saveDelete(String id) async {
+    var ok = false;
     try {
       final response = await http.delete(
         Uri.parse('$supabaseUrl/rest/v1/appointments?id=eq.$id'),
         headers: _headers,
       );
-      final ok = response.statusCode == 200 || response.statusCode == 204;
-      if (ok) await getAppointments(forceRefresh: true);
-      return ok;
+      ok = response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       debugPrint('Error deleting appointment: $e');
-      return false;
     }
+    _pendingDeletes.remove(id);
+    await getAppointments(forceRefresh: true);
+    appointmentChanges.value++;
+    if (!ok) {
+      reportSaveFailure('لم يتم حذف الحجز، رجع كما كان. حاول مرة أخرى.');
+    }
+    await _maybeClearPendingFlag();
   }
 
   // ---------------- CLINIC SETTINGS ----------------
@@ -205,6 +319,9 @@ class SupabaseService {
   static Future<Map<String, dynamic>?> getClinicSettings({
     bool forceRefresh = false,
   }) async {
+    // While a save is running the local copy is the newest truth: never
+    // replace it with an older server copy.
+    if (_settingsInFlight > 0 && cachedSettings != null) return cachedSettings;
     if (!forceRefresh && cachedSettings != null) {
       _fetchSettingsBackground();
       return cachedSettings;
@@ -218,12 +335,13 @@ class SupabaseService {
         headers: _headers,
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && _settingsInFlight == 0) {
         final List<dynamic> data = jsonDecode(response.body);
         if (data.isNotEmpty && data[0]['content'] != null) {
           cachedSettings = Map<String, dynamic>.from(
             data[0]['content'] as Map<String, dynamic>,
           );
+          _confirmedSettings = _deepCopy(cachedSettings!);
           _syncSubCaches(cachedSettings!);
           _persistSettingsToDisk(cachedSettings!);
           return cachedSettings;
@@ -236,6 +354,7 @@ class SupabaseService {
   }
 
   static void _fetchSettingsBackground() async {
+    if (_settingsInFlight > 0) return;
     try {
       final response = await http.get(
         Uri.parse(
@@ -243,12 +362,13 @@ class SupabaseService {
         ),
         headers: _headers,
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && _settingsInFlight == 0) {
         final List<dynamic> data = jsonDecode(response.body);
         if (data.isNotEmpty && data[0]['content'] != null) {
           cachedSettings = Map<String, dynamic>.from(
             data[0]['content'] as Map<String, dynamic>,
           );
+          _confirmedSettings = _deepCopy(cachedSettings!);
           _syncSubCaches(cachedSettings!);
           _persistSettingsToDisk(cachedSettings!);
         }
@@ -265,14 +385,56 @@ class SupabaseService {
     settings.remove('secretaryAccounts');
   }
 
+  /// Applies the settings on screen and on the device at once, then saves them
+  /// in the background. Returns true right away (change accepted). If the save
+  /// fails, every unsaved settings change is rolled back to the last saved
+  /// state and the failure is reported.
   static Future<bool> saveClinicSettings(Map<String, dynamic> content) async {
-    // 1. Instant optimistic in-memory update & disk persistence
+    final snapshot = _deepCopy(content);
     cachedSettings = Map<String, dynamic>.from(content);
     _syncSubCaches(cachedSettings!);
     _persistSettingsToDisk(cachedSettings!);
+    _settingsInFlight++;
+    final epoch = _settingsEpoch;
+    await _setPendingFlag(true);
+    _settingsQueue = _settingsQueue.then((_) => _runSettingsSave(snapshot, epoch));
+    return true;
+  }
 
+  static Future<void> _runSettingsSave(
+    Map<String, dynamic> content,
+    int epoch,
+  ) async {
+    var ok = false;
+    if (epoch == _settingsEpoch) ok = await _sendSettings(content);
+    if (ok) {
+      _confirmedSettings = _deepCopy(content);
+    } else if (epoch == _settingsEpoch) {
+      // First failure of this batch: later queued saves must not re-send it.
+      _settingsEpoch++;
+      reportSaveFailure(
+        'لم يتم حفظ التغيير على السيرفر، رجعناه كما كان. حاول مرة أخرى.',
+      );
+    }
+    _settingsInFlight--;
+    if (_settingsInFlight == 0 && !ok) {
+      final good = _confirmedSettings;
+      if (good != null) {
+        cachedSettings = _deepCopy(good);
+        _syncSubCaches(cachedSettings!);
+        _persistSettingsToDisk(cachedSettings!);
+      }
+      settingsChanges.value++;
+      await getClinicSettings(forceRefresh: true);
+      settingsChanges.value++;
+    } else if (_settingsInFlight == 0 && epoch != _settingsEpoch) {
+      settingsChanges.value++;
+    }
+    await _maybeClearPendingFlag();
+  }
+
+  static Future<bool> _sendSettings(Map<String, dynamic> content) async {
     try {
-      // 2. PATCH targeting existing main_settings record to prevent unique constraint 23505
       final patchResponse = await http.patch(
         Uri.parse('$supabaseUrl/rest/v1/clinic_settings?key=eq.main_settings'),
         headers: _headers,
@@ -281,13 +443,14 @@ class SupabaseService {
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         }),
       );
-
-      if (patchResponse.statusCode == 200 || patchResponse.statusCode == 204) {
-        debugPrint('Clinic settings saved via PATCH successfully.');
-        return true;
+      if (patchResponse.statusCode == 204) return true;
+      if (patchResponse.statusCode == 200) {
+        final rows = jsonDecode(patchResponse.body);
+        // A 200 with no row means nothing was saved (no permission or no record).
+        if (rows is List && rows.isNotEmpty) return true;
       }
 
-      // 3. Fallback to POST only if record does not exist
+      // Fallback to POST only if the record does not exist.
       final postResponse = await http.post(
         Uri.parse('$supabaseUrl/rest/v1/clinic_settings'),
         headers: _headers,
