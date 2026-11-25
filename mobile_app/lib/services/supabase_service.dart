@@ -34,6 +34,41 @@ class SupabaseService {
   static int _settingsEpoch = 0;
   static Future<void> _settingsQueue = Future.value();
   static bool unsavedFromLastSession = false;
+  // Bumped on sign-out: results of saves/fetches started by a previous session
+  // are dropped so they can never touch the next user's data or notices.
+  static int _session = 0;
+  // Bumped when a save starts or ends: a fetch that began before then carries
+  // older server data and is discarded instead of overwriting newer state.
+  static int _apptGen = 0;
+  static int _settingsGen = 0;
+  static Future<void> _apptQueue = Future.value();
+
+  /// Clears cached clinic data and every pending change. Called on sign-out.
+  static Future<void> resetForLogout() async {
+    _session++;
+    _apptGen++;
+    _settingsGen++;
+    _settingsEpoch++;
+    _pendingStatus.clear();
+    _pendingDeletes.clear();
+    _settingsInFlight = 0;
+    _settingsQueue = Future.value();
+    _apptQueue = Future.value();
+    _confirmedSettings = null;
+    cachedSettings = null;
+    cachedAppointments = [];
+    cachedReviews = [];
+    cachedSecretaries = [];
+    unsavedFromLastSession = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefsKeyPending);
+      await prefs.remove(_prefsKeySettings);
+      await prefs.remove(_prefsKeyAppointments);
+    } catch (_) {}
+    appointmentChanges.value++;
+    settingsChanges.value++;
+  }
 
   @visibleForTesting
   static void seedConfirmedForTest(Map<String, dynamic>? settings) {
@@ -41,6 +76,7 @@ class SupabaseService {
     _pendingStatus.clear();
     _pendingDeletes.clear();
     _settingsQueue = Future.value();
+    _apptQueue = Future.value();
     _settingsInFlight = 0;
   }
 
@@ -202,12 +238,14 @@ class SupabaseService {
     }
 
     try {
+      final gen = _apptGen, sess = _session;
       final response = await http.get(
         Uri.parse(
           '$supabaseUrl/rest/v1/appointments?select=*&order=created_at.desc',
         ),
         headers: _headers,
       );
+      if (gen != _apptGen || sess != _session) return cachedAppointments;
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -225,12 +263,14 @@ class SupabaseService {
 
   static void _fetchAppointmentsBackground() async {
     try {
+      final gen = _apptGen, sess = _session;
       final response = await http.get(
         Uri.parse(
           '$supabaseUrl/rest/v1/appointments?select=*&order=created_at.desc',
         ),
         headers: _headers,
       );
+      if (gen != _apptGen || sess != _session) return;
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         cachedAppointments = _applyPending(
@@ -243,23 +283,31 @@ class SupabaseService {
 
   /// Shows the new status at once, then saves it in the background.
   /// Returns true right away (change accepted); a failed save rolls it back
-  /// and reports the failure.
+  /// and reports the failure. Appointment saves run one after another.
   static Future<bool> updateAppointmentStatus(String id, String status) async {
     _pendingStatus[id] = status;
+    _apptGen++;
     await _setPendingFlag(true);
     cachedAppointments = _applyPending(cachedAppointments);
     _persistAppointmentsToDisk(cachedAppointments);
     appointmentChanges.value++;
-    unawaited(_saveStatus(id, status));
+    final headers = _headers, sess = _session;
+    _apptQueue = _apptQueue.then((_) => _saveStatus(id, status, headers, sess));
     return true;
   }
 
-  static Future<void> _saveStatus(String id, String status) async {
+  static Future<void> _saveStatus(
+    String id,
+    String status,
+    Map<String, String> headers,
+    int sess,
+  ) async {
+    if (sess != _session) return;
     var ok = false;
     try {
       final response = await http.patch(
         Uri.parse('$supabaseUrl/rest/v1/appointments?id=eq.$id'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({'status': status}),
       );
       final rows = response.statusCode == 200
@@ -273,7 +321,12 @@ class SupabaseService {
     } catch (e) {
       debugPrint('Error updating appointment status: $e');
     }
-    if (_pendingStatus[id] == status) _pendingStatus.remove(id);
+    if (sess != _session) return;
+    // Only drop our own pending value; a newer change to the same booking stays.
+    final newerPending =
+        _pendingStatus.containsKey(id) && _pendingStatus[id] != status;
+    if (!newerPending) _pendingStatus.remove(id);
+    _apptGen++;
     await getAppointments(forceRefresh: true);
     appointmentChanges.value++;
     if (!ok) {
@@ -286,26 +339,35 @@ class SupabaseService {
 
   static Future<bool> deleteAppointment(String id) async {
     _pendingDeletes.add(id);
+    _apptGen++;
     await _setPendingFlag(true);
     cachedAppointments = _applyPending(cachedAppointments);
     _persistAppointmentsToDisk(cachedAppointments);
     appointmentChanges.value++;
-    unawaited(_saveDelete(id));
+    final headers = _headers, sess = _session;
+    _apptQueue = _apptQueue.then((_) => _saveDelete(id, headers, sess));
     return true;
   }
 
-  static Future<void> _saveDelete(String id) async {
+  static Future<void> _saveDelete(
+    String id,
+    Map<String, String> headers,
+    int sess,
+  ) async {
+    if (sess != _session) return;
     var ok = false;
     try {
       final response = await http.delete(
         Uri.parse('$supabaseUrl/rest/v1/appointments?id=eq.$id'),
-        headers: _headers,
+        headers: headers,
       );
       ok = response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       debugPrint('Error deleting appointment: $e');
     }
+    if (sess != _session) return;
     _pendingDeletes.remove(id);
+    _apptGen++;
     await getAppointments(forceRefresh: true);
     appointmentChanges.value++;
     if (!ok) {
@@ -328,6 +390,7 @@ class SupabaseService {
     }
 
     try {
+      final gen = _settingsGen, sess = _session;
       final response = await http.get(
         Uri.parse(
           '$supabaseUrl/rest/v1/clinic_settings?key=eq.main_settings&select=*',
@@ -335,7 +398,10 @@ class SupabaseService {
         headers: _headers,
       );
 
-      if (response.statusCode == 200 && _settingsInFlight == 0) {
+      if (response.statusCode == 200 &&
+          _settingsInFlight == 0 &&
+          gen == _settingsGen &&
+          sess == _session) {
         final List<dynamic> data = jsonDecode(response.body);
         if (data.isNotEmpty && data[0]['content'] != null) {
           cachedSettings = Map<String, dynamic>.from(
@@ -356,13 +422,17 @@ class SupabaseService {
   static void _fetchSettingsBackground() async {
     if (_settingsInFlight > 0) return;
     try {
+      final gen = _settingsGen, sess = _session;
       final response = await http.get(
         Uri.parse(
           '$supabaseUrl/rest/v1/clinic_settings?key=eq.main_settings&select=*',
         ),
         headers: _headers,
       );
-      if (response.statusCode == 200 && _settingsInFlight == 0) {
+      if (response.statusCode == 200 &&
+          _settingsInFlight == 0 &&
+          gen == _settingsGen &&
+          sess == _session) {
         final List<dynamic> data = jsonDecode(response.body);
         if (data.isNotEmpty && data[0]['content'] != null) {
           cachedSettings = Map<String, dynamic>.from(
@@ -395,18 +465,27 @@ class SupabaseService {
     _syncSubCaches(cachedSettings!);
     _persistSettingsToDisk(cachedSettings!);
     _settingsInFlight++;
-    final epoch = _settingsEpoch;
+    _settingsGen++;
+    final epoch = _settingsEpoch, sess = _session;
+    final headers = _headers;
     await _setPendingFlag(true);
-    _settingsQueue = _settingsQueue.then((_) => _runSettingsSave(snapshot, epoch));
+    _settingsQueue = _settingsQueue.then(
+      (_) => _runSettingsSave(snapshot, epoch, headers, sess),
+    );
     return true;
   }
 
   static Future<void> _runSettingsSave(
     Map<String, dynamic> content,
     int epoch,
+    Map<String, String> headers,
+    int sess,
   ) async {
+    if (sess != _session) return;
     var ok = false;
-    if (epoch == _settingsEpoch) ok = await _sendSettings(content);
+    if (epoch == _settingsEpoch) ok = await _sendSettings(content, headers);
+    if (sess != _session) return;
+    _settingsGen++;
     if (ok) {
       _confirmedSettings = _deepCopy(content);
     } else if (epoch == _settingsEpoch) {
@@ -433,11 +512,14 @@ class SupabaseService {
     await _maybeClearPendingFlag();
   }
 
-  static Future<bool> _sendSettings(Map<String, dynamic> content) async {
+  static Future<bool> _sendSettings(
+    Map<String, dynamic> content,
+    Map<String, String> headers,
+  ) async {
     try {
       final patchResponse = await http.patch(
         Uri.parse('$supabaseUrl/rest/v1/clinic_settings?key=eq.main_settings'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'content': content,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -453,7 +535,7 @@ class SupabaseService {
       // Fallback to POST only if the record does not exist.
       final postResponse = await http.post(
         Uri.parse('$supabaseUrl/rest/v1/clinic_settings'),
-        headers: _headers,
+        headers: headers,
         body: jsonEncode({
           'key': 'main_settings',
           'content': content,
