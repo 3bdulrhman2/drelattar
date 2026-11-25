@@ -7,7 +7,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'background_sync.dart';
 import 'clinic_firebase_options.dart';
+import 'supabase_service.dart';
 
 /// Staff opt-in only. Initialization never prompts, registers or sends.
 class NotificationService {
@@ -20,6 +22,12 @@ class NotificationService {
   static StreamSubscription<RemoteMessage>? _foreground;
   static Future<void> _receive(RemoteMessage message) async {
     try {
+      if (message.data['type'] == 'bookings_changed') {
+        if (Supabase.instance.client.auth.currentSession != null) {
+          await SupabaseService.refreshAppointmentsFromServer();
+        }
+        return;
+      }
       final c = Supabase.instance.client,
           id = Supabase.instance.client.auth.currentUser?.id;
       if (id == null) return;
@@ -61,6 +69,7 @@ class NotificationService {
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         ),
       );
+      FirebaseMessaging.onBackgroundMessage(clinicBackgroundMessage);
       _ready = true;
     } catch (_) {
       _ready = false;
