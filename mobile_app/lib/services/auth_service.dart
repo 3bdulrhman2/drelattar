@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'notification_service.dart';
+import 'supabase_service.dart';
 
 enum UserRole { admin, secretary }
 
@@ -143,6 +144,7 @@ class AuthService {
         'تعذر إيقاف إشعارات الجهاز. اتصل بالإنترنت وحاول تسجيل الخروج مرة أخرى',
       );
     await _client?.auth.signOut();
+    await SupabaseService.resetForLogout();
     currentUser = null;
     NotificationService.stopRealtimeListener();
     await _clearStoredUser();
