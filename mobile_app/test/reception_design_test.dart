@@ -22,6 +22,7 @@ void main() {
         testWidgets('reception design $width $dark $active', (t) async {
           final n = DateTime(2026, 11, 25, 16);
           final entries = [
+            ReceptionEntry(id:'synthetic-yesterday',name:'مريض أمس لا يظهر',status:'waiting',arrivedAt:n.subtract(const Duration(days:1))),
             ReceptionEntry(
               id: 'synthetic-done',
               name: 'مريض انتهى الكشف',
@@ -98,7 +99,9 @@ void main() {
           );
           await t.pumpAndSettle();
           expect(find.byTooltip('إضافة مريض'), findsOneWidget);
-          expect(find.text('استدعاء الدور التالي'), findsOneWidget);
+          expect(find.text('مريض أمس لا يظهر'),findsNothing);
+          expect(find.text('قائمة اليوم · ٢٠٢٦-١١-٢٥'),findsOneWidget);
+          expect(find.text('بدء كشف التالي'), findsOneWidget);
           expect(find.text('منى عبد الرحمن'), findsOneWidget);
           expect(t.takeException(), isNull);
           await t.scrollUntilVisible(find.text('تم الكشف (١)'), 100);
