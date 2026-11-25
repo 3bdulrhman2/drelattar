@@ -22,9 +22,20 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
   @override
   void initState() {
     super.initState();
+    SupabaseService.settingsChanges.addListener(_onSettingsRolledBack);
     _settings = SupabaseService.cachedSettings;
     _isLoading = _settings == null;
     _loadSettings();
+  }
+
+  void _onSettingsRolledBack() {
+    if (mounted) setState(() => _settings = SupabaseService.cachedSettings);
+  }
+
+  @override
+  void dispose() {
+    SupabaseService.settingsChanges.removeListener(_onSettingsRolledBack);
+    super.dispose();
   }
 
   Future<void> _loadSettings({bool forceRefresh = false}) async {
