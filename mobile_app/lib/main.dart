@@ -9,6 +9,18 @@ import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/saving_indicator.dart';
 
+class _ResumeRefresh with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    try {
+      if (Supabase.instance.client.auth.currentSession != null) {
+        SupabaseService.refreshAppointmentsFromServer();
+      }
+    } catch (_) {}
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -32,6 +44,7 @@ void main() async {
     debugPrint('Supabase initialization notice: $e');
   }
 
+  WidgetsBinding.instance.addObserver(_ResumeRefresh());
   runApp(const MyClinicApp());
   if (SupabaseService.unsavedFromLastSession) {
     Timer(const Duration(seconds: 4), () {
