@@ -33,6 +33,8 @@ class WidgetProofActivity : Activity() {
         for (cls in listOf(CurrentVisitWidget::class.java, NextBookingWidget::class.java)) {
             val id = host.allocateAppWidgetId()
             val ok = mgr.bindAppWidgetIdIfAllowed(id, ComponentName(this, cls))
+            val st = android.widget.TextView(this); st.text = cls.simpleName + " bind=" + ok; root.addView(st)
+            android.util.Log.i("WidgetProof", cls.simpleName + " bind=" + ok)
             if (!ok) continue
             val info = mgr.getAppWidgetInfo(id)
             val v = host.createView(this, id, info)
