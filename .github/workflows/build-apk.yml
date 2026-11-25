@@ -16,6 +16,11 @@ jobs:
           cache: true
       - name: Test staff endpoint without live accounts
         run: node --experimental-strip-types --test tests/staff-handler.test.ts
+      - name: Generate clinic branding assets
+        working-directory: mobile_app
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 generate_branding.py
       - name: Build release APK
         working-directory: mobile_app
         run: |
