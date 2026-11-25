@@ -39,11 +39,11 @@ class WidgetProofActivity : Activity() {
     private val classes = listOf(CurrentVisitWidget::class.java, NextBookingWidget::class.java)
     private val ids = IntArray(2)
 
-    private fun step(i: Int) {
+    private fun step(i: Int, granted: Boolean = false) {
         if (i >= classes.size) return
         if (ids[i] == 0) ids[i] = host.allocateAppWidgetId()
         val comp = ComponentName(this, classes[i])
-        val ok = mgr.bindAppWidgetIdIfAllowed(ids[i], comp)
+        val ok = granted || mgr.bindAppWidgetIdIfAllowed(ids[i], comp)
         android.util.Log.i("WidgetProof", classes[i].simpleName + " bind=" + ok)
         if (!ok) {
             val it = android.content.Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
@@ -63,7 +63,7 @@ class WidgetProofActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         android.util.Log.i("WidgetProof", "bind result " + requestCode + " " + resultCode)
-        if (resultCode == RESULT_OK) step(requestCode)
+        if (resultCode == RESULT_OK) step(requestCode, true)
     }
     override fun onStart() { super.onStart(); host.startListening() }
     override fun onStop() { super.onStop(); host.stopListening() }
