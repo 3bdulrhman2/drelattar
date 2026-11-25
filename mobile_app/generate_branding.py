@@ -28,15 +28,15 @@ def paste_center(canvas, diameter):
     return canvas
 
 
-# Static launcher icons: clinic logo on white at 66% (safe inside masks).
+# Static launcher icons: clinic logo on white at 56% (wide white margin so round/squircle masks never crop).
 for d, s in {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}.items():
-    out = paste_center(Image.new('RGBA', (s, s), (255, 255, 255, 255)), round(s * 0.66))
+    out = paste_center(Image.new('RGBA', (s, s), (255, 255, 255, 255)), round(s * 0.56))
     out.convert('RGB').save(target('ic_launcher.png', d))
     print('ic_launcher', d)
 
 # Adaptive icon foregrounds: transparent 108dp canvas, logo in the safe zone.
 for d, s in {'mdpi': 108, 'hdpi': 162, 'xhdpi': 216, 'xxhdpi': 324, 'xxxhdpi': 432}.items():
-    out = paste_center(Image.new('RGBA', (s, s), (0, 0, 0, 0)), round(s * 2 / 3))
+    out = paste_center(Image.new('RGBA', (s, s), (0, 0, 0, 0)), round(s * 0.54))
     out.save(target('ic_launcher_foreground.png', d))
     print('foreground', d)
 
