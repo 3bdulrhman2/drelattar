@@ -51,7 +51,18 @@ class _ReceptionTabState extends State<ReceptionTab> {
       SupabaseService.appointmentChanges.addListener(_reloadBookings);
       _load();
       _clock = Timer.periodic(const Duration(minutes: 1), (_) {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        final server = _snapshot?.cairoNow;
+        if (server != null) {
+          final live = server.add(
+            DateTime.now().difference(_receivedAt ?? DateTime.now()),
+          );
+          if (!DateUtils.isSameDay(server, live)) {
+            _load();
+            return;
+          }
+        }
+        setState(() {});
       });
       try {
         _sync = Supabase.instance.client
@@ -122,7 +133,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, update) => AlertDialog(
-          title: const Text('إضافة مريض للاستقبال'),
+          title: const Text('إضافة مريض لقائمة انتظار اليوم'),
           content: TextField(
             controller: controller,
             maxLength: 120,
@@ -153,11 +164,11 @@ class _ReceptionTabState extends State<ReceptionTab> {
                             ),
                           );
                       } finally {
-                        _busy = false;
+                        if (mounted) setState(() => _busy = false);
                         if (ctx.mounted) update(() {});
                       }
                     },
-              child: Text(_busy ? 'جاري الحفظ' : 'إضافة للدور'),
+              child: Text(_busy ? 'جاري الحفظ' : 'إضافة للانتظار'),
             ),
           ],
         ),
@@ -168,6 +179,49 @@ class _ReceptionTabState extends State<ReceptionTab> {
 
   Future<void> _status(ReceptionItem item, String value) async {
     if (_busy || widget.previewAppointments != null) return;
+    if (value == 'in_consultation') {
+      final current =
+          _snapshot?.entries.any(
+                (e) =>
+                    DateUtils.isSameDay(e.arrivedAt, _snapshot!.cairoNow) &&
+                    e.status == 'in_consultation',
+              ) ==
+              true ||
+          _bookings.any(
+            (b) =>
+                b.appointmentDate ==
+                    _dayKey(_snapshot?.cairoNow ?? DateTime.now()) &&
+                b.status == 'in_consultation',
+          );
+      if (current) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'أنهِ الكشف الحالي أولاً، وباقي المرضى يفضلوا في الانتظار',
+            ),
+          ),
+        );
+        return;
+      }
+      final yes = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('بدء الكشف؟'),
+          content: Text('نقل ${item.name} من قائمة الانتظار إلى الدور الحالي؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('يفضل في الانتظار'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('ابدأ الكشف'),
+            ),
+          ],
+        ),
+      );
+      if (yes != true || !mounted) return;
+    }
     setState(() => _busy = true);
     try {
       if (item.source == 'website') {
@@ -192,6 +246,8 @@ class _ReceptionTabState extends State<ReceptionTab> {
     }
   }
 
+  String _dayKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   @override
   Widget build(BuildContext context) {
     final now = _snapshot == null
@@ -230,6 +286,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
         policy: ReceptionPolicy(opensAt: opens, closesAt: closes, now: now),
         website: online,
         walkIns: _snapshot!.entries
+            .where((e) => DateUtils.isSameDay(e.arrivedAt, now))
             .map(
               (e) => ReceptionItem(
                 id: e.id,
@@ -314,6 +371,15 @@ class _ReceptionTabState extends State<ReceptionTab> {
               fontSize: 23,
               fontWeight: FontWeight.bold,
               color: context.ink,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'قائمة اليوم · ${_digits(date)}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: context.accent,
             ),
           ),
           const SizedBox(height: 6),
@@ -457,18 +523,28 @@ class _ReceptionTabState extends State<ReceptionTab> {
             const SizedBox(height: 16),
             FilledButton(
               onPressed:
-                  interactive && ['waiting', 'arrived'].contains(next?.status)
+                  interactive &&
+                      current == null &&
+                      ['waiting', 'arrived'].contains(next?.status)
                   ? () => _status(next!, 'in_consultation')
                   : null,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 17),
               ),
               child: const Text(
-                'استدعاء الدور التالي',
+                'بدء كشف التالي',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ],
+          if (current != null && waiting.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                'المرضى في الانتظار حتى إنهاء الكشف الحالي وبدء كشف جديد.',
+                style: TextStyle(fontSize: 11, color: context.secondaryInk),
+              ),
+            ),
           const SizedBox(height: 14),
           Text(
             'الأوقات تقديرية للاستقبال. حجوزات الموقع ثابتة، والحجز المنتظر للتأكيد يحتفظ بوقته.',
@@ -569,7 +645,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
                     ? 'داخل الكشف'
                     : i.source == 'website'
                     ? 'مؤكد · حجز موقع'
-                    : 'وصل للعيادة'}',
+                    : 'في الانتظار'}',
                 style: TextStyle(fontSize: 10, color: context.secondaryInk),
               ),
             ],
@@ -579,7 +655,21 @@ class _ReceptionTabState extends State<ReceptionTab> {
             i.status == 'arrived' ||
             i.status == 'waiting' && i.source == 'walkin')
           PopupMenuButton<String>(
-            enabled: interactive,
+            enabled:
+                interactive &&
+                (i.status == 'in_consultation' ||
+                    !(_snapshot?.entries.any(
+                              (e) => e.status == 'in_consultation',
+                            ) ==
+                            true ||
+                        _bookings.any(
+                          (b) =>
+                              b.appointmentDate ==
+                                  _dayKey(
+                                    _snapshot?.cairoNow ?? DateTime.now(),
+                                  ) &&
+                              b.status == 'in_consultation',
+                        ))),
             icon: Icon(
               Icons.chevron_left,
               color: context.secondaryInk,
