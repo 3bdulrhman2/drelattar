@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -31,6 +32,13 @@ void main() async {
   }
 
   runApp(const MyClinicApp());
+  if (SupabaseService.unsavedFromLastSession) {
+    Timer(const Duration(seconds: 4), () {
+      SupabaseService.reportSaveFailure(
+        'آخر تغيير قبل إغلاق التطبيق ربما لم يُحفظ على السيرفر. راجع الحجوزات والمواعيد.',
+      );
+    });
+  }
 }
 
 class MyClinicApp extends StatelessWidget {
@@ -43,6 +51,7 @@ class MyClinicApp extends StatelessWidget {
       builder: (context, mode, _) => MaterialApp(
         title: 'عيادتي | My Clinic',
         debugShowCheckedModeBanner: false,
+        scaffoldMessengerKey: SupabaseService.messengerKey,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: mode,
