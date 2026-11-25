@@ -10,6 +10,7 @@ import '../models/appointment.dart';
 import '../models/reception_entry.dart';
 import '../services/supabase_service.dart';
 import '../services/reception_service.dart';
+import '../services/widget_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/clinic_time.dart';
 import '../utils/shared_reception_queue.dart';
@@ -112,6 +113,8 @@ class _ReceptionTabState extends State<ReceptionTab> {
         _bookings = r[0] as List<Appointment>;
         _settings = r[1] as Map<String, dynamic>?;
         _snapshot = r[2] as ReceptionSnapshot;
+        WidgetService.walkIns = _snapshot!.entries;
+        WidgetService.pushAppointments(_bookings);
         _receivedAt = DateTime.now();
         _error = null;
         _loading = false;
