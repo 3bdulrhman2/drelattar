@@ -11,6 +11,7 @@ import 'package:my_clinic/models/appointment.dart';
 import 'package:my_clinic/screens/admin/admin_holidays_tab.dart';
 import 'package:my_clinic/services/supabase_service.dart';
 import 'package:my_clinic/theme/app_theme.dart';
+import 'package:my_clinic/widgets/saving_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Map<String, dynamic> _settings() => {
@@ -58,6 +59,7 @@ Future<void> _app(WidgetTester t, Widget home) => t.pumpWidget(
       GlobalWidgetsLocalizations.delegate,
       GlobalCupertinoLocalizations.delegate,
     ],
+    builder: (context, child) => SavingIndicator(child: child!),
     home: Scaffold(body: home),
   ),
 );
@@ -87,6 +89,8 @@ void main() {
       await t.tap(find.byIcon(Icons.close).first);
       await t.pump();
       expect(find.text('2026-12-05'), findsNothing, reason: 'instant, save still running');
+      expect(SupabaseService.savingNow.value, isTrue);
+      expect(find.text('جارٍ الحفظ...'), findsOneWidget);
       // Refresh while backend save is still processing: server copy is old.
       await t.runAsync(() => SupabaseService.getClinicSettings(forceRefresh: true));
       await t.pump();
@@ -98,6 +102,7 @@ void main() {
       await t.pump();
       expect(find.text('2026-12-05'), findsNothing);
       expect(find.byType(SnackBar), findsNothing);
+      expect(SupabaseService.savingNow.value, isFalse);
     }, () => s.client);
   });
 
