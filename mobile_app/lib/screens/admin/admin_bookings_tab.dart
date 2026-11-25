@@ -4,7 +4,6 @@ import 'package:intl/intl.dart' show DateFormat;
 import '../../models/appointment.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/clinic_time.dart';
 import '../../widgets/booking_card.dart';
 
 class AdminBookingsTab extends StatefulWidget {
@@ -353,32 +352,10 @@ class _AdminBookingsTabState extends State<AdminBookingsTab> {
                       ),
                     );
                   final a = list[i];
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 47,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Text(
-                            clinicTime(a.appointmentTime),
-                            textDirection: TextDirection.ltr,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: context.secondaryInk,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: BookingCard(
-                          appointment: a,
-                          onStatusChange: (s) => _statusChange(a, s),
-                          onDelete: widget.canDelete ? () => _delete(a) : null,
-                        ),
-                      ),
-                    ],
+                  return BookingCard(
+                    appointment: a,
+                    onStatusChange: (s) => _statusChange(a, s),
+                    onDelete: widget.canDelete ? () => _delete(a) : null,
                   );
                 }, childCount: list.isEmpty ? 1 : list.length),
               ),
