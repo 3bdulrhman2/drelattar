@@ -19,8 +19,19 @@ class _SecretaryAvailabilityTabState extends State<SecretaryAvailabilityTab> {
   @override
   void initState() {
     super.initState();
+    SupabaseService.settingsChanges.addListener(_onSettingsRolledBack);
     _settings = SupabaseService.cachedSettings;
     _load();
+  }
+
+  void _onSettingsRolledBack() {
+    if (mounted) setState(() => _settings = SupabaseService.cachedSettings);
+  }
+
+  @override
+  void dispose() {
+    SupabaseService.settingsChanges.removeListener(_onSettingsRolledBack);
+    super.dispose();
   }
 
   Future<void> _load() async {
