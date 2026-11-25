@@ -97,6 +97,12 @@ class SupabaseService {
 
   static Future<void> _setPendingFlag(bool on) async {
     savingNow.value = on || _anyInFlight;
+    if (on) {
+      // A new save starts: an old failure notice must not linger beside it.
+      try {
+        messengerKey.currentState?.clearSnackBars();
+      } catch (_) {}
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       if (on) {
