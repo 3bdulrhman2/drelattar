@@ -34,6 +34,8 @@ class SupabaseService {
   static int _settingsEpoch = 0;
   static Future<void> _settingsQueue = Future.value();
   static bool unsavedFromLastSession = false;
+  /// True while any change is shown on screen but not yet confirmed by the server.
+  static final ValueNotifier<bool> savingNow = ValueNotifier<bool>(false);
   // Bumped on sign-out: results of saves/fetches started by a previous session
   // are dropped so they can never touch the next user's data or notices.
   static int _session = 0;
@@ -60,6 +62,7 @@ class SupabaseService {
     cachedReviews = [];
     cachedSecretaries = [];
     unsavedFromLastSession = false;
+    savingNow.value = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_prefsKeyPending);
@@ -93,6 +96,7 @@ class SupabaseService {
       .toList();
 
   static Future<void> _setPendingFlag(bool on) async {
+    savingNow.value = on || _anyInFlight;
     try {
       final prefs = await SharedPreferences.getInstance();
       if (on) {
@@ -109,6 +113,7 @@ class SupabaseService {
       _pendingDeletes.isNotEmpty;
 
   static Future<void> _maybeClearPendingFlag() async {
+    savingNow.value = _anyInFlight;
     if (!_anyInFlight) await _setPendingFlag(false);
   }
 
