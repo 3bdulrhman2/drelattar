@@ -194,7 +194,7 @@ export const AppContent: React.FC = () => {
       <QuickCallFloating />
 
       {/* Polite Initial Visitor Notification Activation Prompt */}
-      {/* Push enrollment stays disabled until a real protected token pipeline is reviewed. */}
+      <NotificationPromptModal />
 
     </div>
   );
