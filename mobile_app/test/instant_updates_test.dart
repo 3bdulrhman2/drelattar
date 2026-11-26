@@ -90,7 +90,7 @@ void main() {
       await t.pump();
       expect(find.text('2026-12-05'), findsNothing, reason: 'instant, save still running');
       expect(SupabaseService.savingNow.value, isTrue);
-      expect(find.text('جارٍ الحفظ...'), findsOneWidget);
+      expect(find.text('جارٍ الحفظ...'), findsNothing, reason: 'saving strip removed');
       // Refresh while backend save is still processing: server copy is old.
       await t.runAsync(() => SupabaseService.getClinicSettings(forceRefresh: true));
       await t.pump();
