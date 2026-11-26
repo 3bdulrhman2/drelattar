@@ -207,7 +207,7 @@ export const BirthdayCelebration: React.FC = () => {
         </div>
         <div style={{ width: 120, height: 1, background: 'linear-gradient(90deg,transparent,#d4af37,transparent)', margin: '0 auto 24px' }} />
         <h1 id="bday-title" style={{ margin: 0, fontWeight: 600, lineHeight: 1.15, fontSize: 'clamp(34px, 7.5vw, 68px)', letterSpacing: '0.01em', background: 'linear-gradient(180deg,#fff4d0 0%,#e8c872 55%,#c9a24a 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', textShadow: 'none' }}>
-          Happy Birthday,<br />Dr. Mohammed Elsayed Elattar
+          Happy Birthday,<br />Dr. Mohammed
         </h1>
         <div style={{ width: 120, height: 1, background: 'linear-gradient(90deg,transparent,#d4af37,transparent)', margin: '26px auto 20px' }} />
         <p style={{ margin: 0, fontSize: 'clamp(18px, 3.6vw, 28px)', fontStyle: 'italic', letterSpacing: '0.06em', color: '#e8dcb8' }}>A Special Day for a Special Doctor</p>
