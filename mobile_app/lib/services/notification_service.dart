@@ -39,17 +39,34 @@ class NotificationService {
       if (member?['is_active'] != true ||
           !['admin', 'secretary'].contains(member?['role']))
         return;
-      if (message.data['type'] != 'staff_manual') return;
+      final type = message.data['type'];
+      if (!['staff_manual', 'new_booking', 'patient_entering'].contains(type))
+        return;
       final n = message.notification;
       if (n == null) return;
+      if (type == 'new_booking') {
+        try {
+          await SupabaseService.refreshAppointmentsFromServer();
+        } catch (_) {}
+      }
+      final channel = type == 'new_booking'
+          ? 'clinic_new_booking'
+          : type == 'patient_entering'
+              ? 'clinic_patient_entering'
+              : 'clinic_staff_manual';
+      final channelName = type == 'new_booking'
+          ? 'حجوزات جديدة من الموقع'
+          : type == 'patient_entering'
+              ? 'دخول المرضى للكشف'
+              : 'إشعارات فريق العيادة';
       await _local.show(
         DateTime.now().millisecondsSinceEpoch.remainder(2147483647),
         n.title,
         n.body,
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
-            'clinic_staff_manual',
-            'إشعارات فريق العيادة',
+            channel,
+            channelName,
             importance: Importance.high,
             priority: Priority.high,
           ),
