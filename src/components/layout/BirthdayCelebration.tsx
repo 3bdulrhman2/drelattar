@@ -203,7 +203,7 @@ export const BirthdayCelebration: React.FC = () => {
 
       <div style={{ position: 'relative', textAlign: 'center', padding: '72px 24px 48px', maxWidth: 760, animation: fade }}>
         <div style={{ width: 96, height: 96, margin: '0 auto 28px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: reduced.current ? 'none' : 'bdayGlow 3.5s ease-in-out infinite', boxShadow: '0 0 40px rgba(232,200,114,.4)' }}>
-          <img src="/brand/clinic-logo.png" alt="" width={84} height={84} style={{ borderRadius: '50%' }} />
+          <img src="/brand/clinic-logo.png" alt="" width={96} height={96} style={{ borderRadius: '50%', filter: 'drop-shadow(0 0 14px rgba(232,200,114,.95))' }} />
         </div>
         <div style={{ width: 120, height: 1, background: 'linear-gradient(90deg,transparent,#d4af37,transparent)', margin: '0 auto 24px' }} />
         <h1 id="bday-title" style={{ margin: 0, fontWeight: 600, lineHeight: 1.15, fontSize: 'clamp(34px, 7.5vw, 68px)', letterSpacing: '0.01em', background: 'linear-gradient(180deg,#fff4d0 0%,#e8c872 55%,#c9a24a 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', textShadow: 'none' }}>
