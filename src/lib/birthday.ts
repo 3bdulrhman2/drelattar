@@ -1,6 +1,5 @@
 // Birthday celebration date logic. Active only on 2026-11-26, Africa/Cairo.
 export const BIRTHDAY_DATE = '2026-11-26';
-export const BIRTHDAY_STORAGE_KEY = `elattar-birthday-${BIRTHDAY_DATE}-shown`;
 
 /** Today's calendar date in Africa/Cairo as YYYY-MM-DD, whatever the visitor's own timezone. */
 export const cairoDateString = (now: Date = new Date()): string => {
@@ -27,15 +26,9 @@ export const isPublicHomePath = (pathname: string, hash: string): boolean => {
   return true;
 };
 
-const readFlag = (): boolean => {
-  try { return window.localStorage.getItem(BIRTHDAY_STORAGE_KEY) === '1'; } catch { return false; }
-};
-
-/** True when the overlay should open now. Claims today's slot so it shows once per visitor per day. */
+/** True when the birthday overlay should open on this page load. */
 export const claimBirthdayView = (now: Date = new Date()): boolean => {
   if (!isBirthdayToday(now)) return false;
   if (!isPublicHomePath(window.location.pathname, window.location.hash)) return false;
-  if (readFlag()) return false;
-  try { window.localStorage.setItem(BIRTHDAY_STORAGE_KEY, '1'); } catch { /* storage blocked: show anyway, this page load only */ }
   return true;
 };
