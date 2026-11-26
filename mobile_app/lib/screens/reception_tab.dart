@@ -34,6 +34,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
   ReceptionSnapshot? _snapshot;
   Map<String, dynamic>? _settings;
   bool _loading = true, _busy = false;
+  final Map<String, ReceptionEntry> _pendingAdds = {};
   RealtimeChannel? _sync;
   Timer? _refresh, _clock;
   DateTime? _receivedAt;
@@ -113,6 +114,7 @@ class _ReceptionTabState extends State<ReceptionTab> {
         _bookings = r[0] as List<Appointment>;
         _settings = r[1] as Map<String, dynamic>?;
         _snapshot = r[2] as ReceptionSnapshot;
+        _mergePending();
         WidgetService.walkIns = _snapshot!.entries;
         WidgetService.pushAppointments(_bookings);
         _receivedAt = DateTime.now();
@@ -128,81 +130,113 @@ class _ReceptionTabState extends State<ReceptionTab> {
     }
   }
 
+  /// Keeps optimistic (not yet confirmed) walk-ins visible across refreshes.
+  void _mergePending() {
+    final snap = _snapshot;
+    if (snap == null || _pendingAdds.isEmpty) return;
+    final extra = _pendingAdds.values.where(
+      (p) => !snap.entries.any(
+        (e) =>
+            e.name == p.name &&
+            !e.arrivedAt.isBefore(p.arrivedAt.subtract(const Duration(minutes: 2))),
+      ),
+    );
+    _snapshot = ReceptionSnapshot(snap.cairoNow, [...snap.entries, ...extra]);
+  }
+
   Future<void> _add() async {
     if (widget.previewAppointments != null) return;
     final controller = TextEditingController();
     final request = ReceptionService.requestId();
-    await showDialog(
+    final name = await showDialog<String>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, update) => AlertDialog(
-          title: const Text('إضافة مريض لقائمة انتظار اليوم'),
-          content: TextField(
-            controller: controller,
-            maxLength: 120,
-            decoration: const InputDecoration(labelText: 'اسم المريض'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: _busy ? null : () => Navigator.pop(ctx),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: _busy
-                  ? null
-                  : () async {
-                      if (controller.text.trim().length < 2) return;
-                      update(() => _busy = true);
-                      try {
-                        final saved = await ReceptionService.add(
-                          request,
-                          controller.text,
-                        );
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        await _load();
-                        if (!mounted) return;
-                        final apptId = saved?['appointment_id'] as String?;
-                        String? slot;
-                        if (apptId != null) {
-                          final match = _bookings
-                              .where((b) => b.id == apptId)
-                              .firstOrNull;
-                          slot = match?.appointmentTime;
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              slot != null
-                                  ? 'تمت الإضافة للانتظار وأُغلق معاد $slot على الموقع'
-                                  : 'تمت الإضافة للانتظار. لا يوجد معاد متاح اليوم ليُغلق على الموقع.',
-                            ),
-                          ),
-                        );
-                      } catch (_) {
-                        if (mounted)
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'تعذر تأكيد الإضافة. أعد المحاولة من نفس النافذة لتجنب التكرار.',
-                              ),
-                            ),
-                          );
-                      } finally {
-                        if (mounted) setState(() => _busy = false);
-                        if (ctx.mounted) update(() {});
-                      }
-                    },
-              child: Text(_busy ? 'جاري الحفظ' : 'إضافة للانتظار'),
-            ),
-          ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('إضافة مريض لقائمة انتظار اليوم'),
+        content: TextField(
+          controller: controller,
+          maxLength: 120,
+          decoration: const InputDecoration(labelText: 'اسم المريض'),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final v = controller.text.trim();
+              if (v.length < 2) return;
+              Navigator.pop(ctx, v);
+            },
+            child: const Text('إضافة للانتظار'),
+          ),
+        ],
       ),
     );
     controller.dispose();
+    if (name == null || !mounted) return;
+    // Optimistic: the patient shows in the queue at once; the server save runs in the background.
+    final nowLocal = _snapshot == null
+        ? DateTime.now()
+        : _snapshot!.cairoNow.add(
+            DateTime.now().difference(_receivedAt ?? DateTime.now()),
+          );
+    final temp = ReceptionEntry(
+      id: 'pending-$request',
+      name: name,
+      status: 'waiting',
+      arrivedAt: nowLocal,
+    );
+    setState(() {
+      _pendingAdds[request] = temp;
+      _mergePending();
+    });
+    unawaited(_saveAdd(request, name));
+  }
+
+  Future<void> _saveAdd(String request, String name) async {
+    try {
+      final saved = await ReceptionService.add(request, name);
+      _pendingAdds.remove(request);
+      await _load();
+      if (!mounted) return;
+      final apptId = saved?['appointment_id'] as String?;
+      String? slot;
+      if (apptId != null) {
+        slot = _bookings.where((b) => b.id == apptId).firstOrNull?.appointmentTime;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            slot != null
+                ? 'تمت الإضافة للانتظار وأُغلق معاد $slot على الموقع'
+                : 'تمت الإضافة للانتظار. لا يوجد معاد متاح اليوم ليُغلق على الموقع.',
+          ),
+        ),
+      );
+    } catch (_) {
+      // Roll back quietly: remove the optimistic row and say so once.
+      _pendingAdds.remove(request);
+      if (!mounted) return;
+      setState(() {
+        final snap = _snapshot;
+        if (snap != null) {
+          _snapshot = ReceptionSnapshot(
+            snap.cairoNow,
+            snap.entries.where((e) => e.id != 'pending-$request').toList(),
+          );
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('لم تتم إضافة المريض. أعد المحاولة.'),
+        ),
+      );
+    }
   }
 
   Future<void> _status(ReceptionItem item, String value) async {
-    if (_busy || widget.previewAppointments != null) return;
+    if (widget.previewAppointments != null) return;
     if (value == 'in_consultation') {
       final current =
           _snapshot?.entries.any(
@@ -246,27 +280,53 @@ class _ReceptionTabState extends State<ReceptionTab> {
       );
       if (yes != true || !mounted) return;
     }
-    setState(() => _busy = true);
+    if (item.id.startsWith('pending-')) return;
+    final before = _snapshot;
+    // Optimistic: show the new status at once, confirm in the background.
+    if (item.source != 'website' && before != null) {
+      setState(() {
+        _snapshot = ReceptionSnapshot(
+          before.cairoNow,
+          before.entries
+              .map(
+                (e) => e.id == item.id
+                    ? ReceptionEntry(
+                        id: e.id,
+                        name: e.name,
+                        status: value,
+                        arrivedAt: e.arrivedAt,
+                        startedAt: value == 'in_consultation'
+                            ? DateTime.now()
+                            : e.startedAt,
+                        appointmentId: e.appointmentId,
+                      )
+                    : e,
+              )
+              .toList(),
+        );
+      });
+    }
+    unawaited(_saveStatus(item, value));
+  }
+
+  Future<void> _saveStatus(ReceptionItem item, String value) async {
     try {
       if (item.source == 'website') {
-        final ok = await SupabaseService.updateAppointmentStatus(
-          item.id,
-          value,
-        );
+        final ok = await SupabaseService.updateAppointmentStatus(item.id, value);
         if (!ok) throw StateError('save failed');
       } else {
         await ReceptionService.status(item.id, value);
       }
       await _load();
     } catch (_) {
-      if (mounted)
+      await _load(); // roll back to server truth
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('لم يتم تأكيد التغيير. حدّث الدور قبل المحاولة.'),
+            content: Text('لم يتم تأكيد التغيير وتمت إعادة الحالة السابقة.'),
           ),
         );
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      }
     }
   }
 
