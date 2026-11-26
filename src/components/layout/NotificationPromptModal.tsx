@@ -4,8 +4,8 @@ import {
   requestWebNotificationPermission,
   triggerLocalNotification,
   registerWebPushServiceWorker,
-  saveDeviceTokenToSupabase,
 } from '../../lib/pushNotifications';
+import { enableVisitorPush } from '../../lib/visitorPush';
 
 const PROMPT_DISMISSED_KEY = 'drelattar_notification_prompt_dismissed_until';
 
@@ -21,7 +21,12 @@ export const NotificationPromptModal: React.FC = () => {
     }
 
     // If permission already granted or denied permanently, do not show
-    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+    if (Notification.permission === 'granted') {
+      // Already allowed earlier: save this device quietly (at most once a week).
+      void enableVisitorPush();
+      return;
+    }
+    if (Notification.permission === 'denied') {
       return;
     }
 
@@ -62,8 +67,7 @@ export const NotificationPromptModal: React.FC = () => {
         setActivatedSuccess(true);
         registerWebPushServiceWorker();
         // Record subscriber web device token for clinic broadcast
-        const webSubId = `web-sub-${Date.now()}`;
-        saveDeviceTokenToSupabase(webSubId, 'all', 'web');
+        void enableVisitorPush(true);
         triggerLocalNotification({
           title: 'مرحباً بك! تم تفعيل الإشعارات بنجاح 🔔',
           body: 'ستصلك تنبيهات فورية بمواعيد وتأكيدات الحجوزات وأحدث التنويهات من عيادة د. محمد السيد العطار.',
