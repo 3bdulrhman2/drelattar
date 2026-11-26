@@ -154,9 +154,30 @@ class _ReceptionTabState extends State<ReceptionTab> {
                       if (controller.text.trim().length < 2) return;
                       update(() => _busy = true);
                       try {
-                        await ReceptionService.add(request, controller.text);
+                        final saved = await ReceptionService.add(
+                          request,
+                          controller.text,
+                        );
                         if (ctx.mounted) Navigator.pop(ctx);
                         await _load();
+                        if (!mounted) return;
+                        final apptId = saved?['appointment_id'] as String?;
+                        String? slot;
+                        if (apptId != null) {
+                          final match = _bookings
+                              .where((b) => b.id == apptId)
+                              .firstOrNull;
+                          slot = match?.appointmentTime;
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              slot != null
+                                  ? 'تمت الإضافة للانتظار وأُغلق معاد $slot على الموقع'
+                                  : 'تمت الإضافة للانتظار. لا يوجد معاد متاح اليوم ليُغلق على الموقع.',
+                            ),
+                          ),
+                        );
                       } catch (_) {
                         if (mounted)
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -260,8 +281,17 @@ class _ReceptionTabState extends State<ReceptionTab> {
           );
     final date =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final linkedIds = (_snapshot?.entries ?? const <ReceptionEntry>[])
+        .map((e) => e.appointmentId)
+        .whereType<String>()
+        .toSet();
     final online = _bookings
-        .where((a) => a.appointmentDate == date && a.status != 'cancelled')
+        .where(
+          (a) =>
+              a.appointmentDate == date &&
+              a.status != 'cancelled' &&
+              !linkedIds.contains(a.id),
+        )
         .map(
           (a) => ReceptionItem(
             id: a.id,
@@ -389,6 +419,28 @@ class _ReceptionTabState extends State<ReceptionTab> {
           Text(
             'الأرقام حسب التسجيل · العرض حسب موعد الكشف',
             style: TextStyle(fontSize: 11, color: context.secondaryInk),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            () {
+              final bookedToday = _bookings
+                  .where(
+                    (b) => b.appointmentDate == date && b.status != 'cancelled',
+                  )
+                  .length;
+              final cap =
+                  int.tryParse(
+                    '${_settings?['bookingSettings']?['maxDailyBookings'] ?? ''}',
+                  ) ??
+                  25;
+              final full = bookedToday >= cap;
+              return 'حجوزات اليوم على الموقع: ${_digits('$bookedToday')} من ${_digits('$cap')}${full ? ' · اليوم مكتمل على الموقع' : ''}';
+            }(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: context.secondaryInk,
+            ),
           ),
           const SizedBox(height: 18),
           if (_error != null)
