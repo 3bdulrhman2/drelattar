@@ -24,8 +24,8 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     const AdminBookingsTab(),
     AdminHolidaysTab(),
     AdminWebsiteTab(),
-    AdminMoreTab(),
     const ReceptionTab(),
+    AdminMoreTab(),
   ];
   void _go(int i) => setState(() => _currentIndex = i);
   @override
@@ -96,11 +96,11 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
           icon: Icon(Icons.language_outlined),
           label: 'الموقع',
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'المزيد'),
         BottomNavigationBarItem(
           icon: Icon(Icons.how_to_reg_outlined),
           label: 'الاستقبال',
         ),
+        BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'المزيد'),
       ],
     ),
   );
