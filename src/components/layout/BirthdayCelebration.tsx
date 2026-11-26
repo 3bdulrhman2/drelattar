@@ -56,7 +56,7 @@ const makeMusic = () => {
     o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.8);
   };
   return {
-    start() { void ctx.resume(); master.gain.cancelScheduledValues(ctx.currentTime); master.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.4); if (timer === undefined) schedule(); },
+    async start() { await ctx.resume(); if (ctx.state !== 'running') throw new Error('Audio context is blocked'); master.gain.cancelScheduledValues(ctx.currentTime); master.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.4); if (timer === undefined) schedule(); },
     stop() { master.gain.cancelScheduledValues(ctx.currentTime); master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.3); if (timer !== undefined) { clearTimeout(timer); timer = undefined; } },
     boom,
     close() { if (timer !== undefined) clearTimeout(timer); void ctx.close(); },
@@ -67,6 +67,7 @@ export const BirthdayCelebration: React.FC = () => {
   const [open, setOpen] = useState<boolean>(() => claimBirthdayView());
   const [leaving, setLeaving] = useState(false);
   const [sound, setSound] = useState(false);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const musicRef = useRef<ReturnType<typeof makeMusic> | null>(null);
   const soundRef = useRef(false);
@@ -77,6 +78,39 @@ export const BirthdayCelebration: React.FC = () => {
     setLeaving(true);
     window.setTimeout(() => setOpen(false), reduced.current ? 0 : 600);
   }, []);
+
+  // Try autoplay immediately; if the browser blocks it, start on the first page interaction.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    let started = false;
+    const events: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'];
+    const removeListeners = () => {
+      for (const event of events) window.removeEventListener(event, onFirstInteraction);
+    };
+    const startMusic = async () => {
+      if (started || cancelled) return;
+      try {
+        if (!musicRef.current) musicRef.current = makeMusic();
+        await musicRef.current.start();
+        if (!cancelled) {
+          started = true;
+          removeListeners();
+          soundRef.current = true;
+          setSound(true);
+        }
+      } catch {
+        // Keep the gesture listeners active if autoplay was denied.
+      }
+    };
+    const onFirstInteraction = () => { void startMusic(); };
+    for (const event of events) window.addEventListener(event, onFirstInteraction, { once: true, passive: true });
+    void startMusic();
+    return () => {
+      cancelled = true;
+      removeListeners();
+    };
+  }, [open]);
 
   // Lock page scroll while open only; always restore.
   useEffect(() => {
@@ -161,7 +195,7 @@ export const BirthdayCelebration: React.FC = () => {
     const next = !soundRef.current;
     soundRef.current = next;
     setSound(next);
-    if (next) { if (!musicRef.current) musicRef.current = makeMusic(); musicRef.current.start(); }
+    if (next) { if (!musicRef.current) musicRef.current = makeMusic(); void musicRef.current.start().then(() => setAudioBlocked(false)).catch(() => setAudioBlocked(true)); }
     else musicRef.current?.stop();
   };
 
