@@ -6,6 +6,8 @@ import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
 import '../staff_push_screen.dart';
+import 'admin_holidays_tab.dart';
+import 'admin_website_tab.dart';
 
 class AdminMoreTab extends StatefulWidget {
   AdminMoreTab({super.key});
@@ -266,6 +268,32 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
     }
   }
 
+  Widget _siteTile(IconData icon, String title, Widget page) => Material(
+    color: Colors.transparent,
+    child: ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: Icon(icon, color: AppColors.royal),
+    title: Text(
+      title,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        color: context.ink,
+      ),
+    ),
+    trailing: Icon(Icons.chevron_left, color: context.secondaryInk),
+    onTap: () => Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: page,
+        ),
+      ),
+    ),
+  ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
@@ -432,7 +460,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'يمكنك إنشاء حسابات للسكرتارية لإدارة الحجوزات وتنظيم المواعيد فقط دون صلاحيات تعديل الموقع.',
+                    'يمكنك إنشاء حسابات للسكرتارية لإدارة الحجوزات والاستقبال فقط دون صلاحيات تعديل الموقع.',
                     style: TextStyle(fontSize: 11, color: context.secondaryInk),
                   ),
                   SizedBox(height: 12),
@@ -632,6 +660,46 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
             ),
             SizedBox(height: 20),
 
+            // Website management (moved here from the main tabs)
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: context.panel,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: context.rule),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'إدارة الموقع',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: context.ink,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  _siteTile(
+                    Icons.open_in_browser,
+                    'لوحة تحكم الموقع',
+                    AdminWebsiteTab(section: 'panel'),
+                  ),
+                  _siteTile(
+                    Icons.campaign_outlined,
+                    'إعلانات وتنبيهات الموقع',
+                    AdminHolidaysTab(announcementsOnly: true),
+                  ),
+                  _siteTile(
+                    Icons.star_outline,
+                    'آراء العملاء',
+                    AdminWebsiteTab(section: 'reviews'),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+
             // Notification Testing Card
             Container(
               padding: EdgeInsets.all(16),
@@ -644,7 +712,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'نظام التنبيهات والإشعارات الفورية',
+                    'الإشعارات والتنبيهات',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -700,7 +768,7 @@ class _AdminMoreTabState extends State<AdminMoreTab> {
                         ),
                       ),
                       Text(
-                        '1.1.9 (Native Edition)',
+                        '1.5.0 (Native Edition)',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
