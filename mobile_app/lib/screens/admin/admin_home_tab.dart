@@ -210,6 +210,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                       : clinicTime(upcoming.first.appointmentTime),
                   upcoming.isEmpty ? 'لاحقاً' : 'اليوم',
                   widget.onNavigateToBookings,
+                  splitSuffix: upcoming.isNotEmpty,
                 ),
               ),
             ],
@@ -313,39 +314,78 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
     String label,
     String value,
     String caption,
-    VoidCallback? tap,
-  ) => InkWell(
-    onTap: tap,
-    borderRadius: BorderRadius.circular(18),
-    child: Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: context.panel,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 11, color: context.secondaryInk),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            textDirection: TextDirection.ltr,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: context.night ? context.accent : context.ink,
+    VoidCallback? tap, {
+    bool splitSuffix = false,
+  }) {
+    // The "am/pm" word is small and sits left of the time so both cards keep
+    // the same fixed size whatever the time is.
+    String main = value, suffix = '';
+    if (splitSuffix && value.contains(' ')) {
+      final i = value.indexOf(' ');
+      main = value.substring(0, i);
+      suffix = value.substring(i + 1);
+    }
+    final big = TextStyle(
+      fontSize: 28,
+      fontWeight: FontWeight.bold,
+      color: context.night ? context.accent : context.ink,
+    );
+    return InkWell(
+      onTap: tap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        height: 124,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: context.panel,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: context.secondaryInk),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(caption, style: TextStyle(fontSize: 10, color: context.accent)),
-        ],
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 38,
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  textDirection: TextDirection.ltr,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    if (suffix.isNotEmpty) ...[
+                      Text(
+                        suffix,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: context.secondaryInk,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(main, textDirection: TextDirection.ltr, style: big),
+                  ],
+                ),
+              ),
+            ),
+            const Spacer(),
+            Text(
+              caption,
+              style: TextStyle(fontSize: 10, color: context.accent),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
   Widget _quick(
     BuildContext context,
     IconData icon,
