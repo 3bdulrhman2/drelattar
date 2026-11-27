@@ -92,10 +92,8 @@ ReceptionSchedule calculateReception({
       return t.difference(p.time).inMicroseconds.abs() < 15 * 60 * 1000000;
     });
     while (blocked(next)) next = next.add(const Duration(minutes: 15));
-    if (next.add(const Duration(minutes: 15)).isAfter(policy.closesAt)) {
-      unplaced.add(w);
-      continue;
-    }
+    // Reception may add patients after closing time: only the website stops at
+    // closing time, the walk-in queue keeps going.
     placed.add(w.at(next));
     next = next.add(const Duration(minutes: 15));
   }
