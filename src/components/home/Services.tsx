@@ -17,7 +17,7 @@ import {
   CheckCircle2,
   Filter
 } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 import { MedicalService } from '../../types';
 
 // Map icon string name to Lucide Icon component
@@ -38,16 +38,17 @@ const iconMap: Record<string, React.FC<{ className?: string }>> = {
 };
 
 export const Services: React.FC = () => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t } = useLang();
   const { services, clinic } = data;
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
   const categories = [
-    { id: 'all', label: 'جميع الخدمات (13)' },
-    { id: 'critical', label: 'العناية المركزة والحرجة' },
-    { id: 'chronic', label: 'الأمراض المزمنة' },
-    { id: 'sessions', label: 'جلسات التنفس والأكسجين' },
-    { id: 'general', label: 'الباطنة العامة' },
+    { id: 'all', label: t('جميع الخدمات (13)') },
+    { id: 'critical', label: t('العناية المركزة والحرجة') },
+    { id: 'chronic', label: t('الأمراض المزمنة') },
+    { id: 'sessions', label: t('جلسات التنفس والأكسجين') },
+    { id: 'general', label: t('الباطنة العامة') },
   ];
 
   const filteredServices = activeCategory === 'all'
@@ -62,13 +63,13 @@ export const Services: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-10 space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-royal/10 text-brand-royal text-xs font-semibold">
             <HeartPulse className="w-3.5 h-3.5 text-brand-medical" />
-            <span>الخدمات الطبية المتكاملة</span>
+            <span>{t('الخدمات الطبية المتكاملة')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark">
-            الخدمات الطبية بعيادة الدكتور محمد السيد العطار
+            {t('الخدمات الطبية بعيادة الدكتور محمد السيد العطار')}
           </h2>
           <p className="text-sm sm:text-base text-brand-muted">
-            رعاية تشخيصية وعلاجية مبنية على أحدث البروتوكولات الإكلينيكية لمختلف أمراض الباطنة والحالات الحرجة
+            {t('رعاية تشخيصية وعلاجية مبنية على أحدث البروتوكولات الإكلينيكية لمختلف أمراض الباطنة والحالات الحرجة')}
           </p>
         </div>
 
@@ -120,13 +121,13 @@ export const Services: React.FC = () => {
                 <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
                   <span className="text-brand-medical font-medium flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    متابعة إكلينيكية دقيقة
+                    {t('متابعة إكلينيكية دقيقة')}
                   </span>
                   <a
                     href={`tel:${clinic.phoneClinic}`}
                     className="text-brand-royal font-semibold hover:text-brand-medical transition-colors flex items-center gap-1"
                   >
-                    <span>استفسار</span>
+                    <span>{t('استفسار')}</span>
                     <Phone className="w-3 h-3" />
                   </a>
                 </div>
@@ -139,10 +140,10 @@ export const Services: React.FC = () => {
         <div className="mt-12 bg-white rounded-2xl p-6 border border-brand-border/70 flex flex-col sm:flex-row items-center justify-between gap-4 text-right">
           <div className="space-y-1">
             <h4 className="text-sm sm:text-base font-bold text-brand-dark">
-              هل تحتاج إلى استشارة عاجلة أو متابعة خاصة لحالة حرجة؟
+              {t('هل تحتاج إلى استشارة عاجلة أو متابعة خاصة لحالة حرجة؟')}
             </h4>
             <p className="text-xs sm:text-sm text-brand-muted">
-              يمكنك التنسيق المباشر مع طاقم العيادة لترتيب حضور المريض أو تقييم الفحوصات والتحاليل الطبية.
+              {t('يمكنك التنسيق المباشر مع طاقم العيادة لترتيب حضور المريض أو تقييم الفحوصات والتحاليل الطبية.')}
             </p>
           </div>
           <a
@@ -150,7 +151,7 @@ export const Services: React.FC = () => {
             className="shrink-0 bg-brand-royal text-white px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm hover:bg-brand-medical transition-colors flex items-center gap-2"
           >
             <Phone className="w-4 h-4 text-brand-lime" />
-            <span>اتصل للاستفسار ({clinic.phoneClinic})</span>
+            <span>{t('اتصل للاستفسار')} ({clinic.phoneClinic})</span>
           </a>
         </div>
 

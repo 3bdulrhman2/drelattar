@@ -1,9 +1,10 @@
 import React from 'react';
 import { Phone, MessageCircle, MapPin } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 
 export const QuickCallFloating: React.FC = () => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t } = useLang();
   const { clinic, social } = data;
 
   return (
@@ -15,7 +16,7 @@ export const QuickCallFloating: React.FC = () => {
           className="flex-1 flex items-center justify-center gap-2 bg-brand-royal text-white py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-all"
         >
           <Phone className="w-4 h-4 text-brand-lime" />
-          <span>اتصال بالعيادة</span>
+          <span>{t('اتصال بالعيادة')}</span>
         </a>
 
         {/* WhatsApp Button */}
@@ -26,7 +27,7 @@ export const QuickCallFloating: React.FC = () => {
           className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-all"
         >
           <MessageCircle className="w-4 h-4" />
-          <span>واتساب</span>
+          <span>{t('واتساب')}</span>
         </a>
 
         {/* Location Button */}
@@ -34,7 +35,7 @@ export const QuickCallFloating: React.FC = () => {
           href={clinic.googleMapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="الموقع على الخريطة"
+          aria-label={t('الموقع على الخريطة')}
           className="p-2.5 bg-slate-100 text-brand-royal rounded-xl border border-slate-200 active:scale-95 transition-all"
         >
           <MapPin className="w-4 h-4 text-brand-medical" />

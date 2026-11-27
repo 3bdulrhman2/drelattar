@@ -15,7 +15,7 @@ import {
   MessageCircle,
   CalendarOff,
 } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 import { supabase } from '../../lib/supabase';
 import {
   getCairoDateTime,
@@ -23,15 +23,18 @@ import {
   getUpcomingCairoDays,
   formatTimeArabic,
   formatTimeArabicFull,
+  formatTimeEnglish,
   formatAppointmentDateArabic,
+  formatAppointmentDateEnglish,
   isDateClosed,
 } from '../../lib/cairoTime';
 
 export const PublicBookingModule: React.FC = () => {
-  const { data, addBookingAppointment } = useContent();
+  const { data, addBookingAppointment } = useSiteContent();
+  const { t, isEn } = useLang();
   const { bookingSettings, clinic, doctor } = data;
 
-  const { cairoTodayStr, formattedDateArabic } = getCairoDateTime();
+  const { cairoTodayStr, formattedDateArabic, formattedDateEnglish } = getCairoDateTime();
   const advanceDaysCount = Number(bookingSettings.maxAdvanceDays) > 0 ? Number(bookingSettings.maxAdvanceDays) : 14;
   const upcomingDays = useMemo(() => getUpcomingCairoDays(advanceDaysCount), [cairoTodayStr, advanceDaysCount]);
 
@@ -62,11 +65,11 @@ export const PublicBookingModule: React.FC = () => {
 
   const slotIntervalLabel = useMemo(() => {
     const mins = Number(bookingSettings.slotDurationMinutes) || 60;
-    if (mins === 15) return 'كل ربع ساعة';
-    if (mins === 30) return 'كل نصف ساعة';
-    if (mins === 45) return 'كل ساعة إلا ربع';
-    return 'كل ساعة';
-  }, [bookingSettings.slotDurationMinutes]);
+    if (mins === 15) return t('كل ربع ساعة');
+    if (mins === 30) return t('كل نصف ساعة');
+    if (mins === 45) return t('كل ساعة إلا ربع');
+    return t('كل ساعة');
+  }, [bookingSettings.slotDurationMinutes, t]);
 
   const [bookedTimesForSelectedDate,setBookedTimes]=useState<string[]>([]);
   const [availabilityReady,setAvailabilityReady]=useState(false);
@@ -77,7 +80,7 @@ export const PublicBookingModule: React.FC = () => {
   const refreshAvailability = async (preserveSubmitError = false) => {
     if(!supabase||!bookingSettings.isEnabled){setAvailabilityReady(false);setAvailabilityError(true);return;}
     const {data:rows,error}=await supabase.rpc('get_booked_slots',{p_date:selectedDate});
-    if(error){setAvailabilityReady(false);setAvailabilityError(true);if(!preserveSubmitError)setSubmitError('تعذر تحديث المواعيد. راجع العيادة قبل إرسال طلب مختلف.');return;}
+    if(error){setAvailabilityReady(false);setAvailabilityError(true);if(!preserveSubmitError)setSubmitError(t('تعذر تحديث المواعيد. راجع العيادة قبل إرسال طلب مختلف.'));return;}
     setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);setAvailabilityError(false);
   };
   useEffect(()=>{
@@ -85,7 +88,7 @@ export const PublicBookingModule: React.FC = () => {
     if(supabase&&bookingSettings.isEnabled){
       supabase.rpc('get_booked_slots',{p_date:selectedDate}).then(({data:rows,error})=>{
         if(!active)return;
-        if(error){setAvailabilityError(true);setSubmitError('تعذر التحقق من المواعيد. لم يُرسل أي طلب.');return;}
+        if(error){setAvailabilityError(true);setSubmitError(t('تعذر التحقق من المواعيد. لم يُرسل أي طلب.'));return;}
         setBookedTimes((rows||[]).map((r:any)=>r.appointment_time));setAvailabilityReady(true);setAvailabilityError(false);
       });
     }
@@ -114,11 +117,11 @@ export const PublicBookingModule: React.FC = () => {
     if(isSubmitting||!availabilityReady)return;
     setSubmitError('');
     if (selectedDateClosure.isClosed) {
-      alert(`عذراً، هذا اليوم غير متاح للحجز (${selectedDateClosure.reason || 'العيادة مغلقة'}). يرجى اختيار يوم آخر.`);
+      alert(`${t('عذراً، هذا اليوم غير متاح للحجز')} (${isEn ? t('العيادة مغلقة') : (selectedDateClosure.reason || t('العيادة مغلقة'))}). ${t('يرجى اختيار يوم آخر.')}`);
       return;
     }
     if (!patientName.trim() || !patientPhone.trim() || !selectedDate || !selectedTime) {
-      alert('يرجى ملء جميع البيانات الأساسية واختيار موعد الكشف');
+      alert(t('يرجى ملء جميع البيانات الأساسية واختيار موعد الكشف'));
       return;
     }
 
@@ -134,7 +137,7 @@ export const PublicBookingModule: React.FC = () => {
         date:selectedDate,time:selectedTime,service:'زيارة العيادة'});
       request.current=null;
     } catch(error) {
-      setSubmitError(error instanceof Error?error.message:'لم يتم حفظ الطلب.');
+      setSubmitError(error instanceof Error?error.message:t('لم يتم حفظ الطلب.'));
       await refreshAvailability(true);
       return;
     } finally {setIsSubmitting(false);}
@@ -157,6 +160,10 @@ export const PublicBookingModule: React.FC = () => {
     'استشارة طبية وفحص شامل',
   ];
 
+  const slotLabel = (time: string) => (isEn ? formatTimeEnglish(time) : formatTimeArabic(time));
+  const slotLabelFull = (time: string) => (isEn ? formatTimeEnglish(time) : formatTimeArabicFull(time));
+  const dateLabel = (dateStr: string) => (isEn ? formatAppointmentDateEnglish(dateStr) : formatAppointmentDateArabic(dateStr));
+
   if (!bookingSettings.isEnabled) return null;
   return (
     <section id="booking" className="py-16 lg:py-24 bg-gradient-to-b from-white via-purple-50/30 to-brand-bg relative overflow-hidden">
@@ -171,20 +178,20 @@ export const PublicBookingModule: React.FC = () => {
         <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold shadow-xs">
             <Calendar className="w-4 h-4 text-purple-700" />
-            <span>نظام الحجز المسبق الإلكتروني</span>
+            <span>{t('نظام الحجز المسبق الإلكتروني')}</span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-brand-dark leading-tight">
-            احجز موعد كشفك مسبقاً بكل سهولة
+            {t('احجز موعد كشفك مسبقاً بكل سهولة')}
           </h2>
 
           <p className="text-xs sm:text-sm md:text-base text-brand-muted leading-relaxed">
-            اختر الموعد الأنسب لك من المواعيد المتاحة؛ المواعيد بتوقيت القاهرة الرسمي، وبمعدل حجز واحد كل ساعة لضمان راحتكم وعدم التكدس (يلزم الحجز قبل الموعد بـ 3 ساعات على الأقل).
+            {t('اختر الموعد الأنسب لك من المواعيد المتاحة؛ المواعيد بتوقيت القاهرة الرسمي، وبمعدل حجز واحد كل ساعة لضمان راحتكم وعدم التكدس (يلزم الحجز قبل الموعد بـ 3 ساعات على الأقل).')}
           </p>
 
           <div className="flex items-center justify-center gap-2 text-xs font-semibold text-purple-800 bg-purple-50 py-1.5 px-4 rounded-xl border border-purple-100 w-fit mx-auto">
             <Clock className="w-3.5 h-3.5 text-purple-600" />
-            <span>التوقيت الحالي: بتوقيت القاهرة (Africa/Cairo) • {formattedDateArabic}</span>
+            <span>{t('التوقيت الحالي:')} {t('بتوقيت القاهرة (Africa/Cairo)')} • {isEn ? formattedDateEnglish : formattedDateArabic}</span>
           </div>
         </div>
 
@@ -197,48 +204,48 @@ export const PublicBookingModule: React.FC = () => {
 
             <div className="space-y-2">
               <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                تم استلام طلب الحجز بنجاح
+                {t('تم استلام طلب الحجز بنجاح')}
               </span>
               <h3 className="text-xl sm:text-2xl font-black text-brand-dark">
-                أهلاً بك يا {submittedBooking.patientName}، طلبك مسجل لدينا!
+                {t('أهلاً بك يا')} {submittedBooking.patientName}{t('، طلبك مسجل لدينا!')}
               </h3>
               <p className="text-xs sm:text-sm text-brand-muted max-w-md mx-auto">
-                تم حفظ طلبك بحالة انتظار المراجعة. الموعد غير مؤكد نهائياً حتى تؤكده العيادة.
+                {t('تم حفظ طلبك بحالة انتظار المراجعة. الموعد غير مؤكد نهائياً حتى تؤكده العيادة.')}
               </p>
             </div>
 
             {/* Appointment Ticket Card */}
             <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 max-w-md mx-auto text-right space-y-3 text-xs">
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">رقم الحجز:</span>
+                <span className="text-slate-500">{t('رقم الحجز:')}</span>
                 <span className="font-mono font-bold text-brand-royal text-sm">{submittedBooking.id}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">اسم المريض:</span>
+                <span className="text-slate-500">{t('اسم المريض:')}</span>
                 <span className="font-bold text-slate-800">{submittedBooking.patientName}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">رقم التواصل:</span>
+                <span className="text-slate-500">{t('رقم التواصل:')}</span>
                 <span className="font-mono font-bold text-slate-800" dir="ltr">{submittedBooking.patientPhone}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">الطبيب:</span>
+                <span className="text-slate-500">{t('الطبيب:')}</span>
                 <span className="font-bold text-slate-800">{doctor.nameAr}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">تاريخ الحجز:</span>
-                <span className="font-bold text-purple-700">{formatAppointmentDateArabic(submittedBooking.date)}</span>
+                <span className="text-slate-500">{t('تاريخ الحجز:')}</span>
+                <span className="font-bold text-purple-700">{dateLabel(submittedBooking.date)}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">موعد الزيارة (توقيت القاهرة):</span>
-                <span className="font-black text-emerald-700 text-sm">{formatTimeArabicFull(submittedBooking.time)}</span>
+                <span className="text-slate-500">{t('موعد الزيارة (توقيت القاهرة):')}</span>
+                <span className="font-black text-emerald-700 text-sm">{slotLabelFull(submittedBooking.time)}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="text-slate-500">نوع الخدمة:</span>
-                <span className="font-bold text-slate-800">{submittedBooking.service}</span>
+                <span className="text-slate-500">{t('نوع الخدمة:')}</span>
+                <span className="font-bold text-slate-800">{t(submittedBooking.service)}</span>
               </div>
               <div className="flex items-start justify-between pt-1">
-                <span className="text-slate-500 shrink-0">مقر العيادة:</span>
+                <span className="text-slate-500 shrink-0">{t('مقر العيادة:')}</span>
                 <span className="font-medium text-slate-700 text-left">{clinic.address}</span>
               </div>
             </div>
@@ -247,29 +254,23 @@ export const PublicBookingModule: React.FC = () => {
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <a
                 href={import.meta.env.MODE === 'isolated' ? undefined : `https://wa.me/201060918977?text=${encodeURIComponent(
-`السلام عليكم، أرغب في تأكيد حجز موعد بالعيادة.
-
-اسم المريض: ${submittedBooking.patientName}
-رقم التواصل: ${submittedBooking.patientPhone}
-رقم الحجز: ${submittedBooking.id}
-تاريخ الحجز: ${formatAppointmentDateArabic(submittedBooking.date)}
-موعد الزيارة: ${formatTimeArabicFull(submittedBooking.time)}
-
-شكرًا لحضرتكم.`
+                  isEn
+                    ? `Hello, I would like to confirm an appointment at the clinic.\n\nPatient name: ${submittedBooking.patientName}\nContact number: ${submittedBooking.patientPhone}\nBooking number: ${submittedBooking.id}\nBooking date: ${dateLabel(submittedBooking.date)}\nVisit time: ${slotLabelFull(submittedBooking.time)}\n\nThank you.`
+                    : `السلام عليكم، أرغب في تأكيد حجز موعد بالعيادة.\n\nاسم المريض: ${submittedBooking.patientName}\nرقم التواصل: ${submittedBooking.patientPhone}\nرقم الحجز: ${submittedBooking.id}\nتاريخ الحجز: ${dateLabel(submittedBooking.date)}\nموعد الزيارة: ${slotLabelFull(submittedBooking.time)}\n\nشكرًا لحضرتكم.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition-all shadow-md"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>{import.meta.env.MODE === 'isolated' ? 'التواصل الخارجي معطل في النسخة التجريبية' : 'مراجعة طلب الموعد مع العيادة عبر الواتساب'}</span>
+                <span>{import.meta.env.MODE === 'isolated' ? t('التواصل الخارجي معطل في النسخة التجريبية') : t('مراجعة طلب الموعد مع العيادة عبر الواتساب')}</span>
               </a>
 
               <button
                 onClick={() => setSubmittedBooking(null)}
                 className="px-5 py-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition-colors"
               >
-                حجز موعد آخر
+                {t('حجز موعد آخر')}
               </button>
             </div>
           </div>
@@ -281,15 +282,15 @@ export const PublicBookingModule: React.FC = () => {
           >
             
             {submitError && <p role="alert" className="p-4 rounded-xl bg-red-50 text-red-800">{submitError}</p>}
-            {!availabilityReady && !submitError && <p role="status">جار التحقق من المواعيد...</p>}
+            {!availabilityReady && !submitError && <p role="status">{t('جار التحقق من المواعيد...')}</p>}
             {/* STEP 1: SELECT DATE */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm sm:text-base font-bold text-brand-dark flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">1</span>
-                  <span>اختر يوم الكشف:</span>
+                  <span>{t('اختر يوم الكشف:')}</span>
                 </h3>
-                <span className="text-xs text-brand-muted">متاح لـ {advanceDaysCount} يوماً قادمة</span>
+                <span className="text-xs text-brand-muted">{t('متاح لـ')} {advanceDaysCount} {t('يوماً قادمة')}</span>
               </div>
 
               {/* Day selection pills carousel */}
@@ -313,13 +314,13 @@ export const PublicBookingModule: React.FC = () => {
                           : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-200'
                       }`}
                     >
-                      <span className="block text-xs font-bold leading-tight">{day.dayNameAr}</span>
+                      <span className="block text-xs font-bold leading-tight">{isEn ? day.dayNameEn : day.dayNameAr}</span>
                       <span className={`block text-[10px] mt-0.5 ${isSelected ? 'text-purple-200' : 'text-slate-400'}`}>
-                        {day.dateFormattedAr}
+                        {isEn ? day.dateFormattedEn : day.dateFormattedAr}
                       </span>
                       {dayClosure.isClosed && (
                         <span className={`block text-[9px] font-black mt-0.5 ${isSelected ? 'text-rose-200' : 'text-rose-500'}`}>
-                          إجازة / مغلق
+                          {t('إجازة / مغلق')}
                         </span>
                       )}
                     </button>
@@ -333,38 +334,38 @@ export const PublicBookingModule: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <h3 className="text-sm sm:text-base font-bold text-brand-dark flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">2</span>
-                  <span>اختر التوقيت المتاح ({slotIntervalLabel}):</span>
+                  <span>{t('اختر التوقيت المتاح')} ({slotIntervalLabel}):</span>
                 </h3>
                 <span className="text-xs font-bold text-purple-700">
-                  {selectedDateClosure.isClosed ? 'مغلق' : !availabilityReady ? 'جاري تحميل المواعيد...' : `${availableSlots.length} مواعيد شاغرة متاحة`}
+                  {selectedDateClosure.isClosed ? t('مغلق') : !availabilityReady ? t('جاري تحميل المواعيد...') : `${availableSlots.length} ${t('مواعيد شاغرة متاحة')}`}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                • فاصل المواعيد: {slotIntervalLabel} لمنع التكدس • يشترط الحجز قبل الموعد بـ 3 ساعات على الأقل • الإتاحة النهائية تُراجع عند حفظ الطلب
+                • {t('فاصل المواعيد:')} {slotIntervalLabel} {t('لمنع التكدس • يشترط الحجز قبل الموعد بـ 3 ساعات على الأقل • الإتاحة النهائية تُراجع عند حفظ الطلب')}
               </p>
 
               {selectedDateClosure.isClosed ? (
                 <div className="p-5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm font-bold text-center flex flex-col items-center gap-2">
                   <CalendarOff className="w-6 h-6 text-rose-600 animate-pulse" />
-                  <span>{selectedDateClosure.reason || 'نعتذر، العيادة مغلقة في هذا اليوم ولا يتم استقبال حجوزات جديدة.'}</span>
-                  <span className="text-[11px] font-normal text-rose-600">يرجى اختيار يوم آخر متاح من الأيام الموضحة بالأعلى.</span>
+                  <span>{isEn ? t('نعتذر، العيادة مغلقة في هذا اليوم ولا يتم استقبال حجوزات جديدة.') : (selectedDateClosure.reason || 'نعتذر، العيادة مغلقة في هذا اليوم ولا يتم استقبال حجوزات جديدة.')}</span>
+                  <span className="text-[11px] font-normal text-rose-600">{t('يرجى اختيار يوم آخر متاح من الأيام الموضحة بالأعلى.')}</span>
                 </div>
               ) : !availabilityReady ? (
                 availabilityError ? (
                   <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-2">
                     <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
                     <p className="text-xs sm:text-sm font-bold text-rose-900">
-                      تعذر تحميل مواعيد هذا اليوم حالياً
+                      {t('تعذر تحميل مواعيد هذا اليوم حالياً')}
                     </p>
                     <p className="text-xs text-rose-700">
-                      يرجى إعادة اختيار اليوم مرة أخرى، أو الاتصال بالعيادة مباشرة إذا استمرت المشكلة.
+                      {t('يرجى إعادة اختيار اليوم مرة أخرى، أو الاتصال بالعيادة مباشرة إذا استمرت المشكلة.')}
                     </p>
                   </div>
                 ) : (
                   <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2" aria-live="polite">
                     <Clock className="w-8 h-8 text-slate-400 mx-auto animate-pulse" />
                     <p className="text-xs sm:text-sm font-bold text-slate-600">
-                      جاري تحميل المواعيد المتاحة لهذا اليوم...
+                      {t('جاري تحميل المواعيد المتاحة لهذا اليوم...')}
                     </p>
                   </div>
                 )
@@ -384,7 +385,7 @@ export const PublicBookingModule: React.FC = () => {
                         }`}
                       >
                         <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
-                        <span>{slot.labelAr}</span>
+                        <span>{isEn ? slot.labelEn : slot.labelAr}</span>
                       </button>
                     );
                   })}
@@ -393,10 +394,10 @@ export const PublicBookingModule: React.FC = () => {
                 <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-2">
                   <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
                   <p className="text-xs sm:text-sm font-bold text-amber-900">
-                    عذراً، اكتملت جميع المواعيد المتاحة لهذا اليوم ({selectedDate})
+                    {t('عذراً، اكتملت جميع المواعيد المتاحة لهذا اليوم')} ({selectedDate})
                   </p>
                   <p className="text-xs text-amber-700">
-                    يرجى اختيار يوم آخر من الأيام بالأعلى، أو الاتصال بالعيادة مباشرة للحالات الطارئة.
+                    {t('يرجى اختيار يوم آخر من الأيام بالأعلى، أو الاتصال بالعيادة مباشرة للحالات الطارئة.')}
                   </p>
                 </div>
               )}
@@ -404,7 +405,7 @@ export const PublicBookingModule: React.FC = () => {
               {selectedTime && (
                 <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 pt-1">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>الموعد المختار: {formatTimeArabic(selectedTime)} بتوقيت القاهرة</span>
+                  <span>{t('الموعد المختار:')} {slotLabel(selectedTime)} {t('بتوقيت القاهرة')}</span>
                 </p>
               )}
             </div>
@@ -413,7 +414,7 @@ export const PublicBookingModule: React.FC = () => {
             <div className="space-y-4 pt-2 border-t border-slate-100">
               <h3 className="text-sm sm:text-base font-bold text-brand-dark flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs flex items-center justify-center font-bold">3</span>
-                <span>بيانات المريض للتأكيد:</span>
+                <span>{t('بيانات المريض للتأكيد:')}</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -421,7 +422,7 @@ export const PublicBookingModule: React.FC = () => {
                 {/* Patient Name */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    اسم المريض ثلاثي / رباعي *
+                    {t('اسم المريض ثلاثي / رباعي *')}
                   </label>
                   <div className="relative">
                     <input
@@ -429,7 +430,7 @@ export const PublicBookingModule: React.FC = () => {
                       required
                       value={patientName}
                       onChange={(e) => setPatientName(e.target.value)}
-                      placeholder="مثال: أحمد محمد علي"
+                      placeholder={t('مثال: أحمد محمد علي')}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-3 py-2.5 text-xs sm:text-sm text-brand-dark placeholder-slate-400 focus:outline-hidden focus:border-purple-600 focus:bg-white transition-colors"
                     />
                     <User className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
@@ -439,7 +440,7 @@ export const PublicBookingModule: React.FC = () => {
                 {/* Patient Phone */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    رقم هاتف المريض أو المرافق (للتأكيد) *
+                    {t('رقم هاتف المريض أو المرافق (للتأكيد) *')}
                   </label>
                   <div className="relative">
                     <input
@@ -461,7 +462,7 @@ export const PublicBookingModule: React.FC = () => {
             {/* SUBMIT BUTTON */}
             <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-xs text-brand-muted">
-                * تُراجع إتاحة الموعد عند الحفظ. الطلب ينتظر تأكيد العيادة.
+                {t('* تُراجع إتاحة الموعد عند الحفظ. الطلب ينتظر تأكيد العيادة.')}
               </div>
 
               <button
@@ -471,9 +472,9 @@ export const PublicBookingModule: React.FC = () => {
               >
                 <Calendar className="w-4 h-4 text-brand-lime" />
                 <span>
-                  {isSubmitting ? 'جار حفظ الطلب...' : selectedTime
-                    ? `إرسال طلب الحجز (${formatTimeArabic(selectedTime)})`
-                    : 'اختر التوقيت أولاً لتأكيد الحجز'}
+                  {isSubmitting ? t('جار حفظ الطلب...') : selectedTime
+                    ? `${t('إرسال طلب الحجز')} (${slotLabel(selectedTime)})`
+                    : t('اختر التوقيت أولاً لتأكيد الحجز')}
                 </span>
               </button>
             </div>

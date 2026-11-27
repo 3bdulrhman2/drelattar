@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { ChevronDown, HelpCircle, Phone, MapPin, Clock } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 
 export const FAQ: React.FC = () => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t } = useLang();
   const { faq, visibility, clinic } = data;
   const [openId, setOpenId] = useState<string | null>(faq[0]?.id || null);
 
@@ -23,13 +24,13 @@ export const FAQ: React.FC = () => {
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-cyan-light text-brand-royal text-xs font-semibold">
             <HelpCircle className="w-3.5 h-3.5 text-brand-medical" />
-            <span>إجابات واضحة ودقيقة</span>
+            <span>{t('إجابات واضحة ودقيقة')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark">
-            الأسئلة الشائعة والمعلومات الهامة
+            {t('الأسئلة الشائعة والمعلومات الهامة')}
           </h2>
           <p className="text-sm sm:text-base text-brand-muted">
-            إجابات شاملة عن كل ما يخص مواعيد العيادة، الخدمات المتوفرة، وكيفية الوصول والتواصل
+            {t('إجابات شاملة عن كل ما يخص مواعيد العيادة، الخدمات المتوفرة، وكيفية الوصول والتواصل')}
           </p>
         </div>
 
@@ -75,15 +76,15 @@ export const FAQ: React.FC = () => {
         {/* Quick Help Footer Box */}
         <div className="mt-10 p-5 rounded-2xl bg-brand-bg border border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
           <div>
-            <p className="text-sm font-bold text-brand-dark">هل لديك استفسار طبي أو تنظيمي آخر؟</p>
-            <p className="text-xs text-brand-muted mt-0.5">يسعدنا استقبال اتصالاتكم والإجابة على كافة الأسئلة مباشرة.</p>
+            <p className="text-sm font-bold text-brand-dark">{t('هل لديك استفسار طبي أو تنظيمي آخر؟')}</p>
+            <p className="text-xs text-brand-muted mt-0.5">{t('يسعدنا استقبال اتصالاتكم والإجابة على كافة الأسئلة مباشرة.')}</p>
           </div>
           <a
             href={`tel:${clinic.phoneClinic}`}
             className="inline-flex items-center gap-2 bg-brand-royal text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-brand-medical transition-colors"
           >
             <Phone className="w-4 h-4 text-brand-lime" />
-            <span>اتصل الآن ({clinic.phoneClinic})</span>
+            <span>{t('اتصل الآن')} ({clinic.phoneClinic})</span>
           </a>
         </div>
 

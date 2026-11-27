@@ -1,9 +1,10 @@
 import React from 'react';
 import { Phone, MessageCircle, Clock, MapPin, ExternalLink, Share2, HeartPulse, Stethoscope, ChevronLeft } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 
 export const ContactSection: React.FC = () => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t } = useLang();
   const { clinic, doctor, social } = data;
 
   const socialChannels = [
@@ -17,7 +18,7 @@ export const ContactSection: React.FC = () => {
         </svg>
       ),
       bg: 'hover:bg-blue-600 hover:text-white hover:border-blue-600',
-      badge: 'الصفحة الرسمية',
+      badge: t('الصفحة الرسمية'),
     },
     {
       name: 'Instagram',
@@ -29,7 +30,7 @@ export const ContactSection: React.FC = () => {
         </svg>
       ),
       bg: 'hover:bg-gradient-to-tr hover:from-amber-500 hover:via-pink-500 hover:to-purple-600 hover:text-white',
-      badge: 'محتوى توعوي',
+      badge: t('محتوى توعوي'),
     },
     {
       name: 'TikTok',
@@ -41,7 +42,7 @@ export const ContactSection: React.FC = () => {
         </svg>
       ),
       bg: 'hover:bg-black hover:text-white hover:border-black',
-      badge: 'فيديوهات طبية',
+      badge: t('فيديوهات طبية'),
     },
   ];
 
@@ -53,13 +54,13 @@ export const ContactSection: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-cyan-light text-brand-royal text-xs font-semibold">
             <Phone className="w-3.5 h-3.5 text-brand-medical" />
-            <span>قنوات الاتصال المباشرة</span>
+            <span>{t('قنوات الاتصال المباشرة')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark">
-            تواصل مع عيادة الدكتور محمد السيد العطار
+            {t('تواصل مع عيادة الدكتور محمد السيد العطار')}
           </h2>
           <p className="text-sm sm:text-base text-brand-muted">
-            فريق العيادة جاهز للرد على استفساراتكم وترتيب حضوركم ومتابعة حالاتكم الصحية
+            {t('فريق العيادة جاهز للرد على استفساراتكم وترتيب حضوركم ومتابعة حالاتكم الصحية')}
           </p>
         </div>
 
@@ -74,20 +75,20 @@ export const ContactSection: React.FC = () => {
               <div className="relative z-10 space-y-6 text-right">
                 <div>
                   <span className="inline-block text-xs font-semibold text-brand-cyan bg-white/10 px-3 py-1 rounded-full mb-3">
-                    متاح خلال مواعيد العمل الرسمية
+                    {t('متاح خلال مواعيد العمل الرسمية')}
                   </span>
                   <h3 className="text-xl sm:text-2xl font-black">
-                    الاتصال الهاتفي المباشر بالعيادة
+                    {t('الاتصال الهاتفي المباشر بالعيادة')}
                   </h3>
                   <p className="text-xs sm:text-sm text-white/80 mt-1 max-w-md">
-                    يمكنكم الاتصال مباشرة لترتيب موعد الكشف، الاستفسار عن التحاليل، أو متابعة الحالات الحرجة.
+                    {t('يمكنكم الاتصال مباشرة لترتيب موعد الكشف، الاستفسار عن التحاليل، أو متابعة الحالات الحرجة.')}
                   </p>
                 </div>
 
                 {/* Primary Call Box - Clinic */}
                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/20 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-right">
-                    <span className="block text-xs text-white/70">رقم العيادة الأساسي</span>
+                    <span className="block text-xs text-white/70">{t('رقم العيادة الأساسي')}</span>
                     <span className="block text-xl sm:text-2xl font-black tracking-wide" dir="ltr">
                       {clinic.phoneClinic}
                     </span>
@@ -99,7 +100,7 @@ export const ContactSection: React.FC = () => {
                       className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 bg-brand-lime text-brand-royal font-bold px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition-all text-sm shadow-md"
                     >
                       <Phone className="w-4 h-4" />
-                      <span>اتصال الآن</span>
+                      <span>{t('اتصال الآن')}</span>
                     </a>
 
                     <a
@@ -107,10 +108,10 @@ export const ContactSection: React.FC = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center justify-center gap-2 bg-emerald-500 text-white font-bold p-2.5 sm:px-4 sm:py-2.5 rounded-xl hover:bg-emerald-600 transition-all text-sm shadow-md"
-                      title="مراسلة عبر واتساب"
+                      title={t('مراسلة عبر واتساب')}
                     >
                       <MessageCircle className="w-4 h-4" />
-                      <span className="hidden sm:inline">واتساب</span>
+                      <span className="hidden sm:inline">{t('واتساب')}</span>
                     </a>
                   </div>
                 </div>
@@ -118,7 +119,7 @@ export const ContactSection: React.FC = () => {
                 {/* Secondary Call Box - Doctor direct */}
                 <div className="bg-black/15 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/15 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-right">
-                    <span className="block text-xs text-white/70">هاتف الدكتور محمد السيد العطار</span>
+                    <span className="block text-xs text-white/70">{t('هاتف الدكتور محمد السيد العطار')}</span>
                     <span className="block text-lg sm:text-xl font-bold tracking-wide" dir="ltr">
                       {clinic.phoneDoctor}
                     </span>
@@ -130,7 +131,7 @@ export const ContactSection: React.FC = () => {
                       className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 bg-white text-brand-royal font-bold px-4 py-2 rounded-xl hover:bg-slate-100 transition-all text-xs sm:text-sm shadow-sm"
                     >
                       <Phone className="w-3.5 h-3.5 text-brand-medical" />
-                      <span>اتصال بالطبيب</span>
+                      <span>{t('اتصال بالطبيب')}</span>
                     </a>
 
                     <a
@@ -138,10 +139,10 @@ export const ContactSection: React.FC = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center justify-center gap-2 bg-emerald-500/90 text-white font-bold p-2 sm:px-3 sm:py-2 rounded-xl hover:bg-emerald-600 transition-all text-xs sm:text-sm"
-                      title="مراسلة الطبيب عبر واتساب"
+                      title={t('مراسلة الطبيب عبر واتساب')}
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">واتساب</span>
+                      <span className="hidden sm:inline">{t('واتساب')}</span>
                     </a>
                   </div>
                 </div>
@@ -150,7 +151,7 @@ export const ContactSection: React.FC = () => {
                 <div className="pt-2 flex items-center gap-3 text-xs text-white/90">
                   <Clock className="w-4 h-4 text-brand-lime shrink-0" />
                   <span>
-                    السبت – الخميس: 1:00 م حتى 9:00 م | الجمعة: 4:00 م حتى 10:00 م
+                    {t('السبت – الخميس: 1:00 م حتى 9:00 م | الجمعة: 4:00 م حتى 10:00 م')}
                   </span>
                 </div>
               </div>
@@ -165,16 +166,16 @@ export const ContactSection: React.FC = () => {
             <div className="bg-brand-bg rounded-3xl p-6 border border-brand-border/70 space-y-4 text-right">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-brand-medical bg-white px-3 py-1 rounded-full border border-brand-border">
-                  تواصل تفاعلي
+                  {t('تواصل تفاعلي')}
                 </span>
                 <h4 className="text-base font-bold text-brand-dark flex items-center gap-2">
                   <Share2 className="w-4 h-4 text-brand-royal" />
-                  <span>الصفحات الطبية الرسمية</span>
+                  <span>{t('الصفحات الطبية الرسمية')}</span>
                 </h4>
               </div>
 
               <p className="text-xs text-brand-muted">
-                تابع الدكتور محمد السيد العطار للاطلاع على النصائح الطبية والتوعية الصحية بأمراض الباطنة والوقاية:
+                {t('تابع الدكتور محمد السيد العطار للاطلاع على النصائح الطبية والتوعية الصحية بأمراض الباطنة والوقاية:')}
               </p>
 
               <div className="space-y-3 pt-1">
@@ -192,7 +193,7 @@ export const ContactSection: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <span className="block text-sm font-bold text-brand-dark group-hover:text-inherit">
-                          {item.nameAr}
+                          {t(item.nameAr)}
                         </span>
                         <span className="block text-[11px] text-brand-muted group-hover:text-inherit/80">
                           {item.badge}
@@ -209,10 +210,10 @@ export const ContactSection: React.FC = () => {
             <div className="bg-white rounded-2xl p-5 border border-brand-border/80 shadow-soft text-right space-y-2">
               <h5 className="text-sm font-bold text-brand-dark flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-brand-cyan" />
-                <span>الزيارة المباشرة للعيادة:</span>
+                <span>{t('الزيارة المباشرة للعيادة:')}</span>
               </h5>
               <p className="text-xs text-brand-muted leading-relaxed">
-                لا يتطلب الكشف حجزا مسبقا إلزامياً؛ نرحب بزيارتكم مباشرة في كوبري واحد الصالحية، أمام موقف السيارات، بحر البقر، مركز الحسينية.
+                {t('لا يتطلب الكشف حجزا مسبقا إلزامياً؛ نرحب بزيارتكم مباشرة في كوبري واحد الصالحية، أمام موقف السيارات، بحر البقر، مركز الحسينية.')}
               </p>
             </div>
 

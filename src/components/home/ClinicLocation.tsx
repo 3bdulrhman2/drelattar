@@ -1,13 +1,14 @@
 import React from 'react';
 import { MapPin, Navigation, ExternalLink, Phone, Clock, Landmark, Compass } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 
 export const ClinicLocation: React.FC = () => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t } = useLang();
   const { clinic } = data;
 
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    'عيادة الدكتور محمد السيد العطار كوبري واحد الصالحية بحر البقر الحسينية الشرقية'
+    `${clinic.name} ${clinic.address}`
   )}`;
 
   return (
@@ -18,13 +19,13 @@ export const ClinicLocation: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-royal/10 text-brand-royal text-xs font-semibold">
             <MapPin className="w-3.5 h-3.5 text-brand-medical" />
-            <span>المقر والموقع الجغرافي</span>
+            <span>{t('المقر والموقع الجغرافي')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark">
-            موقع عيادة الدكتور محمد السيد العطار
+            {t('موقع عيادة الدكتور محمد السيد العطار')}
           </h2>
           <p className="text-sm sm:text-base text-brand-muted">
-            سهولة الوصول وموقع متميز أمام موقف السيارات عند كوبري واحد الصالحية، بحر البقر، مركز الحسينية
+            {t('سهولة الوصول وموقع متميز أمام موقف السيارات عند كوبري واحد الصالحية، بحر البقر، مركز الحسينية')}
           </p>
         </div>
 
@@ -39,13 +40,13 @@ export const ClinicLocation: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-brand-royal font-bold text-sm">
                   <Landmark className="w-4 h-4 text-brand-cyan" />
-                  <span>العنوان التفصيلي:</span>
+                  <span>{t('العنوان التفصيلي:')}</span>
                 </div>
                 <p className="text-base font-bold text-brand-dark leading-relaxed pr-6 border-r-2 border-brand-royal">
                   {clinic.address}
                 </p>
                 <p className="text-xs text-brand-muted pr-6">
-                  علامة مميزة: {clinic.landmark} (فرع واحد مجهز).
+                  {t('علامة مميزة:')} {clinic.landmark} {t('(فرع واحد مجهز).')}
                 </p>
               </div>
 
@@ -53,16 +54,16 @@ export const ClinicLocation: React.FC = () => {
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <div className="flex items-center gap-2 text-brand-royal font-bold text-sm">
                   <Clock className="w-4 h-4 text-brand-lime-dark" />
-                  <span>مواعيد العمل الرسمية:</span>
+                  <span>{t('مواعيد العمل الرسمية:')}</span>
                 </div>
                 <div className="bg-brand-bg rounded-xl p-3.5 space-y-1.5 text-xs sm:text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-brand-dark">السبت إلى الخميس:</span>
-                    <span className="text-brand-royal font-bold">1:00 م – 9:00 م</span>
+                    <span className="font-semibold text-brand-dark">{t('السبت إلى الخميس:')}</span>
+                    <span className="text-brand-royal font-bold">{t('1:00 م – 9:00 م')}</span>
                   </div>
                   <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
-                    <span className="font-semibold text-brand-dark">يوم الجمعة:</span>
-                    <span className="text-brand-medical font-bold">4:00 م – 10:00 م</span>
+                    <span className="font-semibold text-brand-dark">{t('يوم الجمعة:')}</span>
+                    <span className="text-brand-medical font-bold">{t('4:00 م – 10:00 م')}</span>
                   </div>
                 </div>
               </div>
@@ -71,14 +72,14 @@ export const ClinicLocation: React.FC = () => {
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <div className="flex items-center gap-2 text-brand-royal font-bold text-sm">
                   <Phone className="w-4 h-4 text-brand-medical" />
-                  <span>أرقام التواصل المباشرة:</span>
+                  <span>{t('أرقام التواصل المباشرة:')}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <a
                     href={`tel:${clinic.phoneClinic}`}
                     className="p-3 rounded-xl bg-brand-cyan-light/60 border border-brand-cyan/30 text-right hover:bg-brand-cyan-light transition-colors"
                   >
-                    <span className="block text-[11px] text-brand-muted">هاتف العيادة والحجز</span>
+                    <span className="block text-[11px] text-brand-muted">{t('هاتف العيادة والحجز')}</span>
                     <span className="block text-sm font-bold text-brand-royal" dir="ltr">
                       {clinic.phoneClinic}
                     </span>
@@ -88,7 +89,7 @@ export const ClinicLocation: React.FC = () => {
                     href={`tel:${clinic.phoneDoctor}`}
                     className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-right hover:bg-slate-100 transition-colors"
                   >
-                    <span className="block text-[11px] text-brand-muted">هاتف الدكتور المباشر</span>
+                    <span className="block text-[11px] text-brand-muted">{t('هاتف الدكتور المباشر')}</span>
                     <span className="block text-sm font-bold text-brand-dark" dir="ltr">
                       {clinic.phoneDoctor}
                     </span>
@@ -106,7 +107,7 @@ export const ClinicLocation: React.FC = () => {
                 rel="noopener noreferrer"
                 className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-royal text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm hover:bg-brand-medical shadow-soft transition-all"
               >
-                <span>فتح في خرائط Google</span>
+                <span>{t('فتح في خرائط Google')}</span>
                 <ExternalLink className="w-4 h-4" />
               </a>
 
@@ -116,7 +117,7 @@ export const ClinicLocation: React.FC = () => {
                 rel="noopener noreferrer"
                 className="flex-1 inline-flex items-center justify-center gap-2 bg-white text-brand-royal border-2 border-brand-royal/20 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm hover:border-brand-royal hover:bg-slate-50 transition-all"
               >
-                <span>الاتجاهات إلى العيادة</span>
+                <span>{t('الاتجاهات إلى العيادة')}</span>
                 <Navigation className="w-4 h-4 text-brand-medical" />
               </a>
             </div>
@@ -127,7 +128,7 @@ export const ClinicLocation: React.FC = () => {
           <div className="lg:col-span-7 bg-white rounded-3xl overflow-hidden shadow-soft border border-brand-border/70 flex flex-col min-h-[360px] lg:min-h-full">
             <div className="relative w-full h-full min-h-[380px] bg-slate-100">
               <iframe
-                title="موقع عيادة الدكتور محمد السيد العطار"
+                title={t('موقع عيادة الدكتور محمد السيد العطار')}
                 src={clinic.googleMapsEmbedUrl || "https://maps.google.com/maps?cid=11819951956526893739&hl=ar&z=16&output=embed"}
                 className="w-full h-full border-0 absolute inset-0"
                 allowFullScreen={true}

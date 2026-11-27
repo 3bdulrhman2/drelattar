@@ -1,6 +1,6 @@
 import React from 'react';
 import { Gauge, Activity, Scan, Heart, ShieldCheck, Check, Sparkles } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 
 const equipmentIconMap: Record<string, React.FC<{ className?: string }>> = {
   Gauge,
@@ -10,7 +10,8 @@ const equipmentIconMap: Record<string, React.FC<{ className?: string }>> = {
 };
 
 export const Equipment: React.FC = () => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t } = useLang();
   const { equipment, visibility } = data;
 
   if (!visibility.showEquipmentSection) {
@@ -25,13 +26,13 @@ export const Equipment: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-lime-light text-brand-dark text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-brand-lime-dark" />
-            <span>التجهيزات والتقنيات الطبية</span>
+            <span>{t('التجهيزات والتقنيات الطبية')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark">
-            أجهزة تشخيصية متطورة لرعاية دقيقة
+            {t('أجهزة تشخيصية متطورة لرعاية دقيقة')}
           </h2>
           <p className="text-sm sm:text-base text-brand-muted">
-            حرصاً على سلامة المرضى، تم تجهيز عيادة الدكتور محمد السيد العطار بأحدث الأجهزة التشخيصية المعتمدة
+            {t('حرصاً على سلامة المرضى، تم تجهيز عيادة الدكتور محمد السيد العطار بأحدث الأجهزة التشخيصية المعتمدة')}
           </p>
         </div>
 
@@ -77,15 +78,15 @@ export const Equipment: React.FC = () => {
             </div>
             <div>
               <p className="text-xs sm:text-sm font-bold text-brand-dark">
-                أعلى معايير التعقيم ومكافحة العدوى
+                {t('أعلى معايير التعقيم ومكافحة العدوى')}
               </p>
               <p className="text-xs text-brand-muted">
-                تخضع جميع الأجهزة والأدوات لبروتوكولات تعقيم وتطهير دورية وصارمة لضمان بيئة علاجية آمنة.
+                {t('تخضع جميع الأجهزة والأدوات لبروتوكولات تعقيم وتطهير دورية وصارمة لضمان بيئة علاجية آمنة.')}
               </p>
             </div>
           </div>
           <span className="text-xs font-bold text-brand-royal px-3 py-1.5 rounded-lg bg-white shadow-sm border border-brand-border">
-            سلامتكم أولويتنا
+            {t('سلامتكم أولويتنا')}
           </span>
         </div>
 

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Phone, ArrowDown, Award, ShieldCheck, HeartPulse, Sparkles, Stethoscope, ChevronLeft, Calendar } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 
 interface HeroProps {
   onNavigateBooking?: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t } = useLang();
   const { doctor, clinic, bookingSettings } = data;
 
   return (
@@ -29,13 +30,13 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-cyan-light/80 border border-brand-cyan/30 text-brand-royal text-xs sm:text-sm font-semibold">
               <span className="w-2 h-2 rounded-full bg-brand-cyan animate-pulse" />
               <ShieldCheck className="w-4 h-4 text-brand-medical" />
-              <span>عيادة معتمدة – فرع كوبري واحد الصالحية، الحسينية</span>
+              <span>{t('عيادة معتمدة – فرع كوبري واحد الصالحية، الحسينية')}</span>
             </div>
 
             {/* Main Headline */}
             <div className="space-y-3">
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-black text-brand-dark tracking-tight leading-[1.25] text-balance">
-                رعايتك الصحية <span className="bg-gradient-to-l from-brand-royal via-brand-medical to-brand-cyan bg-clip-text text-transparent">تبدأ من هنا</span>
+                {t('رعايتك الصحية')} <span className="bg-gradient-to-l from-brand-royal via-brand-medical to-brand-cyan bg-clip-text text-transparent">{t('تبدأ من هنا')}</span>
               </h1>
               
               <div className="inline-block py-1">
@@ -50,7 +51,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
 
             {/* Supporting Text */}
             <p className="text-base sm:text-lg text-brand-muted leading-relaxed max-w-2xl font-normal">
-              رعاية طبية متخصصة في أمراض الباطنة العامة والعناية المركزة والحالات الحرجة، بخبرة واهتمام بصحتك.
+              {t('رعاية طبية متخصصة في أمراض الباطنة العامة والعناية المركزة والحالات الحرجة، بخبرة واهتمام بصحتك.')}
             </p>
 
             {/* Primary & Secondary Call to Actions */}
@@ -62,7 +63,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
                   <Phone className="w-4 h-4 text-brand-lime" />
                 </div>
-                <span>اتصل الآن</span>
+                <span>{t('اتصل الآن')}</span>
               </a>
 
               {/* احجز موعدك (Navigates to dedicated /booking page - controlled by bookingSettings.isEnabled) */}
@@ -83,7 +84,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
                   <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center group-hover:rotate-12 transition-transform">
                     <Calendar className="w-4 h-4 text-brand-lime" />
                   </div>
-                  <span>احجز موعدك</span>
+                  <span>{t('احجز موعدك')}</span>
                 </a>
               )}
 
@@ -91,18 +92,18 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
                 href="#services"
                 className="inline-flex items-center justify-center gap-2 bg-white text-brand-royal text-base font-semibold px-6 py-3.5 rounded-xl border-2 border-brand-royal/15 hover:border-brand-royal/40 hover:bg-slate-50 transition-all"
               >
-                <span>تعرف على الخدمات</span>
+                <span>{t('تعرف على الخدمات')}</span>
                 <ChevronLeft className="w-4 h-4 text-brand-medical" />
               </a>
             </div>
 
             {/* Quick Consultation Note */}
             <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-xs sm:text-sm text-brand-muted border-t border-brand-border/70 pt-4">
-              <div className="flex items-center gap-1.5 font-medium text-brand-dark">
+              <div className="flex items-center gap-1.5 font-medium text-brand-dark whitespace-nowrap">
                 <Stethoscope className="w-4 h-4 text-brand-medical" />
-                <span>الكشف والمتابعة:</span>
+                <span>{t('الكشف والمتابعة:')}</span>
               </div>
-              <p>الحضور المباشر بالعيادة أو الترتيب المسبق هاتفياً دون انتظار.</p>
+              <p>{t('الحضور المباشر بالعيادة أو الترتيب المسبق هاتفياً دون انتظار.')}</p>
             </div>
           </div>
 
@@ -144,8 +145,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
                   <Award className="w-4 h-4 sm:w-5 sm:h-5 text-brand-royal" />
                 </div>
                 <div className="text-right">
-                  <span className="block text-[11px] sm:text-xs font-medium text-brand-muted">المسيرة المهنية</span>
-                  <span className="block text-xs sm:text-sm font-bold text-brand-dark">خبرة 8 سنوات</span>
+                  <span className="block text-[11px] sm:text-xs font-medium text-brand-muted">{t('المسيرة المهنية')}</span>
+                  <span className="block text-xs sm:text-sm font-bold text-brand-dark">{t('خبرة 8 سنوات')}</span>
                 </div>
               </div>
 
@@ -155,8 +156,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
                   <HeartPulse className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="text-right">
-                  <span className="block text-[10px] sm:text-[11px] font-medium text-brand-muted">التخصص الدقيق</span>
-                  <span className="block text-[11px] sm:text-xs font-bold text-brand-royal">باطنة & عناية مركزة</span>
+                  <span className="block text-[10px] sm:text-[11px] font-medium text-brand-muted">{t('التخصص الدقيق')}</span>
+                  <span className="block text-[11px] sm:text-xs font-bold text-brand-royal">{t('باطنة & عناية مركزة')}</span>
                 </div>
               </div>
 

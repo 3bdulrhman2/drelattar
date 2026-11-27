@@ -1,9 +1,10 @@
 import React from 'react';
 import { GraduationCap, Award, Building2, Stethoscope, CheckCircle, Shield, Sparkles, BookOpen } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 
 export const AboutDoctor: React.FC = () => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t } = useLang();
   const { doctor } = data;
 
   return (
@@ -14,13 +15,13 @@ export const AboutDoctor: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-cyan-light text-brand-royal text-xs font-semibold">
             <Stethoscope className="w-3.5 h-3.5 text-brand-medical" />
-            <span>السيرة المهنية والخبرات الأكاديمية</span>
+            <span>{t('السيرة المهنية والخبرات الأكاديمية')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark">
-            عن الدكتور محمد السيد العطار
+            {t('عن الدكتور محمد السيد العطار')}
           </h2>
           <p className="text-base text-brand-muted">
-            التزام راسخ بالمعايير الطبية المعتمدة وخبرة إكلينيكية متخصصة في الحالات الحرجة وأمراض الباطنة
+            {t('التزام راسخ بالمعايير الطبية المعتمدة وخبرة إكلينيكية متخصصة في الحالات الحرجة وأمراض الباطنة')}
           </p>
         </div>
 
@@ -54,8 +55,8 @@ export const AboutDoctor: React.FC = () => {
                   <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="text-right">
-                  <span className="block text-[10px] sm:text-[11px] text-brand-muted">المؤهل الأكاديمي</span>
-                  <span className="block text-xs sm:text-xs font-bold text-brand-dark">طب الأزهر بالقاهرة</span>
+                  <span className="block text-[10px] sm:text-[11px] text-brand-muted">{t('المؤهل الأكاديمي')}</span>
+                  <span className="block text-xs sm:text-xs font-bold text-brand-dark">{t('طب الأزهر بالقاهرة')}</span>
                 </div>
               </div>
 
@@ -78,7 +79,7 @@ export const AboutDoctor: React.FC = () => {
             <div className="space-y-3 pt-2">
               <h4 className="text-sm font-bold text-brand-dark flex items-center gap-2">
                 <Award className="w-4 h-4 text-brand-lime-dark" />
-                <span>المؤهلات والمناصب الطبية الرسمية:</span>
+                <span>{t('المؤهلات والمناصب الطبية الرسمية:')}</span>
               </h4>
 
               <div className="space-y-2.5">
@@ -102,7 +103,7 @@ export const AboutDoctor: React.FC = () => {
             <div className="pt-2">
               <h4 className="text-sm font-bold text-brand-dark mb-3 flex items-center gap-2">
                 <Shield className="w-4 h-4 text-brand-medical" />
-                <span>مجالات الاختصاص والاهتمام الإكلينيكي:</span>
+                <span>{t('مجالات الاختصاص والاهتمام الإكلينيكي:')}</span>
               </h4>
               
               <div className="flex flex-wrap gap-2">

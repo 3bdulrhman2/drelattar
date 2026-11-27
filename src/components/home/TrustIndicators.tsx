@@ -1,32 +1,34 @@
 import React from 'react';
 import { Award, GraduationCap, Stethoscope, HeartPulse, CheckCircle2 } from 'lucide-react';
+import { useLang } from '../../i18n';
 
 export const TrustIndicators: React.FC = () => {
+  const { t } = useLang();
   const indicators = [
     {
-      title: '8 سنوات من الخبرة',
-      subtitle: 'ممارسة إكلينيكية وعناية مركزة',
+      title: t('8 سنوات من الخبرة'),
+      subtitle: t('ممارسة إكلينيكية وعناية مركزة'),
       icon: Award,
       badgeColor: 'bg-brand-lime-light text-brand-dark',
       iconColor: 'text-brand-lime-dark',
     },
     {
-      title: 'خريج كلية الطب',
-      subtitle: 'جامعة الأزهر بالقاهرة',
+      title: t('خريج كلية الطب'),
+      subtitle: t('جامعة الأزهر بالقاهرة'),
       icon: GraduationCap,
       badgeColor: 'bg-brand-cyan-light text-brand-royal',
       iconColor: 'text-brand-medical',
     },
     {
-      title: 'متخصص في الباطنة والعناية المركزة',
-      subtitle: 'زمالة الباطنة والحالات الحرجة',
+      title: t('متخصص في الباطنة والعناية المركزة'),
+      subtitle: t('زمالة الباطنة والحالات الحرجة'),
       icon: Stethoscope,
       badgeColor: 'bg-blue-50 text-brand-royal',
       iconColor: 'text-brand-royal',
     },
     {
-      title: 'متابعة الحالات المزمنة والحرجة',
-      subtitle: 'بروتوكولات علاجية شاملة ودقيقة',
+      title: t('متابعة الحالات المزمنة والحرجة'),
+      subtitle: t('بروتوكولات علاجية شاملة ودقيقة'),
       icon: HeartPulse,
       badgeColor: 'bg-teal-50 text-teal-900',
       iconColor: 'text-teal-600',
