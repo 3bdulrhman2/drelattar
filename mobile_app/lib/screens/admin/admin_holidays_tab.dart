@@ -7,7 +7,10 @@ import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 
 class AdminHolidaysTab extends StatefulWidget {
-  AdminHolidaysTab({super.key});
+  /// true: only the site announcements card (shown under المزيد).
+  /// false: closures and holidays (shown inside المواعيد).
+  final bool announcementsOnly;
+  AdminHolidaysTab({super.key, this.announcementsOnly = false});
 
   @override
   State<AdminHolidaysTab> createState() => _AdminHolidaysTabState();
@@ -398,6 +401,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!widget.announcementsOnly) ...[
             // Card 1: Today's Closure
             Container(
               padding: EdgeInsets.all(16),
@@ -747,7 +751,8 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
               ),
             ),
             SizedBox(height: 16),
-
+            ],
+            if (widget.announcementsOnly) ...[
             // Card 4: Public Announcements
             Container(
               padding: EdgeInsets.all(16),
@@ -867,6 +872,7 @@ class _AdminHolidaysTabState extends State<AdminHolidaysTab> {
                 ],
               ),
             ),
+            ],
           ],
         ),
       ),
