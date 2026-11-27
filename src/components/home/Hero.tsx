@@ -35,8 +35,8 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
 
             {/* Main Headline */}
             <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-black text-brand-dark tracking-tight leading-[1.5] sm:leading-[1.42] text-balance pb-1.5">
-                {t('رعايتك الصحية')} <span className="inline-block bg-gradient-to-l from-brand-royal via-brand-medical to-brand-cyan bg-clip-text text-transparent pb-1.5">{t('تبدأ من هنا')}</span>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-black text-brand-dark tracking-tight leading-[1.5] md:leading-[1.5] text-balance pb-2">
+                {t('رعايتك الصحية')} <span className="inline-block bg-gradient-to-l from-brand-royal via-brand-medical to-brand-cyan bg-clip-text text-transparent pt-1 pb-2">{t('تبدأ من هنا')}</span>
               </h1>
               
               <div className="inline-block py-1">
