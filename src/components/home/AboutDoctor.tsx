@@ -4,7 +4,7 @@ import { useSiteContent, useLang } from '../../i18n';
 
 export const AboutDoctor: React.FC = () => {
   const { data } = useSiteContent();
-  const { t } = useLang();
+  const { t, isEn } = useLang();
   const { doctor } = data;
 
   return (
@@ -28,19 +28,24 @@ export const AboutDoctor: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           
           {/* Doctor Portrait on Neutral Background */}
-          <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center pb-8 sm:pb-10 w-full max-w-full">
+          <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center pb-16 sm:pb-20 w-full max-w-full">
             <div className="relative w-full max-w-[340px] sm:max-w-[360px] mx-auto">
               
               {/* Backplate decoration */}
               <div className="absolute -inset-1.5 sm:-inset-4 bg-gradient-to-br from-brand-royal/10 via-brand-cyan/10 to-brand-lime/10 rounded-3xl -rotate-1 sm:-rotate-2 pointer-events-none" />
               
               <div className="relative rounded-2xl overflow-hidden bg-white shadow-xl border-2 border-slate-100">
-                <img
-                  src={doctor.avatarNeutral}
-                  alt={doctor.nameAr}
-                  className="w-full h-auto object-cover aspect-[3/4]"
-                  loading="lazy"
-                />
+                <div className="relative aspect-[3/4] bg-gradient-to-b from-brand-cyan-light via-brand-bg to-brand-lime/30">
+                  <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-brand-cyan/25 blur-2xl pointer-events-none" />
+                  <div className="absolute bottom-16 -left-12 w-44 h-44 rounded-full bg-brand-lime/30 blur-2xl pointer-events-none" />
+                  <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-brand-royal/10 to-transparent pointer-events-none" />
+                  <img
+                    src="/brand/doctor-cutout.png"
+                    alt={isEn ? doctor.nameEn : doctor.nameAr}
+                    className="absolute inset-x-0 bottom-0 mx-auto h-[96%] w-auto max-w-none object-contain object-bottom drop-shadow-[0_10px_25px_rgba(15,23,42,0.18)]"
+                    loading="lazy"
+                  />
+                </div>
                 
                 {/* Official seal banner */}
                 <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/50 to-transparent p-4 sm:p-5 text-white text-right z-10">
@@ -50,7 +55,7 @@ export const AboutDoctor: React.FC = () => {
               </div>
 
               {/* Education floating badge (Moved down ~0.7cm so text behind it is completely visible) */}
-              <div className="absolute -bottom-9 right-0 sm:-right-4 z-20 bg-white p-3 sm:p-3.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-2.5 sm:gap-3">
+              <div className="absolute -bottom-14 right-0 sm:-right-4 z-20 bg-white p-3 sm:p-3.5 rounded-2xl shadow-elevated border border-brand-border flex items-center gap-2.5 sm:gap-3">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 flex items-center justify-center text-brand-royal shrink-0">
                   <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
