@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'secretary_home_tab.dart';
 import 'secretary_bookings_tab.dart';
-import 'secretary_availability_tab.dart';
+import '../staff_push_screen.dart';
 import '../reception_tab.dart';
 import '../../services/auth_service.dart';
 import '../login_screen.dart';
@@ -28,7 +28,6 @@ class _SecretaryMainScreenState extends State<SecretaryMainScreen> {
         onNavigateToBookings: () => setState(() => _currentIndex = 1),
       ),
       const SecretaryBookingsTab(),
-      const SecretaryAvailabilityTab(),
       const ReceptionTab(),
     ];
   }
@@ -39,8 +38,6 @@ class _SecretaryMainScreenState extends State<SecretaryMainScreen> {
         return 'لوحة مشرف الحجوزات';
       case 1:
         return 'إدارة حجوزات العيادة';
-      case 2:
-        return 'تنظيم المواعيد والإجازات';
       default:
         return 'مشرف الحجوزات';
     }
@@ -117,6 +114,14 @@ class _SecretaryMainScreenState extends State<SecretaryMainScreen> {
         ),
         actions: [
           IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StaffPushScreen()),
+            ),
+            tooltip: 'الإشعارات',
+            icon: const Icon(Icons.notifications_outlined),
+          ),
+          IconButton(
             onPressed: _logout,
             tooltip: 'تسجيل الخروج',
             icon: const Icon(Icons.logout),
@@ -153,11 +158,6 @@ class _SecretaryMainScreenState extends State<SecretaryMainScreen> {
             icon: Icon(Icons.calendar_month_outlined),
             activeIcon: Icon(Icons.calendar_month),
             label: 'الحجوزات',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event_busy_outlined),
-            activeIcon: Icon(Icons.event_busy),
-            label: 'تنظيم المواعيد',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.how_to_reg_outlined),
