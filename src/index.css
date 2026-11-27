@@ -61,3 +61,29 @@
     box-shadow: 0 0 20px -3px rgba(181, 203, 0, 0.35);
   }
 }
+
+/* ========================================================
+   English (LTR) presentation
+   The Arabic site is RTL by default; the English page reuses
+   the same components, so direction-dependent alignment and
+   row order are flipped here rather than in every component.
+   ======================================================== */
+html[dir='ltr'],
+html[dir='ltr'] body {
+  direction: ltr;
+  text-align: left;
+}
+
+html[dir='ltr'] .text-right,
+html[dir='ltr'] .text-left {
+  text-align: start;
+}
+
+html[dir='ltr'] .flex-row-reverse {
+  flex-direction: row;
+}
+
+html[dir='ltr'] .border-r-2 {
+  border-right-width: 0;
+  border-left-width: 2px;
+}

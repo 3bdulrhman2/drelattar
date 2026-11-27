@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useContent } from './context/ContentContext';
+import { useLang } from './i18n';
 import { Header } from './components/layout/Header';
 import { Hero } from './components/home/Hero';
 import { TrustIndicators } from './components/home/TrustIndicators';
@@ -27,7 +28,9 @@ import { Bell } from 'lucide-react';
 type AppRoute = 'public' | 'admin' | 'card' | 'booking' | 'secretary';
 
 const detectRoute = (): AppRoute => {
-  const path = window.location.pathname.toLowerCase();
+  const raw = window.location.pathname.toLowerCase();
+  // The English version lives under /en; strip that prefix before routing.
+  const path = raw === '/en' || raw === '/en/' ? '/' : raw.startsWith('/en/') ? raw.slice(3) : raw;
   const hash = window.location.hash.toLowerCase();
 
   if (path.startsWith('/admin') || hash.includes('admin')) {
@@ -58,6 +61,8 @@ const detectRoute = (): AppRoute => {
 
 export const AppContent: React.FC = () => {
   const { user, logout } = useAuth();
+  const { isEn } = useLang();
+  const homePath = isEn ? '/en' : '/';
   const { data } = useContent();
 
   const [route, setRoute] = useState<AppRoute>(detectRoute);
@@ -104,7 +109,7 @@ export const AppContent: React.FC = () => {
   };
 
   const navigateToPublic = () => {
-    window.history.pushState(null, '', '/');
+    window.history.pushState(null, '', homePath);
     setRoute('public');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
