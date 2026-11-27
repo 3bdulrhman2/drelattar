@@ -1,10 +1,11 @@
 import React from 'react';
 import { AlertCircle, CalendarOff, Bell, Info } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 import { getCairoTodayString } from '../../lib/cairoTime';
 
 export const ClinicNoticeBanner: React.FC = () => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t, isEn } = useLang();
   const { bookingSettings, visibility } = data;
 
   const todayStr = getCairoTodayString();
@@ -17,7 +18,7 @@ export const ClinicNoticeBanner: React.FC = () => {
         <span>
           {bookingSettings.closedTodayReason?.trim()
             ? bookingSettings.closedTodayReason
-            : 'تنويه: الحجز بالعيادة متوقف مؤقتاً اليوم. نستقبلكم مجدداً في مواعيد العمل القادمة.'}
+            : t('تنويه: الحجز بالعيادة متوقف مؤقتاً اليوم. نستقبلكم مجدداً في مواعيد العمل القادمة.')}
         </span>
       </div>
     );
@@ -34,7 +35,9 @@ export const ClinicNoticeBanner: React.FC = () => {
         <CalendarOff className="w-4 h-4 shrink-0 text-amber-200" />
         <span>
           {activeHolidayToday.customMessage ||
-            `تنويه: العيادة في عطلة (${activeHolidayToday.title}) من ${activeHolidayToday.startDate} حتى ${activeHolidayToday.endDate}.`}
+            (isEn
+              ? `${t('تنويه: العيادة في عطلة')} (${activeHolidayToday.title}) ${activeHolidayToday.startDate} – ${activeHolidayToday.endDate}.`
+              : `تنويه: العيادة في عطلة (${activeHolidayToday.title}) من ${activeHolidayToday.startDate} حتى ${activeHolidayToday.endDate}.`)}
         </span>
       </div>
     );

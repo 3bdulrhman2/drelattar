@@ -6,10 +6,12 @@ import {
   registerWebPushServiceWorker,
 } from '../../lib/pushNotifications';
 import { enableVisitorPush } from '../../lib/visitorPush';
+import { useLang } from '../../i18n';
 
 const PROMPT_DISMISSED_KEY = 'drelattar_notification_prompt_dismissed_until';
 
 export const NotificationPromptModal: React.FC = () => {
+  const { t, dir } = useLang();
   const [isVisible, setIsVisible] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [activatedSuccess, setActivatedSuccess] = useState(false);
@@ -69,8 +71,8 @@ export const NotificationPromptModal: React.FC = () => {
         // Record subscriber web device token for clinic broadcast
         void enableVisitorPush(true);
         triggerLocalNotification({
-          title: 'مرحباً بك! تم تفعيل الإشعارات بنجاح 🔔',
-          body: 'ستصلك تنبيهات فورية بمواعيد وتأكيدات الحجوزات وأحدث التنويهات من عيادة د. محمد السيد العطار.',
+          title: t('مرحباً بك! تم تفعيل الإشعارات بنجاح 🔔'),
+          body: t('ستصلك تنبيهات فورية بمواعيد وتأكيدات الحجوزات وأحدث التنويهات من عيادة د. محمد السيد العطار.'),
           type: 'announcement',
         });
         setTimeout(() => {
@@ -91,7 +93,7 @@ export const NotificationPromptModal: React.FC = () => {
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="fixed bottom-4 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-slideUp"
     >
       <div className="bg-slate-900/95 text-slate-100 rounded-3xl p-5 shadow-2xl border border-brand-royal/40 backdrop-blur-xl relative overflow-hidden">
@@ -102,7 +104,7 @@ export const NotificationPromptModal: React.FC = () => {
         <button
           onClick={handleDismiss}
           className="absolute top-3.5 left-3.5 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          title="إغلاق"
+          title={t('إغلاق')}
         >
           <X className="w-4 h-4" />
         </button>
@@ -112,8 +114,8 @@ export const NotificationPromptModal: React.FC = () => {
             <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h4 className="font-bold text-base text-white">تم تفعيل التنبيهات بنجاح!</h4>
-            <p className="text-xs text-slate-300">شكراً لك، ستصلك التنبيهات والتحديثات الطبية فوراً.</p>
+            <h4 className="font-bold text-base text-white">{t('تم تفعيل التنبيهات بنجاح!')}</h4>
+            <p className="text-xs text-slate-300">{t('شكراً لك، ستصلك التنبيهات والتحديثات الطبية فوراً.')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -124,14 +126,14 @@ export const NotificationPromptModal: React.FC = () => {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h4 className="font-bold text-sm sm:text-base text-white">
-                    تفعيل إشعارات وتنبيهات العيادة
+                    {t('تفعيل إشعارات وتنبيهات العيادة')}
                   </h4>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/20">
-                    <Sparkles className="w-2.5 h-2.5" /> فوري
+                    <Sparkles className="w-2.5 h-2.5" /> {t('فوري')}
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  احصل على تنبيهات فورية ومباشرة بمواعيد حجزك، وإعلانات العيادة والعروض الطبية المعتمدة من د. محمد السيد العطار.
+                  {t('احصل على تنبيهات فورية ومباشرة بمواعيد حجزك، وإعلانات العيادة والعروض الطبية المعتمدة من د. محمد السيد العطار.')}
                 </p>
               </div>
             </div>
@@ -143,13 +145,13 @@ export const NotificationPromptModal: React.FC = () => {
                 className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-royal to-brand-medical text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
               >
                 <Bell className="w-3.5 h-3.5" />
-                <span>{isActivating ? 'جاري التفعيل...' : 'تفعيل الإشعارات الآن 🔔'}</span>
+                <span>{isActivating ? t('جاري التفعيل...') : t('تفعيل الإشعارات الآن 🔔')}</span>
               </button>
               <button
                 onClick={handleDismiss}
                 className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors"
               >
-                لاحقاً
+                {t('لاحقاً')}
               </button>
             </div>
           </div>
