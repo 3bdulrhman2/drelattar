@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/postbuild-en.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "test:security": "node tests/preserving-migration.test.mjs && node tests/database.test.mjs && node --experimental-strip-types --test tests/security.test.ts",
