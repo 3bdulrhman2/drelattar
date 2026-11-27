@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:timezone/data/latest.dart' as tzdata;
-import 'package:timezone/timezone.dart' as tz;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
@@ -403,42 +402,9 @@ class _ReceptionTabState extends State<ReceptionTab> {
               ['arrived', 'in_consultation', 'completed'].contains(i.status),
         )
         .toList();
-    DateTime registeredAt(ReceptionItem item) {
-      if (item.source == 'website') {
-        final booking = _bookings.where((b) => b.id == item.id).firstOrNull;
-        final created = DateTime.tryParse(booking?.createdAt ?? '');
-        if (created == null) return item.time;
-        if (!created.isUtc) return created;
-        final wall = tz.TZDateTime.from(
-          created,
-          tz.getLocation('Africa/Cairo'),
-        );
-        return DateTime(
-          wall.year,
-          wall.month,
-          wall.day,
-          wall.hour,
-          wall.minute,
-          wall.second,
-        );
-      }
-      return _snapshot?.entries
-              .where((e) => e.id == item.id)
-              .firstOrNull
-              ?.arrivedAt ??
-          item.time;
-    }
-
-    final registered =
-        all
-            .where(
-              (i) => i.source != 'website' || !['cancelled'].contains(i.status),
-            )
-            .toList()
-          ..sort((a, b) {
-            final order = registeredAt(a).compareTo(registeredAt(b));
-            return order != 0 ? order : a.id.compareTo(b.id);
-          });
+    // Numbers follow the queue (entry) order shared by website and reception
+    // patients, not the order people arrived or registered.
+    final registered = visible;
     final current = visible
         .where((i) => i.status == 'in_consultation')
         .firstOrNull;
