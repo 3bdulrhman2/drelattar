@@ -85,31 +85,68 @@ class NotificationService {
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         ),
+        onDidReceiveNotificationResponse: (_) => _refreshNow(),
       );
+      final android = _local
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      for (final c in const [
+        ['clinic_alerts', 'تنبيهات العيادة'],
+        ['clinic_new_booking', 'حجوزات جديدة من الموقع'],
+        ['clinic_patient_entering', 'دخول المرضى للكشف'],
+        ['clinic_staff_manual', 'إشعارات فريق العيادة'],
+      ]) {
+        await android?.createNotificationChannel(
+          AndroidNotificationChannel(
+            c[0],
+            c[1],
+            importance: Importance.high,
+          ),
+        );
+      }
       FirebaseMessaging.onBackgroundMessage(clinicBackgroundMessage);
+      FirebaseMessaging.onMessageOpenedApp.listen((_) => _refreshNow());
       _ready = true;
     } catch (_) {
       _ready = false;
     }
   }
 
-  static void startRealtimeListener() {
-    _resumeOptIn();
+  static Timer? _poll;
+
+  /// Pulls the latest bookings now (app opened, notification tapped, timer).
+  static Future<void> _refreshNow() async {
+    try {
+      if (Supabase.instance.client.auth.currentSession != null) {
+        await SupabaseService.refreshAppointmentsFromServer();
+      }
+    } catch (_) {}
   }
 
-  static Future<void> _resumeOptIn() async {
+  /// Runs after every staff sign-in or session restore: the device is
+  /// registered for push automatically (the system asks for permission once),
+  /// and bookings are re-checked every minute while the app is open.
+  static void startRealtimeListener() {
+    _autoEnable();
+    _poll?.cancel();
+    _poll = Timer.periodic(const Duration(seconds: 60), (_) => _refreshNow());
+    _refreshNow();
+  }
+
+  static Future<void> _autoEnable() async {
     if (!_ready) return;
     try {
-      final p = await SharedPreferences.getInstance();
-      final id = Supabase.instance.client.auth.currentUser?.id;
-      if (id != null &&
-          p.getBool(_optInKey) == true &&
-          p.getString(_ownerKey) == id)
-        await requestPermission();
+      await requestPermission();
+      final first = await FirebaseMessaging.instance.getInitialMessage();
+      if (first != null) await _refreshNow();
     } catch (_) {}
-  } // Reception owns its patient-free sync.
+  }
 
-  static void stopRealtimeListener() {}
+  static void stopRealtimeListener() {
+    _poll?.cancel();
+    _poll = null;
+  }
   static Future<void> _register(String token) async {
     final c = Supabase.instance.client;
     if (c.auth.currentSession == null) throw StateError('Not signed in');
