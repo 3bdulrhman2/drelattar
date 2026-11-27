@@ -8,7 +8,7 @@ interface HeroProps {
 
 export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
   const { data } = useSiteContent();
-  const { t } = useLang();
+  const { t, isEn } = useLang();
   const { doctor, clinic, bookingSettings } = data;
 
   return (
@@ -35,7 +35,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigateBooking }) => {
 
             {/* Main Headline */}
             <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-black text-brand-dark tracking-tight leading-[1.5] md:leading-[1.5] text-balance pb-2">
+              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-black text-brand-dark tracking-tight text-balance pb-2 ${isEn ? '' : 'leading-[1.5] md:leading-[1.5]'}`}>
                 {t('رعايتك الصحية')} <span className="inline-block bg-gradient-to-l from-brand-royal via-brand-medical to-brand-cyan bg-clip-text text-transparent pt-1 pb-2">{t('تبدأ من هنا')}</span>
               </h1>
               
