@@ -11,7 +11,11 @@ import '../../theme/app_theme.dart';
 import '../../utils/clinic_time.dart';
 
 class AdminWebsiteTab extends StatefulWidget {
-  AdminWebsiteTab({super.key});
+  /// schedule: slot interval, working hours, booking rules (inside المواعيد).
+  /// panel: shortcut to the web dashboard (inside المزيد).
+  /// reviews: customer reviews manager (inside المزيد).
+  final String section;
+  AdminWebsiteTab({super.key, this.section = 'schedule'});
 
   @override
   State<AdminWebsiteTab> createState() => _AdminWebsiteTabState();
@@ -868,6 +872,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.section == 'schedule') ...[
             // ================= CARD 1: SLOT DURATION INTERVAL SELECTOR =================
             Container(
               padding: EdgeInsets.all(16),
@@ -1351,6 +1356,8 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
             ),
             SizedBox(height: 16),
 
+            ],
+            if (widget.section == 'panel') ...[
             // ================= CARD 4: WEB ADMIN CMS SHORTCUT =================
             Container(
               padding: EdgeInsets.all(16),
@@ -1413,6 +1420,8 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
             ),
             SizedBox(height: 16),
 
+            ],
+            if (widget.section == 'reviews') ...[
             // ================= CARD 5: SOCIAL REVIEWS MANAGER =================
             Container(
               padding: EdgeInsets.all(16),
@@ -1636,6 +1645,7 @@ class _AdminWebsiteTabState extends State<AdminWebsiteTab> {
                 ],
               ),
             ),
+            ],
             SizedBox(height: 24),
           ],
         ),
