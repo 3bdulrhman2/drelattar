@@ -82,7 +82,7 @@ void main() {
             .widget<BottomNavigationBar>(find.byType(BottomNavigationBar))
             .items
             .length,
-        6,
+        5,
       );
       expect(find.byType(Image), findsWidgets);
       expect(find.byTooltip('الوضع الليلي'), findsOneWidget);
@@ -125,7 +125,7 @@ void main() {
       );
       await t.tapAt(const Offset(5, 90));
       await t.pumpAndSettle();
-      for (final item in ['الإجازات', 'الموقع', 'المزيد']) {
+      for (final item in ['الاستقبال', 'المواعيد', 'المزيد']) {
         await t.tap(find.text(item).last);
         await t.pumpAndSettle();
         expect(t.takeException(), isNull);
