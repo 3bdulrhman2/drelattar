@@ -11,7 +11,7 @@ import {
   AlertCircle,
   Home,
 } from 'lucide-react';
-import { useContent } from '../../context/ContentContext';
+import { useSiteContent, useLang } from '../../i18n';
 import { PublicBookingModule } from '../home/PublicBookingModule';
 import { Footer } from '../layout/Footer';
 import { QuickCallFloating } from '../home/QuickCallFloating';
@@ -25,19 +25,20 @@ export const BookingPage: React.FC<BookingPageProps> = ({
   onBackToSite,
   onNavigateAdmin,
 }) => {
-  const { data } = useContent();
+  const { data } = useSiteContent();
+  const { t, dir, isEn } = useLang();
   const { doctor, clinic, bookingSettings } = data;
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
-    document.title = `حجز موعد | ${doctor.nameAr}`;
+    document.title = `${t('حجز موعد')} | ${doctor.nameAr}`;
     return () => {
       document.title = `${doctor.nameAr} - ${doctor.title}`;
     };
-  }, [doctor]);
+  }, [doctor, t]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-brand-bg text-brand-dark selection:bg-purple-100 selection:text-purple-900" dir="rtl">
+    <div className="min-h-screen flex flex-col bg-brand-bg text-brand-dark selection:bg-purple-100 selection:text-purple-900" dir={dir}>
       
       {/* Top Header Bar for Booking Page */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-brand-border/60 shadow-soft py-3 px-4 sm:px-6 lg:px-8">
@@ -49,7 +50,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-bold transition-all group"
           >
             <ArrowRight className="w-4 h-4 text-brand-royal group-hover:-translate-x-0.5 transition-transform" />
-            <span>الرجوع للرئيسية</span>
+            <span>{t('الرجوع للرئيسية')}</span>
           </button>
 
           {/* Doctor Identity in Header */}
@@ -66,7 +67,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 {doctor.nameAr}
               </h1>
               <p className="text-[10px] sm:text-xs text-brand-muted hidden sm:block">
-                صفحة حجز المواعيد الرسمية المعتمدة
+                {t('صفحة حجز المواعيد الرسمية المعتمدة')}
               </p>
             </div>
           </div>
@@ -92,15 +93,15 @@ export const BookingPage: React.FC<BookingPageProps> = ({
             <div className="flex items-center gap-1.5">
               <button onClick={onBackToSite} className="hover:text-brand-royal flex items-center gap-1">
                 <Home className="w-3.5 h-3.5" />
-                <span>الرئيسية</span>
+                <span>{t('الرئيسية')}</span>
               </button>
               <span>/</span>
-              <span className="font-semibold text-purple-700">حجز موعد كشف</span>
+              <span className="font-semibold text-purple-700">{t('حجز موعد كشف')}</span>
             </div>
 
             <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="font-medium text-[11px]">طلب حجز يخضع لتأكيد العيادة</span>
+              <span className="font-medium text-[11px]">{t('طلب حجز يخضع لتأكيد العيادة')}</span>
             </div>
           </div>
 
@@ -113,13 +114,13 @@ export const BookingPage: React.FC<BookingPageProps> = ({
 
               <div className="space-y-2">
                 <span className="text-xs font-bold text-amber-700 bg-amber-50 px-3.5 py-1 rounded-full border border-amber-200">
-                  الحجز الإلكتروني غير مفعل حالياً
+                  {t('الحجز الإلكتروني غير مفعل حالياً')}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-brand-dark pt-2">
-                  الكشف والمتابعة بالحضور المباشر أو التنسيق الهاتفي
+                  {t('الكشف والمتابعة بالحضور المباشر أو التنسيق الهاتفي')}
                 </h2>
                 <p className="text-xs sm:text-sm text-brand-muted leading-relaxed max-w-md mx-auto">
-                  تستقبل عيادة الدكتور محمد السيد العطار المرضى الكرام يومياً خلال مواعيد العمل الرسمية، ويمكنكم التنسيق الهاتفي المسبق لضمان راحتكم.
+                  {t('تستقبل عيادة الدكتور محمد السيد العطار المرضى الكرام يومياً خلال مواعيد العمل الرسمية، ويمكنكم التنسيق الهاتفي المسبق لضمان راحتكم.')}
                 </p>
               </div>
 
@@ -130,19 +131,21 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-brand-royal to-brand-medical text-white font-bold px-7 py-3 rounded-xl shadow-md hover:scale-[1.02] transition-all text-sm"
                 >
                   <Phone className="w-4 h-4 text-brand-lime" />
-                  <span>اتصل بالعيادة: {clinic.phoneClinic}</span>
+                  <span>{t('اتصل بالعيادة:')} {clinic.phoneClinic}</span>
                 </a>
 
                 <a
                   href={`https://wa.me/201060918977?text=${encodeURIComponent(
-                    'السلام عليكم يا دكتور، أود الاستفسار عن حجز موعد كشف في العيادة.'
+                    isEn
+                      ? 'Hello doctor, I would like to ask about booking an appointment at the clinic.'
+                      : 'السلام عليكم يا دكتور، أود الاستفسار عن حجز موعد كشف في العيادة.'
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow-md text-sm transition-all"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>تواصل عبر الواتساب</span>
+                  <span>{t('تواصل عبر الواتساب')}</span>
                 </a>
               </div>
 
@@ -152,7 +155,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                   className="text-xs text-brand-royal font-bold hover:underline inline-flex items-center gap-1"
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
-                  <span>العودة لصفحة العيادة الرئيسية</span>
+                  <span>{t('العودة لصفحة العيادة الرئيسية')}</span>
                 </button>
               </div>
             </div>
@@ -171,7 +174,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 <Stethoscope className="w-5 h-5" />
               </div>
               <div className="text-right">
-                <h4 className="text-xs font-bold text-brand-dark">التخصص الطبي</h4>
+                <h4 className="text-xs font-bold text-brand-dark">{t('التخصص الطبي')}</h4>
                 <p className="text-[11px] text-brand-muted mt-0.5 leading-relaxed">
                   {doctor.title}
                 </p>
@@ -183,7 +186,7 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 <MapPin className="w-5 h-5" />
               </div>
               <div className="text-right">
-                <h4 className="text-xs font-bold text-brand-dark">مقر العيادة</h4>
+                <h4 className="text-xs font-bold text-brand-dark">{t('مقر العيادة')}</h4>
                 <p className="text-[11px] text-brand-muted mt-0.5 leading-relaxed">
                   {clinic.landmark} – {clinic.city}
                 </p>
@@ -195,9 +198,9 @@ export const BookingPage: React.FC<BookingPageProps> = ({
                 <Clock className="w-5 h-5" />
               </div>
               <div className="text-right">
-                <h4 className="text-xs font-bold text-brand-dark">مواعيد العمل</h4>
+                <h4 className="text-xs font-bold text-brand-dark">{t('مواعيد العمل')}</h4>
                 <p className="text-[11px] text-brand-muted mt-0.5 leading-relaxed">
-                  السبت إلى الخميس: 1:00 م - 9:00 م | الجمعة: 4:00 م - 10:00 م
+                  {t('السبت إلى الخميس: 1:00 م - 9:00 م | الجمعة: 4:00 م - 10:00 م')}
                 </p>
               </div>
             </div>
