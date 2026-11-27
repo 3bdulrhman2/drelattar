@@ -8,6 +8,7 @@ export interface CairoDateTimeInfo {
   cairoHour: number; // 0-23
   cairoMinute: number; // 0-59
   formattedDateArabic: string;
+  formattedDateEnglish: string;
 }
 
 /**
@@ -50,6 +51,16 @@ export const getCairoDateTime = (): CairoDateTimeInfo => {
     cairoHour: hour,
     cairoMinute: minute,
     formattedDateArabic: arabicFormatter.format(now),
+    formattedDateEnglish: new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Cairo',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(now),
   };
 };
 
@@ -81,6 +92,40 @@ export const formatTimeArabicFull = (time24: string): string => {
   if (h < 12) return `${h.toString().padStart(2, '0')}:${minutePadded} صباحاً`;
   if (h === 12) return `12:${minutePadded} ظهراً`;
   return `${(h - 12).toString().padStart(2, '0')}:${minutePadded} مساءً`;
+};
+
+/**
+ * Formats a 24h time string like "20:00" into English 12h: "8:00 PM".
+ */
+export const formatTimeEnglish = (time24: string): string => {
+  const [hStr, mStr] = time24.split(':');
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr || '0', 10);
+  const minutePadded = m.toString().padStart(2, '0');
+
+  if (h === 0) return `12:${minutePadded} AM`;
+  if (h < 12) return `${h}:${minutePadded} AM`;
+  if (h === 12) return `12:${minutePadded} PM`;
+  return `${h - 12}:${minutePadded} PM`;
+};
+
+/**
+ * Formats a date string like "2026-11-19" into English: "Thursday, 19 November 2026".
+ */
+export const formatAppointmentDateEnglish = (dateStr: string): string => {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dateObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Cairo',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(dateObj);
+  } catch {
+    return dateStr;
+  }
 };
 
 /**
@@ -191,7 +236,7 @@ export const generateDaySlots = (
   dateStr: string,
   bookedTimesForDate: string[] = [],
   hoursConfig?: WorkingHoursConfig
-): { time: string; labelAr: string; isAvailable: boolean }[] => {
+): { time: string; labelAr: string; labelEn: string; isAvailable: boolean }[] => {
   const dateObj = new Date(dateStr + 'T12:00:00');
   const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Africa/Cairo' });
   const isFriday = dayOfWeek === 'Friday';
@@ -228,7 +273,7 @@ export const generateDaySlots = (
   const isToday = dateStr === cairoTodayStr;
   const currentCairoTotalMinutes = cairoHour * 60 + cairoMinute;
 
-  const slots: { time: string; labelAr: string; isAvailable: boolean }[] = [];
+  const slots: { time: string; labelAr: string; labelEn: string; isAvailable: boolean }[] = [];
 
   for (let totalMin = startTotalMinutes; totalMin < endTotalMinutes; totalMin += step) {
     const h = Math.floor(totalMin / 60);
@@ -248,6 +293,7 @@ export const generateDaySlots = (
     slots.push({
       time: timeStr,
       labelAr: formatTimeArabic(timeStr),
+      labelEn: formatTimeEnglish(timeStr),
       isAvailable,
     });
   }
@@ -261,7 +307,7 @@ export const generateDaySlots = (
 export const getUpcomingCairoDays = (count: number = 14) => {
   const { cairoTodayStr } = getCairoDateTime();
   const today = new Date(cairoTodayStr + 'T12:00:00');
-  const days: { dateStr: string; dayNameAr: string; dateFormattedAr: string }[] = [];
+  const days: { dateStr: string; dayNameAr: string; dateFormattedAr: string; dayNameEn: string; dateFormattedEn: string }[] = [];
 
   const arabicDayFormatter = new Intl.DateTimeFormat('ar-EG', {
     timeZone: 'Africa/Cairo',
@@ -271,6 +317,18 @@ export const getUpcomingCairoDays = (count: number = 14) => {
   });
 
   const dayNameOnlyFormatter = new Intl.DateTimeFormat('ar-EG', {
+    timeZone: 'Africa/Cairo',
+    weekday: 'long',
+  });
+
+  const englishDayFormatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Cairo',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+
+  const englishDayNameFormatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Africa/Cairo',
     weekday: 'long',
   });
@@ -291,10 +349,16 @@ export const getUpcomingCairoDays = (count: number = 14) => {
     if (isToday) dayLabel = 'اليوم (' + dayLabel + ')';
     else if (isTomorrow) dayLabel = 'غداً (' + dayLabel + ')';
 
+    let dayLabelEn = englishDayNameFormatter.format(nextDate);
+    if (isToday) dayLabelEn = 'Today (' + dayLabelEn + ')';
+    else if (isTomorrow) dayLabelEn = 'Tomorrow (' + dayLabelEn + ')';
+
     days.push({
       dateStr,
       dayNameAr: dayLabel,
       dateFormattedAr: arabicDayFormatter.format(nextDate),
+      dayNameEn: dayLabelEn,
+      dateFormattedEn: englishDayFormatter.format(nextDate),
     });
   }
 
